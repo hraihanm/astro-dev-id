@@ -1,0 +1,188 @@
+---
+export const prerender = false;
+
+import Layout from '../../../../components/Layout.astro';
+import { getChapterContent } from '../../../../lib/student';
+import { renderMarkdown } from '../../../../lib/latex';
+
+const { slug, order } = Astro.params;
+
+if (!slug || !order) {
+  return Astro.redirect('/courses');
+}
+
+const chapterOrder = parseInt(order);
+const courseData = await getChapterContent(slug, chapterOrder);
+
+if (!courseData || !courseData.chapter) {
+  return Astro.redirect(`/courses/${slug}`);
+}
+
+const { course, chapter, prevChapter, nextChapter } = courseData;
+const renderedContent = chapter.content ? renderMarkdown(chapter.content) : '';
+---
+
+<Layout title={`${chapter.title} - ${course.title}`}>
+  <div class="min-h-screen bg-gray-50">
+    <!-- Chapter Header -->
+    <div class="bg-white shadow mb-8">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+          <div class="flex items-center">
+            <a href={`/courses/${course.slug}`} class="text-gray-700 hover:text-blue-600 mr-4">← Back to Course</a>
+            <h1 class="text-2xl font-bold text-gray-900">{chapter.title}</h1>
+          </div>
+          <div class="flex items-center space-x-4">
+            <span class="text-sm text-gray-500">Chapter {chapter.order}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <!-- Chapter Navigation -->
+        <div class="lg:col-span-1">
+          <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Course Contents</h3>
+            <nav class="space-y-2">
+              {course.chapters.map((ch) => (
+                <a
+                  href={`/courses/${course.slug}/chapter/${ch.order}`}
+                  class={`block px-3 py-2 text-sm rounded-md transition-colors ${
+                    ch.order === chapterOrder
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'
+                  }`}
+                >
+                  <div class="flex items-center">
+                    <span class={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium mr-3 ${
+                      ch.order === chapterOrder
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      {ch.order}
+                    </span>
+                    <span class="truncate">{ch.title}</span>
+                  </div>
+                </a>
+              ))}
+            </nav>
+          </div>
+        </div>
+
+        <!-- Chapter Content -->
+        <div class="lg:col-span-3">
+          <div class="bg-white rounded-lg shadow p-8">
+            <div class="prose prose-lg max-w-none">
+              <h2 class="text-3xl font-bold text-gray-900 mb-6">{chapter.title}</h2>
+              
+              {renderedContent ? (
+                <div class="chapter-content" set:html={renderedContent} />
+              ) : (
+                <div class="text-center py-12">
+                  <div class="text-gray-400 mb-4">
+                    <svg class="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <h3 class="text-lg font-medium text-gray-900 mb-2">Content Coming Soon</h3>
+                  <p class="text-gray-500">This chapter is being prepared by your instructor.</p>
+                </div>
+              )}
+            </div>
+
+            <!-- Navigation -->
+            <div class="mt-8 flex justify-between items-center pt-6 border-t">
+              <div>
+                {prevChapter ? (
+                  <a
+                    href={`/courses/${course.slug}/chapter/${prevChapter.order}`}
+                    class="inline-flex items-center text-blue-600 hover:text-blue-700"
+                  >
+                    <svg class="mr-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Previous: {prevChapter.title}
+                  </a>
+                ) : (
+                  <span class="text-gray-400">No previous chapter</span>
+                )}
+              </div>
+              
+              <div>
+                {nextChapter ? (
+                  <a
+                    href={`/courses/${course.slug}/chapter/${nextChapter.order}`}
+                    class="inline-flex items-center text-blue-600 hover:text-blue-700"
+                  >
+                    Next: {nextChapter.title}
+                    <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </a>
+                ) : (
+                  <span class="text-gray-400">No next chapter</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .chapter-content {
+    line-height: 1.7;
+  }
+  
+  .chapter-content h1,
+  .chapter-content h2,
+  .chapter-content h3 {
+    color: #1f2937;
+    font-weight: 600;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+  }
+  
+  .chapter-content p {
+    margin-bottom: 1.5rem;
+    color: #374151;
+  }
+  
+  .chapter-content ul,
+  .chapter-content ol {
+    margin-bottom: 1.5rem;
+    padding-left: 1.5rem;
+  }
+  
+  .chapter-content li {
+    margin-bottom: 0.5rem;
+  }
+  
+  .chapter-content code {
+    background-color: #f3f4f6;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.875rem;
+  }
+  
+  .chapter-content pre {
+    background-color: #1f2937;
+    color: #f9fafb;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    margin: 1.5rem 0;
+  }
+  
+  .chapter-content pre code {
+    background-color: transparent;
+    padding: 0;
+    color: inherit;
+  }
+</style>
+

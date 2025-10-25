@@ -1,0 +1,581 @@
+---
+export const prerender = false;
+
+import Layout from '../../../../../components/Layout.astro';
+import { prisma } from '../../../../../lib/db';
+
+const { courseId } = Astro.params;
+
+if (!courseId) {
+  return Astro.redirect('/admin/courses');
+}
+
+const course = await prisma.course.findUnique({
+  where: { id: parseInt(courseId) }
+});
+
+if (!course) {
+  return Astro.redirect('/admin/courses');
+}
+
+// Get current chapter count to suggest next order
+const chapterCount = await prisma.chapter.count({
+  where: { courseId: parseInt(courseId) }
+});
+
+const nextOrder = chapterCount + 1;
+---
+
+<Layout title={`Add Chapter to ${course.title}`}>
+  <div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white shadow">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+          <div class="flex items-center">
+            <a href={`/admin/courses/${courseId}/edit`} class="text-gray-700 hover:text-blue-600 mr-4">
+              ← Back to Course
+            </a>
+            <h1 class="text-2xl font-bold text-gray-900">Add New Chapter</h1>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chapter Creation Form -->
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <form id="chapter-form" class="space-y-6">
+        <!-- Chapter Information -->
+        <div class="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
+          <div class="space-y-6">
+            <div>
+              <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Chapter Information</h3>
+              <p class="text-sm text-gray-500 mb-4">
+                Adding chapter to: <span class="font-medium">{course.title}</span>
+              </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label for="title" class="block text-sm font-medium text-gray-700">
+                  Chapter Title *
+                </label>
+                <input
+                  type="text"
+                  name="title"
+                  id="title"
+                  required
+                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="Chapter 1: Introduction"
+                />
+              </div>
+
+              <div>
+                <label for="order" class="block text-sm font-medium text-gray-700">
+                  Chapter Order *
+                </label>
+                <input
+                  type="number"
+                  name="order"
+                  id="order"
+                  required
+                  min="1"
+                  value={nextOrder}
+                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+                <p class="mt-1 text-xs text-gray-500">
+                  Suggested: {nextOrder} (after {chapterCount} existing chapters)
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label for="content" class="block text-sm font-medium text-gray-700 mb-2">
+                Chapter Content (Markdown + LaTeX)
+              </label>
+              <textarea
+                name="content"
+                id="content"
+                rows="20"
+                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-mono"
+                placeholder="# Chapter Title&#10;&#10;Your content here with **markdown** and $LaTeX$&#10;&#10;## Section 1&#10;&#10;Content with math: $E = mc^2$"
+              ></textarea>
+              <p class="mt-2 text-sm text-gray-500">
+                Supports Markdown formatting and LaTeX math. Use $...$ for inline math and $$...$$ for display math.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Reference -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h4 class="text-sm font-semibold text-blue-900 mb-2">Quick Markdown & LaTeX Reference</h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-blue-800">
+            <div>
+              <p class="font-medium mb-1">Markdown:</p>
+              <ul class="space-y-1 ml-4">
+                <li>• **bold** or __bold__</li>
+                <li>• *italic* or _italic_</li>
+                <li>• # Heading 1</li>
+                <li>• ## Heading 2</li>
+                <li>• [link](url)</li>
+                <li>• ![image](url)</li>
+                <li>• - List item</li>
+                <li>• 1. Numbered list</li>
+              </ul>
+            </div>
+            <div>
+              <p class="font-medium mb-1">LaTeX:</p>
+              <ul class="space-y-1 ml-4">
+                <li>• Inline: $x^2 + y^2 = z^2$</li>
+                <li>• Display: $$\int_0^1 x^2 dx$$</li>
+                <li>• Fractions: $\frac&#123;a&#125;&#123;b&#125;$</li>
+                <li>• Greek: $\alpha, \beta, \gamma$</li>
+                <li>• Sqrt: $\sqrt&#123;x&#125;$</li>
+                <li>• Sum: $\sum_&#123;i=1&#125;^&#123;n&#125;$</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex justify-end space-x-3">
+          <a
+            href={`/admin/courses/${courseId}/edit`}
+            class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Cancel
+          </a>
+          <button
+            type="submit"
+            class="bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Create Chapter
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</Layout>
+
+<script define:vars={{ courseId: parseInt(courseId) }}>
+  // Track content size
+  function updateContentSize() {
+    const content = document.getElementById('content')?.value || '';
+    const size = new Blob([content]).size;
+    const sizeDisplay = document.getElementById('content-size');
+    
+    if (!sizeDisplay) return;
+    
+    if (size < 1024) {
+      sizeDisplay.textContent = `Size: ${size} bytes`;
+      sizeDisplay.className = 'text-xs text-gray-400';
+    } else if (size < 1024 * 1024) {
+      sizeDisplay.textContent = `Size: ${(size / 1024).toFixed(1)} KB`;
+      sizeDisplay.className = 'text-xs text-gray-400';
+    } else if (size < 5 * 1024 * 1024) {
+      sizeDisplay.textContent = `Size: ${(size / 1024 / 1024).toFixed(2)} MB`;
+      sizeDisplay.className = 'text-xs text-yellow-600 font-medium';
+    } else {
+      sizeDisplay.textContent = `Size: ${(size / 1024 / 1024).toFixed(2)} MB (Large!)`;
+      sizeDisplay.className = 'text-xs text-red-600 font-bold';
+    }
+  }
+  
+  // Load Marked (Markdown) from CDN once
+  let markedLoadPromise;
+  function loadMarkedAssets() {
+    if (markedLoadPromise) return markedLoadPromise;
+    markedLoadPromise = new Promise((resolve, reject) => {
+      if (window.marked) {
+        try { window.marked.setOptions({ gfm: true, breaks: true }); } catch {}
+        resolve();
+        return;
+      }
+      const script = document.createElement('script');
+      script.id = 'marked-js';
+      script.src = 'https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js';
+      script.onload = () => { try { window.marked.setOptions({ gfm: true, breaks: true }); } catch {} resolve(); };
+      script.onerror = (e) => reject(e);
+      document.head.appendChild(script);
+    });
+    return markedLoadPromise;
+  }
+
+  // Enhanced markdown renderer with better LaTeX support (Marked + placeholders)
+  function renderMarkdown(text) {
+    if (!text) return '';
+    let processed = text;
+    
+    // Preserve LaTeX placeholders before Markdown parsing
+    processed = processed.replace(/(?:^|\n)\s*\$\$([\s\S]*?)\$\$\s*(?:\n|$)/g, (match, latex) => {
+      const cleanLatex = (latex || '').trim();
+      return `<div class=\"math-display\" data-latex=\"${cleanLatex}\"></div>`;
+    });
+    processed = processed.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (match, latex) => {
+      const cleanLatex = (latex || '').trim();
+      return `<span class=\"math-inline\" data-latex=\"${cleanLatex}\"></span>`;
+    });
+    
+    // Use Marked to parse Markdown (tables, lists, etc.)
+    try {
+      return window.marked ? window.marked.parse(processed) : processed;
+    } catch (e) {
+      console.warn('Marked parse failed, returning raw processed HTML', e);
+      return processed;
+    }
+  }
+  
+  // Load KaTeX CSS/JS once and cache the promise
+  let katexLoadPromise;
+  function loadKatexAssets() {
+    if (katexLoadPromise) return katexLoadPromise;
+    katexLoadPromise = new Promise((resolve, reject) => {
+      // CSS
+      if (!document.getElementById('katex-css')) {
+        const link = document.createElement('link');
+        link.id = 'katex-css';
+        link.rel = 'stylesheet';
+        link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css';
+        document.head.appendChild(link);
+      }
+      // JS
+      if (window.katex) {
+        resolve();
+        return;
+      }
+      const script = document.createElement('script');
+      script.id = 'katex-js';
+      script.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js';
+      script.defer = true;
+      script.onload = () => resolve();
+      script.onerror = (e) => reject(e);
+      document.head.appendChild(script);
+    });
+    return katexLoadPromise;
+  }
+
+  // Enhanced LaTeX renderer for better math display (KaTeX)
+  async function renderLatexPreview() {
+    // Find all math elements within the preview div
+    const previewDiv = document.getElementById('preview-content');
+    if (!previewDiv) {
+      console.log('Preview div not found');
+      return;
+    }
+    
+    const mathElements = previewDiv.querySelectorAll('.math-display, .math-inline');
+
+    console.log('Found math elements in preview:', mathElements.length);
+
+    // Ensure KaTeX is loaded
+    try {
+      await loadKatexAssets();
+    } catch (e) {
+      console.error('Failed to load KaTeX:', e);
+      return;
+    }
+
+    mathElements.forEach((element, index) => {
+      const latexRaw = element.getAttribute('data-latex') || '';
+      // Normalize some TeX commands for KaTeX compatibility
+      const latex = latexRaw.replace(/\\rm\s*/g, '\\mathrm ');
+      const displayMode = element.classList.contains('math-display');
+
+      try {
+        // Clear existing inner content then render with KaTeX
+        element.innerHTML = '';
+        window.katex.render(latex, element, {
+          displayMode,
+          throwOnError: false,
+          trust: true,
+          macros: {
+            '\\degree': '^{\\circ}'
+          }
+        });
+        console.log(`KaTeX rendered element ${index}`);
+      } catch (err) {
+        console.warn('KaTeX render error, falling back to basic rendering:', err);
+        element.innerHTML = `<div class=\"math-content\"><div class=\"math-raw\">$${latex}$</div><div class=\"math-rendered\">${renderBasicLatex(latex)}</div></div>`;
+      }
+    });
+  }
+  
+  // Basic LaTeX renderer for common math symbols
+  function renderBasicLatex(latex) {
+    return latex
+      // Fractions
+      .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '<span class="frac"><span class="numerator">$1</span><span class="denominator">$2</span></span>')
+      // Superscripts
+      .replace(/\^(\d+)/g, '<sup>$1</sup>')
+      .replace(/\^\{([^}]+)\}/g, '<sup>$1</sup>')
+      // Subscripts
+      .replace(/_(\d+)/g, '<sub>$1</sub>')
+      .replace(/_\{([^}]+)\}/g, '<sub>$1</sub>')
+      // Greek letters
+      .replace(/\\alpha/g, 'α')
+      .replace(/\\beta/g, 'β')
+      .replace(/\\gamma/g, 'γ')
+      .replace(/\\delta/g, 'δ')
+      .replace(/\\epsilon/g, 'ε')
+      .replace(/\\theta/g, 'θ')
+      .replace(/\\lambda/g, 'λ')
+      .replace(/\\mu/g, 'μ')
+      .replace(/\\pi/g, 'π')
+      .replace(/\\sigma/g, 'σ')
+      .replace(/\\tau/g, 'τ')
+      .replace(/\\phi/g, 'φ')
+      .replace(/\\omega/g, 'ω')
+      // Math symbols
+      .replace(/\\infty/g, '∞')
+      .replace(/\\sum/g, '∑')
+      .replace(/\\int/g, '∫')
+      .replace(/\\sqrt/g, '√')
+      .replace(/\\pm/g, '±')
+      .replace(/\\times/g, '×')
+      .replace(/\\div/g, '÷')
+      .replace(/\\leq/g, '≤')
+      .replace(/\\geq/g, '≥')
+      .replace(/\\neq/g, '≠')
+      .replace(/\\approx/g, '≈')
+      .replace(/\\rightarrow/g, '→')
+      .replace(/\\leftarrow/g, '←')
+      .replace(/\\leftrightarrow/g, '↔')
+      // Parentheses
+      .replace(/\\left\(/g, '(')
+      .replace(/\\right\)/g, ')')
+      .replace(/\\left\[/g, '[')
+      .replace(/\\right\]/g, ']')
+      .replace(/\\left\{/g, '{')
+      .replace(/\\right\}/g, '}');
+  }
+  
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Update size on load
+    updateContentSize();
+    
+    // Add input listener for size tracking
+    const contentTextarea = document.getElementById('content');
+    if (contentTextarea) {
+      contentTextarea.addEventListener('input', updateContentSize);
+    }
+    
+    // Preview functionality
+    const previewBtn = document.getElementById('preview-btn');
+    if (previewBtn) {
+      previewBtn.addEventListener('click', async function() {
+        const content = document.getElementById('content').value;
+        const previewDiv = document.getElementById('preview-content');
+        
+        console.log('Preview button clicked');
+        console.log('Content:', content.substring(0, 100) + '...');
+        
+        if (previewDiv) {
+          try {
+            // Ensure Marked is available for tables/GFM
+            await loadMarkedAssets();
+            const html = renderMarkdown(content);
+            console.log('Rendered HTML:', html.substring(0, 200) + '...');
+            previewDiv.innerHTML = html;
+            
+            // Enhance LaTeX rendering after HTML is inserted
+            setTimeout(() => {
+              console.log('Enhancing LaTeX preview...');
+              console.log('Preview HTML before enhancement:', previewDiv.innerHTML.substring(0, 500));
+              
+              // Try multiple times to ensure DOM is ready
+              let attempts = 0;
+              const maxAttempts = 5;
+              
+              const tryEnhancement = () => {
+                attempts++;
+                console.log(`Enhancement attempt ${attempts}`);
+                
+                const mathElements = previewDiv.querySelectorAll('.math-display, .math-inline');
+                console.log(`Found ${mathElements.length} math elements in attempt ${attempts}`);
+                
+                if (mathElements.length > 0) {
+                  renderLatexPreview();
+                  console.log('Preview HTML after enhancement:', previewDiv.innerHTML.substring(0, 500));
+                  console.log('LaTeX preview enhanced');
+                } else if (attempts < maxAttempts) {
+                  console.log(`No math elements found, retrying in 50ms...`);
+                  setTimeout(tryEnhancement, 50);
+                } else {
+                  console.log('Max attempts reached, no math elements found');
+                }
+              };
+              
+              tryEnhancement();
+            }, 10);
+          } catch (error) {
+            console.error('Preview error:', error);
+            previewDiv.innerHTML = '<p class="text-red-600">Error rendering preview. Check your markdown syntax.</p>';
+          }
+        }
+      });
+    }
+    
+    // Form submission
+    const form = document.getElementById('chapter-form');
+    if (form) {
+      form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const content = formData.get('content') || '';
+        
+        // Check content size and warn if large
+        const contentSize = new Blob([content]).size;
+        const sizeMB = (contentSize / 1024 / 1024).toFixed(2);
+        
+        if (contentSize > 5 * 1024 * 1024) { // > 5MB
+          if (!confirm(`This chapter is ${sizeMB}MB. Large files may take longer to save and load. Continue?`)) {
+            return;
+          }
+        }
+        
+        const chapterData = {
+          courseId: courseId,
+          title: formData.get('title'),
+          order: parseInt(formData.get('order')),
+          content: content
+        };
+        
+        // Show loading indicator
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = 'Creating...';
+        submitBtn.disabled = true;
+        
+        try {
+          const response = await fetch('/api/admin/chapters', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(chapterData)
+          });
+          
+          if (response.ok) {
+            window.location.href = `/admin/courses/${courseId}/edit`;
+          } else {
+            const error = await response.json();
+            alert(`Error creating chapter: ${error.error || 'Unknown error'}`);
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+          }
+        } catch (error) {
+          console.error('Chapter creation error:', error);
+          if (error.message.includes('431') || error.message.includes('header')) {
+            alert('Content is too large. Please reduce the file size or split into multiple chapters.');
+          } else {
+            alert('Error creating chapter. Please try again.');
+          }
+          submitBtn.textContent = originalText;
+          submitBtn.disabled = false;
+        }
+      });
+    }
+  });
+</script>
+
+<style>
+  #content {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .prose .math-display,
+  .prose .math-inline {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin: 8px 0;
+    font-family: 'Times New Roman', 'Computer Modern', serif;
+  }
+  
+  .prose .math-display {
+    display: block;
+    text-align: center;
+    margin: 16px 0;
+    padding: 16px;
+    font-size: 1.2em;
+  }
+  
+  .prose .math-inline {
+    display: inline;
+    font-size: 1em;
+    margin: 0 2px;
+  }
+  
+  .math-content {
+    position: relative;
+  }
+  
+  .math-raw {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.8em;
+    color: #64748b;
+    margin-bottom: 4px;
+    opacity: 0.7;
+  }
+  
+  .math-rendered {
+    font-size: 1.1em;
+    color: #1e293b;
+    font-weight: 500;
+  }
+  
+  .frac {
+    display: inline-block;
+    text-align: center;
+    vertical-align: middle;
+  }
+  
+  .frac .numerator {
+    display: block;
+    border-bottom: 1px solid #1e293b;
+    padding-bottom: 2px;
+    margin-bottom: 2px;
+  }
+  
+  .frac .denominator {
+    display: block;
+    padding-top: 2px;
+  }
+  
+  sup, sub {
+    font-size: 0.8em;
+    font-weight: bold;
+  }
+  
+  sup {
+    vertical-align: super;
+  }
+  
+  sub {
+    vertical-align: sub;
+  }
+
+  /* Table styles for GFM tables */
+  .prose table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+  }
+  .prose table th,
+  .prose table td {
+    border: 1px solid #e2e8f0;
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+  }
+  .prose table thead th {
+    background-color: #f1f5f9;
+    font-weight: 600;
+  }
+</style>
+

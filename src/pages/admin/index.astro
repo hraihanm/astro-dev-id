@@ -1,0 +1,128 @@
+---
+export const prerender = false;
+
+import Layout from '../../components/Layout.astro';
+import { getAdminStats } from '../../lib/admin';
+
+const stats = await getAdminStats();
+---
+
+<Layout title="Admin Dashboard">
+  <div class="min-h-screen bg-gray-50">
+    <!-- Admin Header -->
+    <div class="bg-white shadow mb-8">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+          <div class="flex items-center">
+            <h1 class="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+          </div>
+          <div class="flex items-center space-x-4">
+            <a href="/admin/courses" class="text-gray-700 hover:text-blue-600">Courses</a>
+            <a href="/admin/users" class="text-gray-700 hover:text-blue-600">Users</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats Overview -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+          <div class="p-5">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-blue-500 rounded-md flex items-center justify-center">
+                  <span class="text-white font-bold text-xl">U</span>
+                </div>
+              </div>
+              <div class="ml-5 w-0 flex-1">
+                <dl>
+                  <dt class="text-sm font-medium text-gray-500 truncate">Total Users</dt>
+                  <dd class="text-2xl font-medium text-gray-900">{stats.totalUsers}</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+          <div class="p-5">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-green-500 rounded-md flex items-center justify-center">
+                  <span class="text-white font-bold text-xl">C</span>
+                </div>
+              </div>
+              <div class="ml-5 w-0 flex-1">
+                <dl>
+                  <dt class="text-sm font-medium text-gray-500 truncate">Total Courses</dt>
+                  <dd class="text-2xl font-medium text-gray-900">{stats.totalCourses}</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+          <div class="p-5">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-purple-500 rounded-md flex items-center justify-center">
+                  <span class="text-white font-bold text-xl">Ch</span>
+                </div>
+              </div>
+              <div class="ml-5 w-0 flex-1">
+                <dl>
+                  <dt class="text-sm font-medium text-gray-500 truncate">Total Chapters</dt>
+                  <dd class="text-2xl font-medium text-gray-900">{stats.totalChapters}</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Recent Activity</h3>
+          {stats.recentActivity.length === 0 ? (
+            <p class="text-gray-500">No recent activity</p>
+          ) : (
+            <div class="flow-root">
+              <ul class="-mb-8">
+                {stats.recentActivity.map((course, index) => (
+                  <li>
+                    <div class="relative pb-8">
+                      {index !== stats.recentActivity.length - 1 && (
+                        <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" />
+                      )}
+                      <div class="relative flex space-x-3">
+                        <div>
+                          <span class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white">
+                            <span class="text-white text-sm font-bold">C</span>
+                          </span>
+                        </div>
+                        <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                          <div>
+                            <p class="text-sm text-gray-500">
+                              New course <span class="font-medium text-gray-900">{course.title}</span> created by {course.creator.email}
+                            </p>
+                          </div>
+                          <div class="text-right text-sm whitespace-nowrap text-gray-500">
+                            <time>{new Date(course.createdAt).toLocaleDateString()}</time>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
+

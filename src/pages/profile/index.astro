@@ -1,0 +1,189 @@
+---
+export const prerender = false;
+
+import Layout from '../../components/Layout.astro';
+import { getUserProfile, getUserLearningStats, getUserAchievements } from '../../lib/profile';
+
+// TODO: Get user ID from session - for now using hardcoded value
+const userId = 1;
+
+const profile = await getUserProfile(userId);
+const stats = await getUserLearningStats(userId);
+const achievements = await getUserAchievements(userId);
+---
+
+<Layout title="My Profile">
+  <div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white shadow mb-8">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+          <div class="flex items-center">
+            <h1 class="text-2xl font-bold text-gray-900">My Profile</h1>
+          </div>
+          <div class="flex items-center space-x-4">
+            <a href="/courses" class="text-gray-700 hover:text-blue-600">Courses</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Profile Card -->
+        <div class="lg:col-span-1">
+          <div class="bg-white rounded-lg shadow p-6">
+            <div class="text-center">
+              <div class="w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span class="text-white text-2xl font-bold">
+                  {profile?.email?.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <h2 class="text-xl font-semibold text-gray-900 mb-2">
+                {profile?.profile?.firstName || 'User'} {profile?.profile?.lastName || ''}
+              </h2>
+              <p class="text-gray-600 mb-4">{profile?.email}</p>
+              <p class="text-sm text-gray-500 mb-6">
+                Member since {new Date(profile?.createdAt).toLocaleDateString()}
+              </p>
+              
+              <div class="space-y-2">
+                <a href="/profile/edit" class="block w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 text-center">
+                  Edit Profile
+                </a>
+                <a href="/courses" class="block w-full bg-white text-gray-700 py-2 px-4 rounded-md border border-gray-300 hover:bg-gray-50 text-center">
+                  Browse Courses
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Learning Stats -->
+        <div class="lg:col-span-2">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+              <div class="p-5">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0">
+                    <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
+                      <span class="text-white font-bold">Q</span>
+                    </div>
+                  </div>
+                  <div class="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt class="text-sm font-medium text-gray-500 truncate">Total Quizzes</dt>
+                      <dd class="text-lg font-medium text-gray-900">{stats.totalAttempts}</dd>
+                    </dl>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+              <div class="p-5">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0">
+                    <div class="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
+                      <span class="text-white font-bold">A</span>
+                    </div>
+                  </div>
+                  <div class="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt class="text-sm font-medium text-gray-500 truncate">Average Score</dt>
+                      <dd class="text-lg font-medium text-gray-900">{stats.averageScore}%</dd>
+                    </dl>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+              <div class="p-5">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0">
+                    <div class="w-8 h-8 bg-purple-500 rounded-md flex items-center justify-center">
+                      <span class="text-white font-bold">C</span>
+                    </div>
+                  </div>
+                  <div class="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt class="text-sm font-medium text-gray-500 truncate">Courses</dt>
+                      <dd class="text-lg font-medium text-gray-900">{stats.coursesCompleted}</dd>
+                    </dl>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Achievements -->
+          <div class="bg-white rounded-lg shadow p-6 mb-8">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Achievements</h3>
+            {achievements.length === 0 ? (
+              <p class="text-gray-500 text-center py-8">Complete quizzes to earn achievements!</p>
+            ) : (
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {achievements.map((achievement) => (
+                  <div class="flex items-center p-4 border border-gray-200 rounded-lg">
+                    <div class="text-2xl mr-4">{achievement.icon}</div>
+                    <div>
+                      <h4 class="font-medium text-gray-900">{achievement.title}</h4>
+                      <p class="text-sm text-gray-500">{achievement.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <!-- Recent Activity -->
+          <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+            {stats.recentActivity.length === 0 ? (
+              <p class="text-gray-500 text-center py-8">No quiz attempts yet. Start learning!</p>
+            ) : (
+              <div class="flow-root">
+                <ul class="-mb-8">
+                  {stats.recentActivity.map((activity, index) => (
+                    <li>
+                      <div class="relative pb-8">
+                        {index !== stats.recentActivity.length - 1 && (
+                          <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" />
+                        )}
+                        <div class="relative flex space-x-3">
+                          <div>
+                            <span class={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${
+                              activity.percentage >= 70 ? 'bg-green-500' : 'bg-red-500'
+                            }`}>
+                              <span class="text-white text-sm font-bold">{activity.percentage}%</span>
+                            </span>
+                          </div>
+                          <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                            <div>
+                              <p class="text-sm text-gray-500">
+                                Completed <span class="font-medium text-gray-900">{activity.quiz.title}</span> in {activity.quiz.course.title}
+                              </p>
+                              <p class="text-sm text-gray-500">
+                                {activity.correctAnswers}/{activity.totalQuestions} correct answers
+                              </p>
+                            </div>
+                            <div class="text-right text-sm whitespace-nowrap text-gray-500">
+                              <time>{new Date(activity.completedAt).toLocaleDateString()}</time>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
+

@@ -1,0 +1,70 @@
+---
+export const prerender = false;
+
+import Layout from '../../../components/Layout.astro';
+import { getAllUsers } from '../../../lib/users';
+
+const users = await getAllUsers();
+---
+
+<Layout title="User Management">
+  <div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white shadow mb-8">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+          <div class="flex items-center">
+            <h1 class="text-2xl font-bold text-gray-900">User Management</h1>
+          </div>
+          <div class="flex items-center space-x-4">
+            <a href="/admin" class="text-gray-700 hover:text-blue-600">Back to Dashboard</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Users List -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="bg-white shadow overflow-hidden sm:rounded-md">
+        {users.length === 0 ? (
+          <div class="text-center py-12">
+            <p class="text-gray-500">No users yet.</p>
+          </div>
+        ) : (
+          <ul class="divide-y divide-gray-200">
+            {users.map((user) => (
+              <li class="px-6 py-4">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                      <div class="h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
+                        <span class="text-gray-600 font-bold">{user.email.charAt(0).toUpperCase()}</span>
+                      </div>
+                    </div>
+                    <div class="ml-4">
+                      <div class="text-sm font-medium text-gray-900">{user.email}</div>
+                      <div class="text-sm text-gray-500">
+                        Role: <span class="capitalize">{user.role}</span>
+                      </div>
+                      <div class="text-xs text-gray-400">
+                        Joined: {new Date(user.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <span class={`px-2 py-1 text-xs font-semibold rounded-full ${
+                      user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {user.role}
+                    </span>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  </div>
+</Layout>
+

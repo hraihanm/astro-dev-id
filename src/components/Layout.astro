@@ -1,0 +1,41 @@
+---
+export interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{title}</title>
+  {description && <meta name="description" content={description}>}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="/src/styles/global.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <header class="bg-white shadow-sm border-b">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16">
+        <div class="flex items-center">
+          <a href="/" class="text-xl font-bold text-blue-600">My Learning Portal</a>
+        </div>
+        <div class="flex items-center space-x-4">
+          <a href="/courses" class="text-gray-700 hover:text-blue-600">Courses</a>
+          <a href="/admin" class="text-gray-700 hover:text-blue-600">Admin</a>
+          <a href="/auth/signin" class="text-gray-700 hover:text-blue-600">Sign In</a>
+        </div>
+      </div>
+    </nav>
+  </header>
+  
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <slot />
+  </main>
+</body>
+</html>
+
