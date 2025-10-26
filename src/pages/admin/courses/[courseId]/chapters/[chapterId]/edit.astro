@@ -261,6 +261,18 @@ const allChapters = await prisma.chapter.findMany({
       return processed;
     }
   }
+
+  // Base path for images placed in public/uploads
+  const imageBasePath = `/uploads/courses/${courseId}/chapters/${chapterId}/`;
+
+  // Rewrite relative <img src> to point to our uploads base
+  function rewriteImageSrcs(html) {
+    return html.replace(/<img([^>]+)src=["']([^"']+)["']([^>]*)>/g, (match, pre, src, post) => {
+      const isAbsolute = /^(?:[a-z]+:)?\/\//i.test(src) || src.startsWith('/') || src.startsWith('data:');
+      const normalized = isAbsolute ? src : imageBasePath + src.replace(/^\.?\//, '');
+      return `<img${pre}src="${normalized}"${post}>`;
+    });
+  }
   
   // Load KaTeX CSS/JS once and cache the promise
   let katexLoadPromise;
@@ -411,7 +423,8 @@ const allChapters = await prisma.chapter.findMany({
           try {
             // Ensure Marked is available for tables/GFM
             await loadMarkedAssets();
-            const html = renderMarkdown(content);
+            let html = renderMarkdown(content);
+            html = rewriteImageSrcs(html);
             console.log('Rendered HTML:', html.substring(0, 200) + '...');
             previewDiv.innerHTML = html;
             
@@ -591,6 +604,15 @@ const allChapters = await prisma.chapter.findMany({
   .prose table thead th {
     background-color: #f1f5f9;
     font-weight: 600;
+  }
+
+  /* Images */
+  .prose img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0.5rem 0;
+    border-radius: 4px;
   }
   
   .prose .math-display {
