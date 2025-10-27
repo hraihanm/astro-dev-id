@@ -1,6 +1,8 @@
 import type { APIRoute } from 'astro';
 import { updateUserProfile } from '../../../lib/profile';
 
+export const prerender = false;
+
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
     // Check if user is authenticated

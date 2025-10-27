@@ -29,11 +29,11 @@ const renderedContent = chapter.content ? renderMarkdown(chapter.content) : '';
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
           <div class="flex items-center">
-            <a href={`/courses/${course.slug}`} class="text-gray-700 hover:text-blue-600 mr-4">← Back to Course</a>
+            <a href={`/courses/${course.slug}`} class="text-gray-700 hover:text-blue-600 mr-4" data-i18n="courses.backToCourse">← Back to Course</a>
             <h1 class="text-2xl font-bold text-gray-900">{chapter.title}</h1>
           </div>
           <div class="flex items-center space-x-4">
-            <span class="text-sm text-gray-500">Chapter {chapter.order}</span>
+            <span class="text-sm text-gray-500"><span data-i18n="courses.chapter">Chapter</span> {chapter.order}</span>
           </div>
         </div>
       </div>
@@ -44,7 +44,7 @@ const renderedContent = chapter.content ? renderMarkdown(chapter.content) : '';
         <!-- Chapter Navigation -->
         <div class="lg:col-span-1">
           <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Course Contents</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-4" data-i18n="courses.courseContents">Course Contents</h3>
             <nav class="space-y-2">
               {course.chapters.map((ch) => (
                 <a
@@ -86,8 +86,8 @@ const renderedContent = chapter.content ? renderMarkdown(chapter.content) : '';
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   </div>
-                  <h3 class="text-lg font-medium text-gray-900 mb-2">Content Coming Soon</h3>
-                  <p class="text-gray-500">This chapter is being prepared by your instructor.</p>
+                  <h3 class="text-lg font-medium text-gray-900 mb-2" data-i18n="courses.contentComingSoon">Content Coming Soon</h3>
+                  <p class="text-gray-500" data-i18n="courses.contentBeingPrepared">This chapter is being prepared by your instructor.</p>
                 </div>
               )}
             </div>
@@ -103,10 +103,10 @@ const renderedContent = chapter.content ? renderMarkdown(chapter.content) : '';
                     <svg class="mr-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                     </svg>
-                    Previous: {prevChapter.title}
+                    <span data-i18n="courses.previous">Previous</span>: {prevChapter.title}
                   </a>
                 ) : (
-                  <span class="text-gray-400">No previous chapter</span>
+                  <span class="text-gray-400" data-i18n="courses.noPreviousChapter">No previous chapter</span>
                 )}
               </div>
               
@@ -116,13 +116,13 @@ const renderedContent = chapter.content ? renderMarkdown(chapter.content) : '';
                     href={`/courses/${course.slug}/chapter/${nextChapter.order}`}
                     class="inline-flex items-center text-blue-600 hover:text-blue-700"
                   >
-                    Next: {nextChapter.title}
+                    <span data-i18n="courses.next">Next</span>: {nextChapter.title}
                     <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                     </svg>
                   </a>
                 ) : (
-                  <span class="text-gray-400">No next chapter</span>
+                  <span class="text-gray-400" data-i18n="courses.noNextChapter">No next chapter</span>
                 )}
               </div>
             </div>
@@ -183,6 +183,33 @@ const renderedContent = chapter.content ? renderMarkdown(chapter.content) : '';
     background-color: transparent;
     padding: 0;
     color: inherit;
+  }
+
+  /* Table styles for GFM tables */
+  .chapter-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+  }
+  
+  .chapter-content table th,
+  .chapter-content table td {
+    border: 1px solid #e2e8f0;
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+  }
+  
+  .chapter-content table thead th {
+    background-color: #f1f5f9;
+    font-weight: 600;
+  }
+  
+  .chapter-content table tbody tr:nth-child(even) {
+    background-color: #f8fafc;
+  }
+  
+  .chapter-content table tbody tr:hover {
+    background-color: #f1f5f9;
   }
 </style>
 

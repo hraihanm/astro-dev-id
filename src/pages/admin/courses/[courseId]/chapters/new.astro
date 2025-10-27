@@ -33,10 +33,10 @@ const nextOrder = chapterCount + 1;
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
           <div class="flex items-center">
-            <a href={`/admin/courses/${courseId}/edit`} class="text-gray-700 hover:text-blue-600 mr-4">
+            <a href={`/admin/courses/${courseId}/edit`} class="text-gray-700 hover:text-blue-600 mr-4" data-i18n="admin.chapters.backToCourse">
               ← Back to Course
             </a>
-            <h1 class="text-2xl font-bold text-gray-900">Add New Chapter</h1>
+            <h1 class="text-2xl font-bold text-gray-900" data-i18n="admin.chapters.addNewChapter">Add New Chapter</h1>
           </div>
         </div>
       </div>
@@ -49,7 +49,7 @@ const nextOrder = chapterCount + 1;
         <div class="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
           <div class="space-y-6">
             <div>
-              <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Chapter Information</h3>
+              <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4" data-i18n="admin.chapters.chapterInformation">Chapter Information</h3>
               <p class="text-sm text-gray-500 mb-4">
                 Adding chapter to: <span class="font-medium">{course.title}</span>
               </p>
@@ -57,7 +57,7 @@ const nextOrder = chapterCount + 1;
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label for="title" class="block text-sm font-medium text-gray-700">
+                <label for="title" class="block text-sm font-medium text-gray-700" data-i18n="admin.chapters.title">
                   Chapter Title *
                 </label>
                 <input
@@ -71,7 +71,7 @@ const nextOrder = chapterCount + 1;
               </div>
 
               <div>
-                <label for="order" class="block text-sm font-medium text-gray-700">
+                <label for="order" class="block text-sm font-medium text-gray-700" data-i18n="admin.chapters.order">
                   Chapter Order *
                 </label>
                 <input
@@ -90,7 +90,7 @@ const nextOrder = chapterCount + 1;
             </div>
 
             <div>
-              <label for="content" class="block text-sm font-medium text-gray-700 mb-2">
+              <label for="content" class="block text-sm font-medium text-gray-700 mb-2" data-i18n="admin.chapters.content">
                 Chapter Content (Markdown + LaTeX)
               </label>
               <textarea
@@ -143,12 +143,14 @@ const nextOrder = chapterCount + 1;
           <a
             href={`/admin/courses/${courseId}/edit`}
             class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
+            data-i18n="common.cancel"
           >
             Cancel
           </a>
           <button
             type="submit"
             class="bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            data-i18n="admin.courses.addChapter"
           >
             Create Chapter
           </button>
@@ -205,18 +207,23 @@ const nextOrder = chapterCount + 1;
   // Enhanced markdown renderer with better LaTeX support (Marked + placeholders)
   function renderMarkdown(text) {
     if (!text) return '';
-    let processed = text;
-    
-    // Preserve LaTeX placeholders before Markdown parsing
-    processed = processed.replace(/(?:^|\n)\s*\$\$([\s\S]*?)\$\$\s*(?:\n|$)/g, (match, latex) => {
+    // Normalize newlines to LF to make regex anchors predictable
+    let processed = String(text).replace(/\r\n?|\u2028|\u2029/g, '\n');
+
+    // Convert display math blocks ($$ ... $$) to placeholders.
+    // Use a non-anchored, non-greedy pattern that supports multiple blocks in a row.
+    processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
       const cleanLatex = (latex || '').trim();
-      return `<div class=\"math-display\" data-latex=\"${cleanLatex}\"></div>`;
+      // Ensure block boundaries so Marked treats each as a separate paragraph
+      return `\n<div class=\"math-display\" data-latex=\"${cleanLatex}\"></div>\n`;
     });
+
+    // Convert inline math $...$ to placeholders (avoid $$ and multi-$ sequences)
     processed = processed.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (match, latex) => {
       const cleanLatex = (latex || '').trim();
       return `<span class=\"math-inline\" data-latex=\"${cleanLatex}\"></span>`;
     });
-    
+
     // Use Marked to parse Markdown (tables, lists, etc.)
     try {
       return window.marked ? window.marked.parse(processed) : processed;

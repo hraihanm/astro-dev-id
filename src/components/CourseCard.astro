@@ -26,12 +26,13 @@ const { title, description, slug, chaptersCount, quizzesCount } = Astro.props;
     
     <div class="flex items-center justify-between">
       <div class="flex items-center space-x-4 text-sm text-gray-500">
-        <span>{chaptersCount} chapters</span>
-        <span>{quizzesCount} quizzes</span>
+        <span>{chaptersCount} <span data-i18n="courses.chapters">chapters</span></span>
+        <span>{quizzesCount} <span data-i18n="courses.quizzes">quizzes</span></span>
       </div>
       <a 
         href={`/courses/${slug}`}
         class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+        data-i18n="courses.startCourse"
       >
         Start Course
       </a>

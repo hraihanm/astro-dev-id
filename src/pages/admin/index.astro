@@ -14,11 +14,11 @@ const stats = await getAdminStats();
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
           <div class="flex items-center">
-            <h1 class="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+            <h1 class="text-2xl font-bold text-gray-900" data-i18n="admin.adminDashboard">Admin Dashboard</h1>
           </div>
           <div class="flex items-center space-x-4">
-            <a href="/admin/courses" class="text-gray-700 hover:text-blue-600">Courses</a>
-            <a href="/admin/users" class="text-gray-700 hover:text-blue-600">Users</a>
+            <a href="/admin/courses" class="text-gray-700 hover:text-blue-600" data-i18n="nav.courses">Courses</a>
+            <a href="/admin/users" class="text-gray-700 hover:text-blue-600" data-i18n="admin.userManagement">User Management</a>
           </div>
         </div>
       </div>
@@ -37,7 +37,7 @@ const stats = await getAdminStats();
               </div>
               <div class="ml-5 w-0 flex-1">
                 <dl>
-                  <dt class="text-sm font-medium text-gray-500 truncate">Total Users</dt>
+                  <dt class="text-sm font-medium text-gray-500 truncate" data-i18n="admin.totalUsers">Total Users</dt>
                   <dd class="text-2xl font-medium text-gray-900">{stats.totalUsers}</dd>
                 </dl>
               </div>
@@ -55,7 +55,7 @@ const stats = await getAdminStats();
               </div>
               <div class="ml-5 w-0 flex-1">
                 <dl>
-                  <dt class="text-sm font-medium text-gray-500 truncate">Total Courses</dt>
+                  <dt class="text-sm font-medium text-gray-500 truncate" data-i18n="admin.totalCourses">Total Courses</dt>
                   <dd class="text-2xl font-medium text-gray-900">{stats.totalCourses}</dd>
                 </dl>
               </div>
@@ -73,7 +73,7 @@ const stats = await getAdminStats();
               </div>
               <div class="ml-5 w-0 flex-1">
                 <dl>
-                  <dt class="text-sm font-medium text-gray-500 truncate">Total Chapters</dt>
+                  <dt class="text-sm font-medium text-gray-500 truncate" data-i18n="admin.totalChapters">Total Chapters</dt>
                   <dd class="text-2xl font-medium text-gray-900">{stats.totalChapters}</dd>
                 </dl>
               </div>
@@ -85,9 +85,9 @@ const stats = await getAdminStats();
       <!-- Recent Activity -->
       <div class="bg-white shadow rounded-lg">
         <div class="px-4 py-5 sm:p-6">
-          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Recent Activity</h3>
+          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" data-i18n="admin.recentActivity">Recent Activity</h3>
           {stats.recentActivity.length === 0 ? (
-            <p class="text-gray-500">No recent activity</p>
+            <p class="text-gray-500" data-i18n="admin.noRecentActivity">No recent activity</p>
           ) : (
             <div class="flow-root">
               <ul class="-mb-8">

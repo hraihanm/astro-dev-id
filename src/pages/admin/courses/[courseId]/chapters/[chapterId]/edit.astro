@@ -241,18 +241,23 @@ const allChapters = await prisma.chapter.findMany({
   // Enhanced markdown renderer with better LaTeX support (Marked + placeholders)
   function renderMarkdown(text) {
     if (!text) return '';
-    let processed = text;
-    
-    // Preserve LaTeX placeholders before Markdown parsing
-    processed = processed.replace(/(?:^|\n)\s*\$\$([\s\S]*?)\$\$\s*(?:\n|$)/g, (match, latex) => {
+    // Normalize newlines to LF to make regex anchors predictable
+    let processed = String(text).replace(/\r\n?|\u2028|\u2029/g, '\n');
+
+    // Convert display math blocks ($$ ... $$) to placeholders.
+    // Use a non-anchored, non-greedy pattern that supports multiple blocks in a row.
+    processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
       const cleanLatex = (latex || '').trim();
-      return `<div class="math-display" data-latex="${cleanLatex}"></div>`;
+      // Ensure block boundaries so Marked treats each as a separate paragraph
+      return `\n<div class="math-display" data-latex="${cleanLatex}"></div>\n`;
     });
+
+    // Convert inline math $...$ to placeholders (avoid $$ and multi-$ sequences)
     processed = processed.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (match, latex) => {
       const cleanLatex = (latex || '').trim();
       return `<span class="math-inline" data-latex="${cleanLatex}"></span>`;
     });
-    
+
     // Use Marked to parse Markdown (tables, lists, etc.)
     try {
       return window.marked ? window.marked.parse(processed) : processed;

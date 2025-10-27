@@ -1,6 +1,8 @@
 import type { APIRoute } from 'astro';
 import { prisma } from '../../../../lib/db';
 
+export const prerender = false;
+
 export const PUT: APIRoute = async ({ params, request, cookies }) => {
   try {
     // Check if user is authenticated and is admin

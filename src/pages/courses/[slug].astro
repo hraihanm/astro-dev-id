@@ -24,11 +24,11 @@ if (!course) {
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
           <div class="flex items-center">
-            <a href="/courses" class="text-gray-700 hover:text-blue-600 mr-4">← Back to Courses</a>
+            <a href="/courses" class="text-gray-700 hover:text-blue-600 mr-4" data-i18n="courses.backToCourses">← Back to Courses</a>
             <h1 class="text-2xl font-bold text-gray-900">{course.title}</h1>
           </div>
           <div class="flex items-center space-x-4">
-            <span class="text-sm text-gray-500">{course.chapters.length} chapters</span>
+            <span class="text-sm text-gray-500">{course.chapters.length} <span data-i18n="courses.chapters">chapters</span></span>
           </div>
         </div>
       </div>
@@ -39,7 +39,7 @@ if (!course) {
         <!-- Course Navigation -->
         <div class="lg:col-span-1">
           <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Course Contents</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-4" data-i18n="courses.courseContents">Course Contents</h3>
             <nav class="space-y-2">
               {course.chapters.map((chapter) => (
                 <a
@@ -66,15 +66,15 @@ if (!course) {
               <p class="text-lg text-gray-600 mb-8">{course.description}</p>
               
               <div class="border-t pt-8">
-                <h3 class="text-xl font-semibold text-gray-900 mb-4">Course Overview</h3>
+                <h3 class="text-xl font-semibold text-gray-900 mb-4" data-i18n="courses.courseOverview">Course Overview</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div class="flex items-center">
                     <div class="h-8 w-8 bg-blue-500 rounded-full flex items-center justify-center mr-3">
                       <span class="text-white text-sm font-bold">C</span>
                     </div>
                     <div>
-                      <p class="text-sm font-medium text-gray-900">Chapters</p>
-                      <p class="text-sm text-gray-500">{course.chapters.length} lessons</p>
+                      <p class="text-sm font-medium text-gray-900" data-i18n="courses.chapters">Chapters</p>
+                      <p class="text-sm text-gray-500">{course.chapters.length} <span data-i18n="courses.lessons">lessons</span></p>
                     </div>
                   </div>
                   <div class="flex items-center">
@@ -82,8 +82,8 @@ if (!course) {
                       <span class="text-white text-sm font-bold">Q</span>
                     </div>
                     <div>
-                      <p class="text-sm font-medium text-gray-900">Quizzes</p>
-                      <p class="text-sm text-gray-500">{course.quizzes.length} assessments</p>
+                      <p class="text-sm font-medium text-gray-900" data-i18n="courses.quizzes">Quizzes</p>
+                      <p class="text-sm text-gray-500">{course.quizzes.length} <span data-i18n="courses.assessments">assessments</span></p>
                     </div>
                   </div>
                 </div>
@@ -93,6 +93,7 @@ if (!course) {
                 <a
                   href={`/courses/${course.slug}/chapter/1`}
                   class="inline-flex items-center bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+                  data-i18n="courses.startLearning"
                 >
                   Start Learning
                   <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

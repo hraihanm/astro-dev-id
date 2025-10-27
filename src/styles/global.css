@@ -56,6 +56,52 @@ body {
   @apply bg-transparent p-0;
 }
 
+/* Table styles for markdown content */
+.prose table {
+  @apply w-full border-collapse mb-4;
+  border: 1px solid #e2e8f0;
+}
+
+.prose table th,
+.prose table td {
+  @apply border border-gray-200 px-3 py-2 text-left;
+}
+
+.prose table thead th {
+  @apply bg-gray-50 font-semibold;
+}
+
+.prose table tbody tr:nth-child(even) {
+  @apply bg-gray-50;
+}
+
+.prose table tbody tr:hover {
+  @apply bg-gray-100;
+}
+
+/* Additional table styles for chapter content */
+.chapter-content table {
+  @apply w-full border-collapse mb-4;
+  border: 1px solid #e2e8f0;
+}
+
+.chapter-content table th,
+.chapter-content table td {
+  @apply border border-gray-200 px-3 py-2 text-left;
+}
+
+.chapter-content table thead th {
+  @apply bg-gray-50 font-semibold;
+}
+
+.chapter-content table tbody tr:nth-child(even) {
+  @apply bg-gray-50;
+}
+
+.chapter-content table tbody tr:hover {
+  @apply bg-gray-100;
+}
+
 /* KaTeX styles override */
 .katex {
   font-size: 1.1em;
