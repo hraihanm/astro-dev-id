@@ -110,7 +110,21 @@
     "remove": "Hapus",
     "noChapters": "Belum ada bab. Tambahkan bab ke kursus Anda.",
     "quizzes": "Kuis",
+    "quizzesDesc": "Impor dan kelola kuis kursus",
     "addQuiz": "Tambah Kuis",
+    "importQuizFromMarkdown": "Impor Kuis dari Markdown",
+    "quizTitle": "Judul Kuis",
+    "timeLimit": "Batas Waktu (menit)",
+    "maxAttempts": "Maksimum Percobaan",
+    "quizFile": "File Kuis (.md)",
+    "quizFileDesc": "Unggah file Markdown berisi pertanyaan kuis. Lihat dokumentasi untuk formatnya.",
+    "importQuiz": "Impor Kuis",
+    "importing": "Mengimpor kuis...",
+    "importSuccess": "✅ Berhasil mengimpor {count} pertanyaan!",
+    "importError": "❌ Kesalahan: {error}",
+    "existingQuizzes": "Kuis yang Ada",
+    "noQuizzesYet": "Belum ada kuis. Impor kuis di atas untuk memulai.",
+    "loadingQuizzes": "Memuat kuis...",
     "updateCourse": "Perbarui Kursus",
     "editCourse": "Edit Kursus",
     "chapterTitleLabel": "Judul Bab",
@@ -118,6 +132,16 @@
     "chapterOrderDesc": "Urutan bab ini dalam kursus",
     "noChaptersYet": "Belum ada bab. Klik \"Tambah Bab\" untuk memulai.",
     "noCoursesYet": "Belum ada kursus. Buat kursus pertama Anda!"
+  },
+  "quiz": {
+    "type": {
+      "simple": "Pilihan Ganda",
+      "complex": "Pilihan Ganda Kompleks",
+      "complexDesc": "Pilih semua jawaban yang benar",
+      "simpleDesc": "Pilih satu jawaban yang benar"
+    },
+    "simpleBadge": "Pilihan Tunggal",
+    "complexBadge": "Pilihan Ganda"
   },
   "admin.chapters": {
     "addNewChapter": "Tambah Bab Baru",

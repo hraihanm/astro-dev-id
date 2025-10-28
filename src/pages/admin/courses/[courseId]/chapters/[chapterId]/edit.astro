@@ -247,14 +247,16 @@ const allChapters = await prisma.chapter.findMany({
     // Convert display math blocks ($$ ... $$) to placeholders.
     // Use a non-anchored, non-greedy pattern that supports multiple blocks in a row.
     processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
-      const cleanLatex = (latex || '').trim();
+      // Sanitize LaTeX content to remove problematic Unicode characters
+      const cleanLatex = sanitizeLatex((latex || '').trim());
       // Ensure block boundaries so Marked treats each as a separate paragraph
       return `\n<div class="math-display" data-latex="${cleanLatex}"></div>\n`;
     });
 
     // Convert inline math $...$ to placeholders (avoid $$ and multi-$ sequences)
     processed = processed.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (match, latex) => {
-      const cleanLatex = (latex || '').trim();
+      // Sanitize LaTeX content to remove problematic Unicode characters
+      const cleanLatex = sanitizeLatex((latex || '').trim());
       return `<span class="math-inline" data-latex="${cleanLatex}"></span>`;
     });
 
@@ -308,6 +310,54 @@ const allChapters = await prisma.chapter.findMany({
     return katexLoadPromise;
   }
 
+  // Load Highlight.js CSS/JS for code syntax highlighting
+  let hljsLoadPromise;
+  function loadHighlightAssets() {
+    if (hljsLoadPromise) return hljsLoadPromise;
+    hljsLoadPromise = new Promise((resolve, reject) => {
+      // CSS
+      if (!document.getElementById('hljs-css')) {
+        const link = document.createElement('link');
+        link.id = 'hljs-css';
+        link.rel = 'stylesheet';
+        link.href = 'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css';
+        document.head.appendChild(link);
+      }
+      // JS
+      if (window.hljs) {
+        resolve();
+        return;
+      }
+      const script = document.createElement('script');
+      script.id = 'hljs-js';
+      script.src = 'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js';
+      script.defer = true;
+      script.onload = () => resolve();
+      script.onerror = (e) => reject(e);
+      document.head.appendChild(script);
+    });
+    return hljsLoadPromise;
+  }
+
+  // Sanitize LaTeX content to remove problematic Unicode characters
+  function sanitizeLatex(latex) {
+    if (!latex) return '';
+    return latex
+      // Remove zero-width spaces (8203)
+      .replace(/\u200B/g, '')
+      // Remove thin spaces (8201, 202F) - replace with regular space
+      .replace(/[\u2009\u202F\u200A]/g, ' ')
+      // Remove non-breaking spaces (160) - replace with regular space  
+      .replace(/\u00A0/g, ' ')
+      // Remove combining marks (arrows, accents, etc.) (8400-842F range, including 8407)
+      .replace(/[\u0300-\u036F\u20D0-\u20FF]/g, '')
+      // Normalize line endings
+      .replace(/\r\n?|\u2028|\u2029/g, '\n')
+      // Clean up multiple spaces (but preserve intentional spacing in math)
+      .replace(/[ \t]+/g, ' ')
+      .trim();
+  }
+
   // Enhanced LaTeX renderer for better math display (KaTeX)
   async function renderLatexPreview() {
     // Find all math elements within the preview div
@@ -331,8 +381,10 @@ const allChapters = await prisma.chapter.findMany({
 
     mathElements.forEach((element, index) => {
       const latexRaw = element.getAttribute('data-latex') || '';
+      // Sanitize the LaTeX to remove problematic Unicode characters
+      const sanitizedLatex = sanitizeLatex(latexRaw);
       // Normalize some TeX commands for KaTeX compatibility
-      const latex = latexRaw.replace(/\\rm\s*/g, '\\mathrm ');
+      const latex = sanitizedLatex.replace(/\\rm\s*/g, '\\mathrm ');
       const displayMode = element.classList.contains('math-display');
 
       try {
@@ -428,12 +480,15 @@ const allChapters = await prisma.chapter.findMany({
           try {
             // Ensure Marked is available for tables/GFM
             await loadMarkedAssets();
+            // Load Highlight.js for code highlighting
+            await loadHighlightAssets();
+            
             let html = renderMarkdown(content);
             html = rewriteImageSrcs(html);
             console.log('Rendered HTML:', html.substring(0, 200) + '...');
             previewDiv.innerHTML = html;
             
-            // Enhance LaTeX rendering after HTML is inserted
+            // Enhance LaTeX rendering and code highlighting after HTML is inserted
             setTimeout(() => {
               console.log('Enhancing LaTeX preview...');
               console.log('Preview HTML before enhancement:', previewDiv.innerHTML.substring(0, 500));
@@ -449,8 +504,21 @@ const allChapters = await prisma.chapter.findMany({
                 const mathElements = previewDiv.querySelectorAll('.math-display, .math-inline');
                 console.log(`Found ${mathElements.length} math elements in attempt ${attempts}`);
                 
-                if (mathElements.length > 0) {
-                  renderLatexPreview();
+                if (mathElements.length > 0 || attempts === 1) {
+                  // Render LaTeX
+                  if (mathElements.length > 0) {
+                    renderLatexPreview();
+                  }
+                  
+                  // Highlight code blocks
+                  const codeBlocks = previewDiv.querySelectorAll('pre code');
+                  if (codeBlocks.length > 0 && window.hljs) {
+                    codeBlocks.forEach((block) => {
+                      window.hljs.highlightElement(block);
+                    });
+                    console.log(`Highlighted ${codeBlocks.length} code blocks`);
+                  }
+                  
                   console.log('Preview HTML after enhancement:', previewDiv.innerHTML.substring(0, 500));
                   console.log('LaTeX preview enhanced');
                 } else if (attempts < maxAttempts) {
@@ -681,6 +749,36 @@ const allChapters = await prisma.chapter.findMany({
   
   sub {
     vertical-align: sub;
+  }
+  
+  /* List styles for preview content */
+  .prose ul {
+    list-style-type: disc;
+    padding-left: 1.5rem;
+    margin: 1rem 0;
+  }
+  
+  .prose ol {
+    list-style-type: decimal;
+    padding-left: 1.5rem;
+    margin: 1rem 0;
+  }
+  
+  .prose li {
+    display: list-item;
+    margin: 0.5rem 0;
+  }
+  
+  .prose ul ul {
+    list-style-type: circle;
+  }
+  
+  .prose ol ol {
+    list-style-type: lower-alpha;
+  }
+  
+  .prose ol ol ol {
+    list-style-type: lower-roman;
   }
 </style>
 

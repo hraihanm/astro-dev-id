@@ -91,6 +91,12 @@ function evaluateQuestion(question: any, userAnswer?: QuizAnswer): QuestionResul
       points = isCorrect ? maxPoints : 0;
       break;
       
+    case 'complex-multiple-choice':
+      points = evaluateComplexMultipleChoice(question, userAnswer);
+      // For complex MC, "correct" means points > 0
+      isCorrect = points > 0;
+      break;
+      
     case 'text':
       const userText = (userAnswer.answer[0] || '').toString().toLowerCase().trim();
       const correctText = question.correctAnswer.toString().toLowerCase().trim();
@@ -116,6 +122,43 @@ function evaluateQuestion(question: any, userAnswer?: QuizAnswer): QuestionResul
     points,
     maxPoints
   };
+}
+
+/**
+ * Evaluate penalty-based scoring for complex multiple choice questions
+ * Formula: Score = (correct / N) - (incorrect / N), minimum 0
+ */
+function evaluateComplexMultipleChoice(question: any, userAnswer: QuizAnswer): number {
+  // Ensure correctAnswer is array
+  const correctAnswers = Array.isArray(question.correctAnswer)
+    ? question.correctAnswer
+    : [question.correctAnswer];
+  
+  const N = correctAnswers.length; // Number of correct answers
+  if (N === 0) return 0;
+  
+  // Convert to sorted number arrays for comparison
+  const userSelections = userAnswer.answer.map(a => parseInt(a)).sort();
+  const correctSelections = correctAnswers.map(a => parseInt(a)).sort();
+  
+  // Count correct and incorrect selections
+  let correctCount = 0;
+  let incorrectCount = 0;
+  
+  for (const selection of userSelections) {
+    if (correctSelections.includes(selection)) {
+      correctCount++;
+    } else {
+      incorrectCount++;
+    }
+  }
+  
+  // Calculate points using penalty-based formula
+  // Score = (correct_selections / N) - (incorrect_selections / N)
+  const score = (correctCount / N) - (incorrectCount / N);
+  
+  // Ensure minimum is 0 (no negative scores)
+  return Math.max(0, score);
 }
 
 export async function saveQuizResult(data: {

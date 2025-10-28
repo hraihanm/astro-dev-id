@@ -164,30 +164,189 @@ if (!course) {
           </div>
         </div>
 
-        <div class="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
+        <div class="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6" id="quizzes-section">
           <div class="md:grid md:grid-cols-3 md:gap-6">
             <div class="md:col-span-1">
-              <h3 class="text-lg font-medium leading-6 text-gray-900">Quizzes</h3>
-              <p class="mt-1 text-sm text-gray-500">
-                Manage course quizzes
+              <h3 class="text-lg font-medium leading-6 text-gray-900" data-i18n="admin.courses.quizzes">Kuis</h3>
+              <p class="mt-1 text-sm text-gray-500" data-i18n="admin.courses.quizzesDesc">
+                Impor dan kelola kuis kursus
               </p>
             </div>
             <div class="mt-5 md:mt-0 md:col-span-2">
-              <div class="space-y-4">
-                <p class="text-sm text-gray-500">
-                  Quiz management coming soon. For now, use Prisma Studio to create quizzes.
-                </p>
-                <button
-                  type="button"
-                  onclick="alert('Open Prisma Studio with: npm run db:studio')"
-                  class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                >
-                  Open Prisma Studio
-                </button>
+              <!-- Import Quiz Section -->
+              <div class="mb-6 p-4 border-2 border-dashed border-gray-300 rounded-lg">
+                <h4 class="text-sm font-medium text-gray-900 mb-3" data-i18n="admin.courses.importQuizFromMarkdown">Impor Kuis dari Markdown</h4>
+                <form id="quiz-import-form" enctype="multipart/form-data">
+                  <input type="hidden" name="courseId" value={course.id} />
+                  
+                  <div class="space-y-3">
+                    <div>
+                      <label for="quiz-title" class="block text-sm font-medium text-gray-700" data-i18n="admin.courses.quizTitle">
+                        Judul Kuis
+                      </label>
+                      <input
+                        type="text"
+                        id="quiz-title"
+                        name="title"
+                        required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Misalnya, Kuis Bab 1"
+                      />
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                      <div>
+                        <label for="time-limit" class="block text-sm font-medium text-gray-700" data-i18n="admin.courses.timeLimit">
+                          Batas Waktu (menit)
+                        </label>
+                        <input
+                          type="number"
+                          id="time-limit"
+                          name="timeLimit"
+                          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="30"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label for="max-attempts" class="block text-sm font-medium text-gray-700" data-i18n="admin.courses.maxAttempts">
+                          Maksimum Percobaan
+                        </label>
+                        <input
+                          type="number"
+                          id="max-attempts"
+                          name="maxAttempts"
+                          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="3"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label for="quiz-file" class="block text-sm font-medium text-gray-700" data-i18n="admin.courses.quizFile">
+                        File Kuis (.md)
+                      </label>
+                      <input
+                        type="file"
+                        id="quiz-file"
+                        name="file"
+                        accept=".md,.txt"
+                        required
+                        class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                      <p class="mt-1 text-xs text-gray-500" data-i18n="admin.courses.quizFileDesc">
+                        Unggah file Markdown berisi pertanyaan kuis. Lihat dokumentasi untuk formatnya.
+                      </p>
+                    </div>
+                    
+                    <button
+                      type="submit"
+                      class="w-full bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      data-i18n="admin.courses.importQuiz"
+                    >
+                      Impor Kuis
+                    </button>
+                  </div>
+                </form>
+                
+                <div id="import-status" class="mt-3 hidden"></div>
+              </div>
+              
+              <!-- Quiz List -->
+              <div class="space-y-2">
+                <p class="text-sm font-medium text-gray-700" data-i18n="admin.courses.existingQuizzes">Kuis yang Ada</p>
+                <div id="quiz-list" class="text-sm text-gray-500" data-i18n="admin.courses.loadingQuizzes">
+                  Memuat kuis...
+                </div>
               </div>
             </div>
           </div>
         </div>
+        
+        <script define:vars={{ courseId: course.id }}>
+          const course = { id: courseId };
+          
+          // Quiz import functionality
+          document.getElementById('quiz-import-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target as HTMLFormElement;
+            const statusDiv = document.getElementById('import-status');
+            
+            if (!statusDiv) return;
+            
+            // Show loading
+            statusDiv.className = 'mt-3 p-3 bg-blue-50 border border-blue-200 rounded text-blue-700';
+            statusDiv.textContent = 'Mengimpor kuis...';
+            statusDiv.classList.remove('hidden');
+            
+            const formData = new FormData(form);
+            
+            try {
+              const response = await fetch('/api/admin/quiz/import', {
+                method: 'POST',
+                body: formData
+              });
+              
+              const result = await response.json();
+              
+              if (response.ok) {
+                statusDiv.className = 'mt-3 p-3 bg-green-50 border border-green-200 rounded text-green-700';
+                statusDiv.textContent = `✅ Berhasil mengimpor ${result.questions?.length || 0} pertanyaan!`;
+                form.reset();
+                loadQuizzes(); // Reload quiz list
+              } else {
+                statusDiv.className = 'mt-3 p-3 bg-red-50 border border-red-200 rounded text-red-700';
+                statusDiv.textContent = `❌ Kesalahan: ${result.error || 'Gagal mengimpor kuis'}`;
+              }
+            } catch (error) {
+              statusDiv.className = 'mt-3 p-3 bg-red-50 border border-red-200 rounded text-red-700';
+              statusDiv.textContent = `❌ Kesalahan: ${error instanceof Error ? error.message : 'Kesalahan tidak dikenal'}`;
+            }
+          });
+          
+          // Load quizzes for this course
+          async function loadQuizzes() {
+            const quizList = document.getElementById('quiz-list');
+            if (!quizList) return;
+            
+            try {
+              // Fetch quizzes from API (you'll need to create this endpoint)
+              const response = await fetch(`/api/admin/quiz?courseId=${course.id}`);
+              if (response.ok) {
+                const quizzes = await response.json();
+                if (quizzes.length === 0) {
+                  quizList.innerHTML = '<p class="text-sm text-gray-500 italic">Belum ada kuis. Impor kuis di atas untuk memulai.</p>';
+                } else {
+                  quizList.innerHTML = quizzes.map(quiz => `
+                    <div class="p-3 border border-gray-200 rounded">
+                      <div class="flex justify-between items-center">
+                        <div class="flex-1">
+                          <div class="flex items-center gap-2">
+                            <p class="font-medium text-gray-900">${quiz.title}</p>
+                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full ${quiz.type === 'complex-multiple-choice' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}">
+                              ${quiz.type === 'complex-multiple-choice' ? 'Pilihan Ganda' : 'Pilihan Tunggal'}
+                            </span>
+                          </div>
+                          <p class="text-xs text-gray-500 mt-1">${quiz.questionCount || 0} pertanyaan</p>
+                        </div>
+                        <button class="text-red-600 hover:text-red-900 text-sm">
+                          Hapus
+                        </button>
+                      </div>
+                    </div>
+                  `).join('');
+                }
+              } else {
+                quizList.innerHTML = '<p class="text-sm text-gray-500 italic">Belum ada kuis. Impor kuis di atas untuk memulai.</p>';
+              }
+            } catch (error) {
+              quizList.innerHTML = '<p class="text-sm text-gray-500 italic">Belum ada kuis. Impor kuis di atas untuk memulai.</p>';
+            }
+          }
+          
+          // Initial load
+          loadQuizzes();
+        </script>
 
         <div class="flex justify-between">
           <button

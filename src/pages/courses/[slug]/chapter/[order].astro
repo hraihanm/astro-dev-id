@@ -152,14 +152,33 @@ const renderedContent = chapter.content ? renderMarkdown(chapter.content) : '';
     color: #374151;
   }
   
-  .chapter-content ul,
+  .chapter-content ul {
+    margin-bottom: 1.5rem;
+    padding-left: 1.5rem;
+    list-style-type: disc;
+  }
+  
   .chapter-content ol {
     margin-bottom: 1.5rem;
     padding-left: 1.5rem;
+    list-style-type: decimal;
   }
   
   .chapter-content li {
     margin-bottom: 0.5rem;
+    display: list-item;
+  }
+  
+  .chapter-content ul ul {
+    list-style-type: circle;
+  }
+  
+  .chapter-content ol ol {
+    list-style-type: lower-alpha;
+  }
+  
+  .chapter-content ol ol ol {
+    list-style-type: lower-roman;
   }
   
   .chapter-content code {
@@ -211,5 +230,120 @@ const renderedContent = chapter.content ? renderMarkdown(chapter.content) : '';
   .chapter-content table tbody tr:hover {
     background-color: #f1f5f9;
   }
+
+  /* Math rendering styles */
+  .math-display {
+    margin: 1.5rem 0;
+    text-align: center;
+  }
+
+  .math-inline {
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  .latex-error {
+    background-color: #fee;
+    border: 1px solid #fcc;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    color: #c33;
+  }
 </style>
+
+<script>
+  // Client-side LaTeX rendering and code highlighting for performance
+  (function() {
+    // Load KaTeX CSS/JS once if not already loaded
+    if (typeof window !== 'undefined' && !document.querySelector('link[href*="katex"]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css';
+      document.head.appendChild(link);
+    }
+    
+    // Load Highlight.js CSS
+    if (typeof window !== 'undefined' && !document.querySelector('link[href*="highlight.js"]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css';
+      document.head.appendChild(link);
+    }
+
+    // Load and render LaTeX after page loads
+    function renderLatex() {
+      if (typeof window === 'undefined' || !window.katex) return;
+      
+      const mathElements = document.querySelectorAll('.math-display, .math-inline');
+      mathElements.forEach((element) => {
+        const latex = element.getAttribute('data-latex') || '';
+        const displayMode = element.classList.contains('math-display');
+        
+        try {
+          window.katex.render(latex, element, {
+            displayMode,
+            throwOnError: false,
+            trust: true,
+            macros: {
+              '\\degree': '^{\\circ}'
+            }
+          });
+        } catch (err) {
+          console.warn('KaTeX render error:', err);
+          element.innerHTML = `<span class="latex-error">LaTeX Error: ${err.message}</span>`;
+        }
+      });
+    }
+    
+    // Highlight code blocks
+    function highlightCode() {
+      if (typeof window === 'undefined' || !window.hljs) return;
+      
+      const codeBlocks = document.querySelectorAll('pre code');
+      codeBlocks.forEach((block) => {
+        window.hljs.highlightElement(block);
+      });
+    }
+
+    // Load dependencies and render
+    if (typeof window !== 'undefined') {
+      let scriptsLoaded = 0;
+      const totalScripts = 2; // KaTeX + Highlight.js
+      
+      function tryRender() {
+        scriptsLoaded++;
+        if (scriptsLoaded === totalScripts) {
+          renderLatex();
+          highlightCode();
+        }
+      }
+      
+      // Check if already loaded
+      if (window.katex && window.hljs) {
+        tryRender();
+        tryRender();
+      } else {
+        // Load KaTeX
+        if (window.katex) {
+          tryRender();
+        } else {
+          const katexScript = document.createElement('script');
+          katexScript.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js';
+          katexScript.onload = tryRender;
+          document.head.appendChild(katexScript);
+        }
+        
+        // Load Highlight.js
+        if (window.hljs) {
+          tryRender();
+        } else {
+          const hljsScript = document.createElement('script');
+          hljsScript.src = 'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js';
+          hljsScript.onload = tryRender;
+          document.head.appendChild(hljsScript);
+        }
+      }
+    }
+  })();
+</script>
 
