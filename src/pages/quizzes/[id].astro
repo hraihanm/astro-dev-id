@@ -1,0 +1,290 @@
+---
+import Layout from '../../components/Layout.astro';
+
+export const prerender = false;
+
+const { id } = Astro.params;
+
+// Fetch quiz details directly from database
+let quiz: any = null;
+let error = '';
+
+try {
+  const quizId = parseInt(id || '0');
+  
+  // Use server-side import to get the quiz
+  const { getQuiz } = await import('../../lib/quizzes');
+  const rawQuiz = await getQuiz(quizId);
+  
+  // Check if it's a standalone quiz (courseId should be null)
+  if (!rawQuiz || rawQuiz.courseId !== null) {
+    error = 'Quiz not found';
+  } else {
+    // Parse questions if it's a string
+    quiz = {
+      ...rawQuiz,
+      questions: typeof rawQuiz.questions === 'string' 
+        ? JSON.parse(rawQuiz.questions) 
+        : rawQuiz.questions,
+      settings: typeof rawQuiz.settings === 'string'
+        ? JSON.parse(rawQuiz.settings)
+        : rawQuiz.settings
+    };
+    
+    // Handle essay problem format
+    if (quiz.settings?.type === 'essay' && quiz.questions?.type === 'essay-problem-set') {
+      // Essay problems have a different structure
+      quiz.isEssay = true;
+      quiz.problems = quiz.questions.problems || [];
+    } else if (Array.isArray(quiz.questions)) {
+      quiz.isEssay = false;
+    } else {
+      // Unknown format
+      error = 'Invalid quiz format';
+    }
+  }
+} catch (err) {
+  error = 'Error loading quiz';
+  console.error(err);
+}
+---
+
+<Layout title={quiz?.title || 'Quiz Not Found'}>
+  <div class="min-h-screen bg-gray-50">
+    {error ? (
+      <div class="max-w-2xl mx-auto px-4 py-8">
+        <div class="bg-white rounded-lg shadow p-8 text-center">
+          <div class="text-red-500 text-6xl mb-4">❌</div>
+          <h2 class="text-2xl font-bold text-gray-900 mb-2">{error}</h2>
+          <p class="text-gray-600 mb-4">The quiz you're looking for doesn't exist.</p>
+          <a href="/quizzes" class="text-blue-600 hover:text-blue-700">
+            ← Back to Practice Quizzes
+          </a>
+        </div>
+      </div>
+    ) : quiz ? (
+      <div id="quiz-container" class="max-w-4xl mx-auto px-4 py-8">
+        <div class="bg-white rounded-lg shadow p-8">
+          <!-- Quiz Header -->
+          <div class="mb-6 pb-4 border-b">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">{quiz.title}</h1>
+            {quiz.settings?.description && (
+              <p class="text-gray-600 mb-4">{quiz.settings.description}</p>
+            )}
+            <div class="flex items-center space-x-6 text-sm text-gray-600">
+              {quiz.isEssay ? (
+                <span>{quiz.problems?.length || 0} essay problems</span>
+              ) : (
+                <span>{quiz.questions?.length || 0} questions</span>
+              )}
+              {quiz.settings?.timeLimit && (
+                <span>{Math.floor(quiz.settings.timeLimit / 60)} minutes</span>
+              )}
+            </div>
+          </div>
+
+          {quiz.isEssay ? (
+            <!-- Essay Problems Display -->
+            <div class="space-y-8">
+              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <p class="text-blue-800 text-sm">
+                  📝 <strong>Soal Essay:</strong> Ini adalah soal essay untuk latihan. Anda dapat membaca dan mengerjakan soal-soal berikut.
+                </p>
+              </div>
+              
+              {quiz.problems.map((problem: any, pIndex: number) => (
+                <div class="border rounded-lg p-6 bg-gray-50">
+                  <h3 class="text-xl font-bold text-gray-900 mb-4">
+                    Soal {pIndex + 1}: {problem.title}
+                  </h3>
+                  
+                  <div class="prose max-w-none mb-6">
+                    <div set:html={problem.problemStatement} class="text-gray-700"></div>
+                  </div>
+                  
+                  {problem.subproblems && problem.subproblems.length > 0 && (
+                    <div class="space-y-4 ml-4">
+                      {problem.subproblems.map((sub: any, sIndex: number) => (
+                        <div class="border-l-4 border-purple-500 pl-4">
+                          <h4 class="font-semibold text-gray-900 mb-2">
+                            {String.fromCharCode(97 + sIndex)}. {sub.title}
+                          </h4>
+                          <div class="prose max-w-none">
+                            <div set:html={sub.content} class="text-gray-700"></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              <div class="mt-8 pt-6 border-t flex justify-between">
+                <a
+                  href="/quizzes"
+                  class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700"
+                >
+                  ← Kembali ke Daftar Kuis
+                </a>
+                <p class="text-sm text-gray-500 self-center">
+                  Soal essay untuk latihan mandiri
+                </p>
+              </div>
+            </div>
+          ) : (
+            <!-- Regular Quiz Questions -->
+            <form id="quiz-form" class="space-y-8">
+            {(quiz.questions || []).map((question: any, index: number) => (
+              <div class="question-block" data-question-id={index}>
+                <div class="mb-4">
+                  <h3 class="text-lg font-semibold text-gray-900 mb-2">
+                    Question {index + 1}
+                  </h3>
+                  <div class="text-gray-700">
+                    {question.question}
+                  </div>
+                </div>
+
+                {question.type === 'multiple-choice' && (
+                  <div class="space-y-2">
+                    {question.options?.map((option: string, optIndex: number) => (
+                      <label class="flex items-start p-3 border rounded hover:bg-gray-50 cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`question-${index}`}
+                          value={optIndex + 1}
+                          class="mt-1 mr-3"
+                        />
+                        <span class="flex-1">{option}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {question.type === 'complex' && (
+                  <div class="space-y-2">
+                    {question.options?.map((option: string, optIndex: number) => (
+                      <label class="flex items-start p-3 border rounded hover:bg-gray-50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          name={`question-${index}`}
+                          value={optIndex + 1}
+                          class="mt-1 mr-3"
+                        />
+                        <span class="flex-1">{option}</span>
+                      </label>
+                    ))}
+                    <p class="text-sm text-purple-600 mt-2">
+                      🔣 Beberapa jawaban mungkin benar
+                    </p>
+                  </div>
+                )}
+
+                {question.type === 'text' && (
+                  <input
+                    type="text"
+                    name={`question-${index}`}
+                    class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Masukkan jawaban Anda"
+                  />
+                )}
+
+                {question.type === 'number' && (
+                  <input
+                    type="number"
+                    name={`question-${index}`}
+                    step="any"
+                    class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter a number"
+                  />
+                )}
+              </div>
+            ))}
+
+            <!-- Submit Button -->
+            <div class="mt-8 pt-6 border-t flex justify-end space-x-4">
+              <a
+                href="/quizzes"
+                class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700"
+              >
+                Cancel
+              </a>
+              <button
+                type="submit"
+                class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Submit Quiz
+              </button>
+            </div>
+          </form>
+          )}
+        </div>
+      </div>
+    ) : (
+      <div class="text-center py-12">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+        <p class="mt-4 text-gray-600">Loading quiz...</p>
+      </div>
+    )}
+  </div>
+
+  <script>
+    // Handle quiz submission
+    document.getElementById('quiz-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const form = e.target as HTMLFormElement;
+      const formData = new FormData(form);
+      
+      // Collect answers
+      const answers = [];
+      document.querySelectorAll('.question-block').forEach((block, index) => {
+        const questionId = block.getAttribute('data-question-id');
+        const inputs = form.querySelectorAll(`input[name="question-${questionId}"]`);
+        
+        const answer: any[] = [];
+        inputs.forEach((input: any) => {
+          if (input.type === 'checkbox' && input.checked) {
+            answer.push(parseInt(input.value));
+          } else if (input.type === 'radio' && input.checked) {
+            answer.push(parseInt(input.value));
+          } else if (input.type === 'text' || input.type === 'number') {
+            answer.push(input.value);
+          }
+        });
+        
+        answers.push({
+          questionId: index,
+          type: Array.from(inputs)[0]?.getAttribute('data-type') || 'unknown',
+          answer: answer.length > 0 ? answer : []
+        });
+      });
+      
+      // Submit to API
+      try {
+        const response = await fetch('/api/quiz/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            quizId: {id},
+            answers,
+            timeSpent: 0
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+          // Redirect to results
+          window.location.href = `/quizzes/${id}/results?score=${result.percentage}`;
+        } else {
+          alert('Error submitting quiz: ' + result.error);
+        }
+      } catch (error) {
+        alert('Error submitting quiz. Please try again.');
+        console.error(error);
+      }
+    });
+  </script>
+</Layout>
+

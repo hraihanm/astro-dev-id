@@ -1,0 +1,155 @@
+---
+export const prerender = false;
+
+import Layout from '../../../../components/Layout.astro';
+import { getQuiz } from '../../../../lib/quizzes';
+
+const { id } = Astro.params;
+
+if (!id) {
+  return Astro.redirect('/admin/quizzes');
+}
+
+const quiz = await getQuiz(parseInt(id));
+
+if (!quiz) {
+  return Astro.redirect('/admin/quizzes');
+}
+
+const settings = quiz.settings || {};
+---
+
+<Layout title={`Edit ${quiz.title}`}>
+  <div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white shadow mb-8">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+          <div class="flex items-center">
+            <a href="/admin/quizzes" class="text-gray-700 hover:text-blue-600 mr-4">← Back to Quizzes</a>
+            <h1 class="text-2xl font-bold text-gray-900">Edit Quiz</h1>
+          </div>
+          <div class="flex items-center space-x-4">
+            <a href={`/quizzes/${id}`} target="_blank" class="text-green-600 hover:text-green-700">
+              Preview
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quiz Edit Form -->
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <form id="quiz-form" class="space-y-6">
+        <input type="hidden" name="quizId" value={id} />
+        
+        <!-- Quiz Info -->
+        <div class="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
+          <h3 class="text-lg font-medium text-gray-900 mb-6">Quiz Information</h3>
+          
+          <div class="space-y-4">
+            <div>
+              <label for="title" class="block text-sm font-medium text-gray-700">
+                Quiz Title *
+              </label>
+              <input
+                type="text"
+                name="title"
+                id="title"
+                required
+                value={quiz.title}
+                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+            </div>
+
+            <div>
+              <label for="description" class="block text-sm font-medium text-gray-700">
+                Description
+              </label>
+              <textarea
+                name="description"
+                id="description"
+                rows="3"
+                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              >{settings.description || ''}</textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label for="timeLimit" class="block text-sm font-medium text-gray-700">
+                  Time Limit (minutes)
+                </label>
+                <input
+                  type="number"
+                  name="timeLimit"
+                  id="timeLimit"
+                  min="1"
+                  value={settings.timeLimit ? Math.floor(settings.timeLimit / 60) : ''}
+                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+
+              <div>
+                <label for="maxAttempts" class="block text-sm font-medium text-gray-700">
+                  Max Attempts
+                </label>
+                <input
+                  type="number"
+                  name="maxAttempts"
+                  id="maxAttempts"
+                  min="1"
+                  value={settings.maxAttempts || ''}
+                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Questions -->
+        <div class="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-medium text-gray-900">Questions</h3>
+            <button
+              type="button"
+              id="add-question-btn"
+              class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
+            >
+              + Add Question
+            </button>
+          </div>
+
+          <div id="questions-container" class="space-y-4">
+            <!-- Questions will be loaded here -->
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="flex justify-end space-x-4">
+          <a href="/admin/quizzes" class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+            Cancel
+          </a>
+          <button
+            type="submit"
+            class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Update Quiz
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <script define:vars={{questions: quiz.questions}}>
+      // Pre-populate questions
+      const questionsContainer = document.getElementById('questions-container');
+      
+      if (questions && questions.length > 0) {
+        questionsContainer.innerHTML = '';
+        questions.forEach((q: any, index: number) => {
+          addQuestionToDOM(q, index + 1);
+        });
+      }
+    </script>
+  </div>
+</Layout>
+

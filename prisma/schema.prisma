@@ -41,12 +41,12 @@ model Chapter {
 
 model Quiz {
   id        Int           @id @default(autoincrement())
-  courseId  Int
+  courseId  Int? // Made nullable for standalone quizzes
   title     String
   questions String
   settings  String?
   createdAt DateTime      @default(now())
-  course    Course        @relation(fields: [courseId], references: [id])
+  course    Course?       @relation(fields: [courseId], references: [id])
   attempts  QuizAttempt[]
 }
 
@@ -81,4 +81,3 @@ model Profile {
   updatedAt     DateTime @updatedAt
   user          User     @relation(fields: [userId], references: [id])
 }
-

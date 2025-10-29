@@ -77,7 +77,7 @@ const allChapters = await prisma.chapter.findMany({
 
               <div>
                 <label for="order" class="block text-sm font-medium text-gray-700">
-                  Chapter Order *
+                  Urutan Bab *
                 </label>
                 <select
                   name="order"
@@ -92,25 +92,25 @@ const allChapters = await prisma.chapter.findMany({
                   ))}
                 </select>
                 <p class="mt-1 text-xs text-gray-500">
-                  Current: {chapter.order} of {allChapters.length} chapters
+                  Saat ini: {chapter.order} dari {allChapters.length} bab
                 </p>
               </div>
             </div>
 
             <div>
               <label for="content" class="block text-sm font-medium text-gray-700 mb-2">
-                Chapter Content (Markdown + LaTeX)
+                Konten Bab (Markdown + LaTeX)
               </label>
               <textarea
                 name="content"
                 id="content"
                 rows="20"
                 class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-mono"
-                placeholder="# Chapter Title&#10;&#10;Your content here with **markdown** and $LaTeX$&#10;&#10;## Section 1&#10;&#10;Content with math: $E = mc^2$"
+                placeholder="# Judul Bab&#10;&#10;Konten Anda di sini dengan **markdown** dan $LaTeX$&#10;&#10;## Bagian 1&#10;&#10;Konten dengan matematika: $E = mc^2$"
               >{chapter.content || ''}</textarea>
               <div class="mt-2 flex items-center justify-between">
                 <p class="text-sm text-gray-500">
-                  Supports Markdown formatting and LaTeX math. Use $...$ for inline math and $$...$$ for display math.
+                  Mendukung format Markdown dan matematika LaTeX. Gunakan $...$ untuk matematika inline dan $$...$$ untuk matematika display.
                 </p>
                 <p id="content-size" class="text-xs text-gray-400">
                   Size: 0 KB

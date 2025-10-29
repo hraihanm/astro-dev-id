@@ -12,6 +12,26 @@ export async function getCourseQuizzes(courseId: number) {
   });
 }
 
+export async function getStandaloneQuizzes() {
+  return await prisma.quiz.findMany({
+    where: { 
+      courseId: null as any
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+}
+
+export async function getAllQuizzes() {
+  return await prisma.quiz.findMany({
+    include: {
+      course: {
+        select: { title: true, slug: true }
+      }
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+}
+
 export async function getQuiz(quizId: number) {
   const quiz = await prisma.quiz.findUnique({
     where: { id: quizId },
@@ -34,14 +54,16 @@ export async function getQuiz(quizId: number) {
 }
 
 export async function createQuiz(data: {
-  courseId: number;
+  courseId?: number | null;
   title: string;
   questions: any[];
   settings?: any;
 }) {
+  const courseId = data.courseId === undefined ? null : data.courseId;
+  
   return await prisma.quiz.create({
     data: {
-      courseId: data.courseId,
+      courseId: courseId as any,
       title: data.title,
       questions: JSON.stringify(data.questions),
       settings: data.settings ? JSON.stringify(data.settings) : null
