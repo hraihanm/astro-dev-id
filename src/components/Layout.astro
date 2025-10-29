@@ -16,6 +16,46 @@ const { title, description } = Astro.props;
   {description && <meta name="description" content={description}>}
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <link rel="stylesheet" href="/src/styles/global.css">
+  <script is:inline>
+    // Inline critical translation script
+    console.log('=== INLINE I18N SCRIPT LOADING ===');
+    
+    // Get or set initial locale
+    let currentLocale = localStorage.getItem('locale') || 'id';
+    console.log('Current locale from localStorage:', currentLocale);
+    
+    // Listen for DOM content loaded
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM loaded, setting up language switcher');
+      
+      const switcher = document.getElementById('locale-switcher');
+      console.log('Language switcher element:', switcher);
+      
+      if (switcher) {
+        // Set current value
+        switcher.value = currentLocale;
+        console.log('Set switcher value to:', currentLocale);
+        
+        // Add change listener
+        switcher.addEventListener('change', function(e) {
+          const newLocale = e.target.value;
+          console.log('Language switched to:', newLocale);
+          
+          // Save to localStorage
+          localStorage.setItem('locale', newLocale);
+          currentLocale = newLocale;
+          
+          // Reload the page to apply new language
+          console.log('Reloading page...');
+          window.location.reload();
+        });
+        
+        console.log('Language switcher setup complete');
+      } else {
+        console.error('Language switcher not found!');
+      }
+    });
+  </script>
   <script type="module" src="/src/lib/i18n/client.ts"></script>
 </head>
 <body class="bg-gray-50 min-h-screen">

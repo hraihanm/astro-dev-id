@@ -10,14 +10,12 @@ const translations: Record<string, any> = {
   id: id,
 };
 
-// Debug: log translations in development
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-  console.log('Translations loaded:', {
-    enKeys: Object.keys(en || {}).length,
-    idKeys: Object.keys(id || {}).length,
-    sampleId: id?.admin?.courses?.editCourse || 'NOT FOUND'
-  });
-}
+// Debug log translations on load
+console.log('=== I18N MODULE LOADED ===');
+console.log('EN translations keys:', Object.keys(en || {}).length);
+console.log('ID translations keys:', Object.keys(id || {}).length);
+console.log('Sample EN admin.courses.editCourse:', en?.['admin.courses']?.editCourse);
+console.log('Sample ID admin.courses.editCourse:', id?.['admin.courses']?.editCourse);
 
 let currentLocale: 'en' | 'id' = 'id';
 
@@ -33,15 +31,10 @@ function setLocale(locale: 'en' | 'id'): void {
 function t(key: string, locale?: 'en' | 'id'): string {
   const targetLocale = locale || currentLocale;
   const trans = translations[targetLocale] || translations['en'] || {};
-  
-  // Debug log in development
-  if (process.env.NODE_ENV === 'development' && Object.keys(trans).length === 0) {
-    console.warn('Translations not loaded for locale:', targetLocale);
-  }
-  
+
   const keys = key.split('.');
   let value: any = trans;
-  
+
   for (const k of keys) {
     if (value && typeof value === 'object' && k in value) {
       value = value[k];
@@ -49,33 +42,45 @@ function t(key: string, locale?: 'en' | 'id'): string {
       return `[${key}]`;
     }
   }
-  
+
   return typeof value === 'string' ? value : `[${key}]`;
 }
 
 function translatePage(locale: 'en' | 'id') {
+  console.log(`Translating page to: ${locale}`);
+  
   // Translate text content
   const elements = document.querySelectorAll('[data-i18n]');
-  
-  elements.forEach((element) => {
+  console.log(`Found ${elements.length} elements with data-i18n`);
+
+  let translatedCount = 0;
+  let failedCount = 0;
+
+  elements.forEach((element, index) => {
     const key = element.getAttribute('data-i18n');
     if (key && element instanceof HTMLElement) {
       const translation = t(key, locale);
       if (translation && translation !== `[${key}]`) {
-        // Simply replace text content - this works for most cases
+        const oldText = element.textContent?.substring(0, 30);
         element.textContent = translation;
+        translatedCount++;
+        if (index < 3) { // Log first 3 for debugging
+          console.log(`  [${index}] "${key}": "${oldText}..." -> "${translation.substring(0, 30)}..."`);
+        }
       } else {
-        // Debug: log missing translations
-        if (process.env.NODE_ENV === 'development') {
-          console.warn(`Translation missing for key: ${key}`);
+        failedCount++;
+        if (index < 3) {
+          console.warn(`  [${index}] Failed to translate "${key}"`);
         }
       }
     }
   });
   
+  console.log(`Translation complete: ${translatedCount} succeeded, ${failedCount} failed`);
+
   // Translate placeholders
   const inputs = document.querySelectorAll('[data-i18n-placeholder]');
-  
+
   inputs.forEach((element) => {
     const key = element.getAttribute('data-i18n-placeholder');
     if (key && element instanceof HTMLInputElement) {
@@ -85,7 +90,7 @@ function translatePage(locale: 'en' | 'id') {
       }
     }
   });
-  
+
   // Update html lang attribute
   const htmlRoot = document.getElementById('html-root');
   if (htmlRoot) {
@@ -94,60 +99,55 @@ function translatePage(locale: 'en' | 'id') {
 }
 
 function initI18n() {
+  console.log('=== INIT I18N ===');
+  
   // Get saved locale or default
   const savedLocale = localStorage.getItem('locale') as 'en' | 'id' | null;
   const currentLoc = savedLocale || 'id';
   
+  console.log('Initializing with locale:', currentLoc);
+  console.log('Translations available:', Object.keys(translations));
+
   // Apply saved locale
   setLocale(currentLoc);
-  
-  // Update locale switcher
-  const switcher = document.getElementById('locale-switcher') as HTMLSelectElement;
-  if (switcher) {
-    switcher.value = currentLoc;
-    switcher.addEventListener('change', (e) => {
-      const newLocale = (e.target as HTMLSelectElement).value as 'en' | 'id';
-      setLocale(newLocale);
-      translatePage(newLocale);
-    });
-  }
-  
-  // Translate page on load - with a slight delay to ensure DOM is ready
-  setTimeout(() => {
+
+  // Translate page on load - multiple attempts to handle timing
+  function applyInitialTranslations() {
+    console.log('Applying translations for locale:', currentLoc);
     translatePage(currentLoc);
-  }, 0);
-  
-  // Also translate immediately in case DOM is already ready
-  translatePage(currentLoc);
-  
+  }
+
+  // Apply immediately
+  applyInitialTranslations();
+
+  // Apply after DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applyInitialTranslations);
+  } else {
+    // DOM already ready, apply again
+    setTimeout(applyInitialTranslations, 10);
+  }
+
+  // Apply multiple times to ensure translations stick
+  setTimeout(applyInitialTranslations, 100);
+  setTimeout(applyInitialTranslations, 300);
+  setTimeout(applyInitialTranslations, 500);
+
   // Update html lang attribute
   const htmlRoot = document.getElementById('html-root');
   if (htmlRoot) {
     htmlRoot.setAttribute('lang', currentLoc === 'id' ? 'id' : 'en');
   }
+  
+  console.log('Init complete');
 }
 
 // Initialize when DOM is ready
-function startI18n() {
-  // Wait a bit to ensure all scripts are loaded
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(initI18n, 10);
-    });
-  } else {
-    // DOM already loaded, but wait a tick to ensure everything is ready
-    setTimeout(initI18n, 10);
-  }
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initI18n);
+} else {
+  initI18n();
 }
-
-startI18n();
-
-// Also try again after a short delay as a fallback
-setTimeout(() => {
-  const savedLocale = localStorage.getItem('locale') as 'en' | 'id' | null;
-  const currentLoc = savedLocale || 'id';
-  translatePage(currentLoc);
-}, 100);
 
 // Re-translate on navigation (for SPA-like behavior)
 const originalPushState = history.pushState;
