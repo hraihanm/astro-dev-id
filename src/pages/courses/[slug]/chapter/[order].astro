@@ -20,6 +20,24 @@ if (!courseData || !courseData.chapter) {
 
 const { course, chapter, prevChapter, nextChapter } = courseData;
 const renderedContent = chapter.content ? renderMarkdown(chapter.content) : '';
+
+// Get quizzes for this course
+const { getCourseQuizzes } = await import('../../../../lib/quizzes');
+const courseQuizzes = await getCourseQuizzes(course.id);
+
+// Parse quiz data
+const quizzes = courseQuizzes.map(quiz => {
+  const settings = quiz.settings ? JSON.parse(quiz.settings) : {};
+  const questions = quiz.questions ? JSON.parse(quiz.questions) : [];
+  
+  return {
+    id: quiz.id,
+    title: quiz.title,
+    type: settings.type || 'multiple-choice',
+    questionCount: settings.type === 'essay' ? (settings.problemCount || 0) : (Array.isArray(questions) ? questions.length : 0),
+    isEssay: settings.type === 'essay'
+  };
+});
 ---
 
 <Layout title={`${chapter.title} - ${course.title}`}>
@@ -92,6 +110,35 @@ const renderedContent = chapter.content ? renderMarkdown(chapter.content) : '';
               )}
             </div>
 
+            <!-- Course Quizzes Section -->
+            {quizzes.length > 0 && (
+              <div class="mt-8 pt-6 border-t">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">📝 Kuis untuk Kursus Ini</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {quizzes.map((quiz) => (
+                    <a
+                      href={`/quizzes/${quiz.id}`}
+                      class="block p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:shadow-md transition-all"
+                    >
+                      <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                          <h4 class="font-semibold text-gray-900">{quiz.title}</h4>
+                          <p class="text-sm text-gray-500 mt-1">
+                            {quiz.questionCount} {quiz.isEssay ? 'soal' : 'pertanyaan'}
+                          </p>
+                        </div>
+                        {quiz.isEssay && (
+                          <span class="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
+                            Essay
+                          </span>
+                        )}
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+            
             <!-- Navigation -->
             <div class="mt-8 flex justify-between items-center pt-6 border-t">
               <div>

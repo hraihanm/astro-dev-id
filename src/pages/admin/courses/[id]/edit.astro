@@ -64,6 +64,7 @@ if (!course) {
                     required
                     value={course.title}
                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    data-i18n-placeholder="admin.courses.courseTitlePlaceholder"
                     placeholder="Introduction to Astronomy"
                   />
                 </div>
@@ -79,6 +80,7 @@ if (!course) {
                     required
                     value={course.slug}
                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    data-i18n-placeholder="admin.courses.courseSlugPlaceholder"
                     placeholder="intro-astronomy"
                   />
                   <p class="mt-2 text-sm text-gray-500" data-i18n="admin.courses.courseSlugDesc">
@@ -95,6 +97,7 @@ if (!course) {
                     id="description"
                     rows="3"
                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    data-i18n-placeholder="admin.courses.descriptionPlaceholder"
                     placeholder="A comprehensive introduction to the fundamentals of astronomy..."
                   >{course.description}</textarea>
                 </div>
@@ -258,14 +261,15 @@ if (!course) {
                   <div class="space-y-3">
                     <div>
                       <label for="quiz-title" class="block text-sm font-medium text-gray-700" data-i18n="admin.courses.quizTitle">
-                        Judul Kuis
+                        Quiz Title
                       </label>
                       <input
                         type="text"
-                        id="quiz-title"
                         name="title"
+                        id="quiz-title"
                         required
-                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        data-i18n-placeholder="admin.courses.quizTitlePlaceholder"
                         placeholder="Misalnya, Kuis Bab 1"
                       />
                     </div>
@@ -277,9 +281,11 @@ if (!course) {
                         </label>
                         <input
                           type="number"
-                          id="time-limit"
                           name="timeLimit"
-                          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
+                          id="time-limit"
+                          min="1"
+                          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                          data-i18n-placeholder="admin.courses.timeLimitPlaceholder"
                           placeholder="30"
                         />
                       </div>
@@ -290,9 +296,11 @@ if (!course) {
                         </label>
                         <input
                           type="number"
-                          id="max-attempts"
                           name="maxAttempts"
-                          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
+                          id="max-attempts"
+                          min="1"
+                          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                          data-i18n-placeholder="admin.courses.maxAttemptsPlaceholder"
                           placeholder="3"
                         />
                       </div>
@@ -311,7 +319,7 @@ if (!course) {
                         class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                       />
                       <p class="mt-1 text-xs text-gray-500" data-i18n="admin.courses.quizFileDesc">
-                        Unggah file Markdown berisi pertanyaan kuis. Lihat dokumentasi untuk formatnya.
+                        Upload a Markdown file with quiz questions. Format: <code class="text-xs bg-gray-100 px-1 py-0.5 rounded">## Pertanyaan</code> untuk pertanyaan, <code class="text-xs bg-gray-100 px-1 py-0.5 rounded">### Pilihan</code> untuk opsi, dan <code class="text-xs bg-gray-100 px-1 py-0.5 rounded">&lt;solution_title&gt; Jawaban: A</code> untuk kunci jawaban.
                       </p>
                     </div>
                     
@@ -364,7 +372,7 @@ if (!course) {
                         class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
                       />
                       <p class="mt-1 text-xs text-gray-500" data-i18n="admin.courses.essayFileDesc">
-                        Unggah file Markdown dengan soal essay. Format: <code class="text-xs bg-gray-100 px-1 py-0.5 rounded"># Judul Soal</code> untuk soal, <code class="text-xs bg-gray-100 px-1 py-0.5 rounded">### Subsoal</code> untuk subsoal.
+                        Upload a Markdown file with essay questions. Format: <code class="text-xs bg-gray-100 px-1 py-0.5 rounded"># Question Title</code> for questions, <code class="text-xs bg-gray-100 px-1 py-0.5 rounded">### Sub-question</code> for sub-questions.
                       </p>
                     </div>
                     

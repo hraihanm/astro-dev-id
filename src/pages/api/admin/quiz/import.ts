@@ -1,6 +1,8 @@
 import type { APIRoute } from 'astro';
 import { createQuiz } from '../../../../lib/quizzes';
 import { parseMarkdownQuiz } from '../../../../lib/parsers/quiz-markdown';
+import { parseMCProblems } from '../../../../lib/parsers/mc-problem';
+import type { QuizQuestion } from '../../../../lib/parsers/quiz-markdown';
 
 export const prerender = false;
 
@@ -44,10 +46,30 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     // Parse the Markdown file
     const content = await file.text();
-    let questions;
+    let questions: QuizQuestion[] = [];
     
     try {
       questions = parseMarkdownQuiz(content);
+      if (!questions || questions.length === 0) {
+        const mcProblems = parseMCProblems(content);
+        if (mcProblems && mcProblems.length > 0) {
+          questions = mcProblems.map((problem, index) => {
+            const correctAnswerIndex = problem.correctAnswer.charCodeAt(0) - 64; // A -> 1
+            return {
+              id: index + 1,
+              type: 'multiple-choice',
+              question: problem.question,
+              options: problem.options.map((opt) => opt.text),
+              correctAnswer: correctAnswerIndex,
+              images: problem.questionImages,
+              metadata: {
+                solution: problem.solution,
+                solutionImages: problem.solutionImages
+              }
+            } as QuizQuestion;
+          });
+        }
+      }
     } catch (error: any) {
       return new Response(JSON.stringify({ 
         error: 'Failed to parse quiz file',

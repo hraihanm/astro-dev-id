@@ -1,5 +1,6 @@
 ---
 import Layout from '../../components/Layout.astro';
+import { renderMarkdown } from '../../lib/latex';
 
 export const prerender = false;
 
@@ -16,8 +17,8 @@ try {
   const { getQuiz } = await import('../../lib/quizzes');
   const rawQuiz = await getQuiz(quizId);
   
-  // Check if it's a standalone quiz (courseId should be null)
-  if (!rawQuiz || rawQuiz.courseId !== null) {
+  // Check if quiz exists (can be standalone or course quiz)
+  if (!rawQuiz) {
     error = 'Quiz not found';
   } else {
     // Parse questions if it's a string
@@ -62,221 +63,532 @@ try {
           </a>
         </div>
       </div>
-    ) : quiz ? (
+    ) : quiz?.isEssay ? (
+      <!-- Essay Problems Display (keep existing) -->
       <div id="quiz-container" class="max-w-4xl mx-auto px-4 py-8">
         <div class="bg-white rounded-lg shadow p-8">
-          <!-- Quiz Header -->
           <div class="mb-6 pb-4 border-b">
             <h1 class="text-3xl font-bold text-gray-900 mb-2">{quiz.title}</h1>
             {quiz.settings?.description && (
               <p class="text-gray-600 mb-4">{quiz.settings.description}</p>
             )}
             <div class="flex items-center space-x-6 text-sm text-gray-600">
-              {quiz.isEssay ? (
-                <span>{quiz.problems?.length || 0} essay problems</span>
-              ) : (
-                <span>{quiz.questions?.length || 0} questions</span>
-              )}
-              {quiz.settings?.timeLimit && (
-                <span>{Math.floor(quiz.settings.timeLimit / 60)} minutes</span>
-              )}
+              <span>{quiz.problems?.length || 0} essay problems</span>
             </div>
           </div>
 
-          {quiz.isEssay ? (
-            <!-- Essay Problems Display -->
-            <div class="space-y-8">
-              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <p class="text-blue-800 text-sm">
-                  📝 <strong>Soal Essay:</strong> Ini adalah soal essay untuk latihan. Anda dapat membaca dan mengerjakan soal-soal berikut.
-                </p>
-              </div>
-              
-              {quiz.problems.map((problem: any, pIndex: number) => (
-                <div class="border rounded-lg p-6 bg-gray-50">
-                  <h3 class="text-xl font-bold text-gray-900 mb-4">
-                    Soal {pIndex + 1}: {problem.title}
-                  </h3>
-                  
-                  <div class="prose max-w-none mb-6">
-                    <div set:html={problem.problemStatement} class="text-gray-700"></div>
-                  </div>
-                  
-                  {problem.subproblems && problem.subproblems.length > 0 && (
-                    <div class="space-y-4 ml-4">
-                      {problem.subproblems.map((sub: any, sIndex: number) => (
-                        <div class="border-l-4 border-purple-500 pl-4">
-                          <h4 class="font-semibold text-gray-900 mb-2">
-                            {String.fromCharCode(97 + sIndex)}. {sub.title}
-                          </h4>
-                          <div class="prose max-w-none">
-                            <div set:html={sub.content} class="text-gray-700"></div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-              
-              <div class="mt-8 pt-6 border-t flex justify-between">
-                <a
-                  href="/quizzes"
-                  class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700"
-                >
-                  ← Kembali ke Daftar Kuis
-                </a>
-                <p class="text-sm text-gray-500 self-center">
-                  Soal essay untuk latihan mandiri
-                </p>
-              </div>
+          <div class="space-y-8">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <p class="text-blue-800 text-sm">
+                📝 <strong>Soal Essay:</strong> Ini adalah soal essay untuk latihan. Anda dapat membaca dan mengerjakan soal-soal berikut.
+              </p>
             </div>
-          ) : (
-            <!-- Regular Quiz Questions -->
-            <form id="quiz-form" class="space-y-8">
-            {(quiz.questions || []).map((question: any, index: number) => (
-              <div class="question-block" data-question-id={index}>
-                <div class="mb-4">
-                  <h3 class="text-lg font-semibold text-gray-900 mb-2">
-                    Question {index + 1}
-                  </h3>
-                  <div class="text-gray-700">
-                    {question.question}
-                  </div>
+            
+            {quiz.problems.map((problem: any, pIndex: number) => (
+              <div class="border rounded-lg p-6 bg-gray-50">
+                <h3 class="text-xl font-bold text-gray-900 mb-4">
+                  Soal {pIndex + 1}: {problem.title}
+                </h3>
+                
+                <div class="prose max-w-none mb-6">
+                  <div set:html={problem.problemStatement} class="text-gray-700"></div>
                 </div>
-
-                {question.type === 'multiple-choice' && (
-                  <div class="space-y-2">
-                    {question.options?.map((option: string, optIndex: number) => (
-                      <label class="flex items-start p-3 border rounded hover:bg-gray-50 cursor-pointer">
-                        <input
-                          type="radio"
-                          name={`question-${index}`}
-                          value={optIndex + 1}
-                          class="mt-1 mr-3"
-                        />
-                        <span class="flex-1">{option}</span>
-                      </label>
+                
+                {problem.subproblems && problem.subproblems.length > 0 && (
+                  <div class="space-y-4 ml-4">
+                    {problem.subproblems.map((sub: any, sIndex: number) => (
+                      <div class="border-l-4 border-purple-500 pl-4">
+                        <h4 class="font-semibold text-gray-900 mb-2">
+                          {String.fromCharCode(97 + sIndex)}. {sub.title}
+                        </h4>
+                        <div class="prose max-w-none">
+                          <div set:html={sub.content} class="text-gray-700"></div>
+                        </div>
+                      </div>
                     ))}
                   </div>
-                )}
-
-                {question.type === 'complex' && (
-                  <div class="space-y-2">
-                    {question.options?.map((option: string, optIndex: number) => (
-                      <label class="flex items-start p-3 border rounded hover:bg-gray-50 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          name={`question-${index}`}
-                          value={optIndex + 1}
-                          class="mt-1 mr-3"
-                        />
-                        <span class="flex-1">{option}</span>
-                      </label>
-                    ))}
-                    <p class="text-sm text-purple-600 mt-2">
-                      🔣 Beberapa jawaban mungkin benar
-                    </p>
-                  </div>
-                )}
-
-                {question.type === 'text' && (
-                  <input
-                    type="text"
-                    name={`question-${index}`}
-                    class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Masukkan jawaban Anda"
-                  />
-                )}
-
-                {question.type === 'number' && (
-                  <input
-                    type="number"
-                    name={`question-${index}`}
-                    step="any"
-                    class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter a number"
-                  />
                 )}
               </div>
             ))}
-
-            <!-- Submit Button -->
-            <div class="mt-8 pt-6 border-t flex justify-end space-x-4">
+            
+            <div class="mt-8 pt-6 border-t flex justify-between">
               <a
                 href="/quizzes"
                 class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700"
               >
-                Cancel
+                ← Kembali ke Daftar Kuis
               </a>
-              <button
-                type="submit"
-                class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                Submit Quiz
-              </button>
             </div>
-          </form>
-          )}
+          </div>
         </div>
       </div>
     ) : (
-      <div class="text-center py-12">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-        <p class="mt-4 text-gray-600">Loading quiz...</p>
+      <!-- Multiple Choice Quiz with Pagination -->
+      <div class="flex h-screen bg-gray-100">
+        <!-- Main Quiz Area -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+          <!-- Header -->
+          <div class="bg-white shadow-sm px-6 py-4 flex items-center justify-between">
+            <h1 class="text-xl font-bold text-gray-900">{quiz.title}</h1>
+            <div id="timer" class="flex items-center space-x-2 bg-blue-100 px-4 py-2 rounded-lg">
+              <span class="text-sm font-medium text-blue-900">SISA WAKTU</span>
+              <span id="timer-display" class="text-lg font-mono font-bold text-blue-900">--:--:--</span>
+            </div>
+          </div>
+
+          <!-- Question Display Area -->
+          <div class="flex-1 overflow-y-auto px-6 py-6">
+            <div id="question-container" class="max-w-4xl mx-auto">
+              <!-- Questions will be rendered here by JavaScript -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar - Question Navigator -->
+        <div class="w-80 bg-white border-l flex flex-col">
+          <!-- Navigation Controls at Top -->
+          <div class="p-4 border-b space-y-3">
+            <button
+              id="prev-btn-sidebar"
+              class="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
+              disabled
+            >
+              <span>← Soal Sebelumnya</span>
+            </button>
+
+            <button
+              id="flag-btn-sidebar"
+              class="w-full px-4 py-2 border-2 border-orange-500 text-orange-600 rounded-lg hover:bg-orange-50 text-sm"
+            >
+              <span id="flag-text-sidebar">🚩 Ragu-Ragu</span>
+            </button>
+
+            <button
+              id="next-btn-sidebar"
+              class="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+            >
+              <span>Soal Selanjutnya →</span>
+            </button>
+          </div>
+
+          <div class="p-4 border-b">
+            <h3 class="font-bold text-gray-900 mb-4">NOMOR SOAL</h3>
+            <div id="question-grid" class="grid grid-cols-5 gap-2 max-h-96 overflow-y-auto">
+              <!-- Question numbers will be rendered here -->
+            </div>
+          </div>
+
+          <div class="p-4 border-b">
+            <div class="space-y-2 text-sm">
+              <div class="flex items-center space-x-2">
+                <div class="w-4 h-4 bg-green-500 rounded"></div>
+                <span class="text-gray-700">Sudah dijawab (<span id="answered-count">0</span>)</span>
+              </div>
+              <div class="flex items-center space-x-2">
+                <div class="w-4 h-4 bg-orange-500 rounded"></div>
+                <span class="text-gray-700">Ragu-ragu (<span id="flagged-count">0</span>)</span>
+              </div>
+              <div class="flex items-center space-x-2">
+                <div class="w-4 h-4 bg-gray-300 rounded"></div>
+                <span class="text-gray-700">Belum dijawab (<span id="unanswered-count">0</span>)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex-1"></div>
+
+          <div class="p-4 border-t">
+            <button
+              id="submit-quiz-btn"
+              class="w-full bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 font-semibold"
+            >
+              Hentikan Ujian
+            </button>
+          </div>
+        </div>
       </div>
     )}
   </div>
 
-  <script>
-    // Handle quiz submission
-    document.getElementById('quiz-form')?.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      const form = e.target as HTMLFormElement;
-      const formData = new FormData(form);
-      
-      // Collect answers
-      const answers = [];
-      document.querySelectorAll('.question-block').forEach((block, index) => {
-        const questionId = block.getAttribute('data-question-id');
-        const inputs = form.querySelectorAll(`input[name="question-${questionId}"]`);
+  <style>
+    .math-display {
+      margin: 1.5rem 0;
+      text-align: center;
+    }
+
+    .math-inline {
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    .latex-error {
+      background-color: #fee;
+      border: 1px solid #fcc;
+      padding: 0.5rem;
+      border-radius: 0.25rem;
+      color: #c33;
+    }
+
+    .question-number {
+      @apply w-10 h-10 flex items-center justify-center rounded border-2 cursor-pointer font-semibold transition-colors;
+    }
+
+    .question-number.answered {
+      @apply bg-green-500 text-white border-green-600;
+    }
+
+    .question-number.flagged {
+      @apply bg-orange-500 text-white border-orange-600;
+    }
+
+    .question-number.unanswered {
+      @apply bg-gray-200 text-gray-700 border-gray-300;
+    }
+
+    .question-number.current {
+      @apply ring-4 ring-blue-300;
+    }
+
+    .option-label {
+      @apply flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all;
+    }
+
+    .option-label:hover {
+      @apply bg-gray-50 border-blue-300;
+    }
+
+    .option-label.selected {
+      @apply bg-blue-50 border-blue-500;
+    }
+
+    .option-label input[type="radio"],
+    .option-label input[type="checkbox"] {
+      @apply flex-shrink-0 w-5 h-5 mr-3;
+    }
+
+    .option-content {
+      @apply flex-1;
+    }
+  </style>
+
+  <script define:vars={{ quiz, id }}>
+    // Quiz state
+    let currentQuestionIndex = 0;
+    let answers = new Array(quiz.questions.length).fill(null);
+    let flaggedQuestions = new Set();
+    let startTime = Date.now();
+    let timerInterval = null;
+
+    // Initialize timer if time limit exists
+    if (quiz.settings?.timeLimit) {
+      const timeLimit = quiz.settings.timeLimit;
+      let remainingTime = timeLimit;
+
+      timerInterval = setInterval(() => {
+        remainingTime--;
         
-        const answer: any[] = [];
-        inputs.forEach((input: any) => {
-          if (input.type === 'checkbox' && input.checked) {
-            answer.push(parseInt(input.value));
-          } else if (input.type === 'radio' && input.checked) {
-            answer.push(parseInt(input.value));
-          } else if (input.type === 'text' || input.type === 'number') {
-            answer.push(input.value);
-          }
-        });
+        if (remainingTime <= 0) {
+          clearInterval(timerInterval);
+          submitQuiz();
+          return;
+        }
+
+        const hours = Math.floor(remainingTime / 3600);
+        const minutes = Math.floor((remainingTime % 3600) / 60);
+        const seconds = remainingTime % 60;
         
-        answers.push({
-          questionId: index,
-          type: Array.from(inputs)[0]?.getAttribute('data-type') || 'unknown',
-          answer: answer.length > 0 ? answer : []
-        });
+        document.getElementById('timer-display').textContent = 
+          `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      }, 1000);
+    } else {
+      document.getElementById('timer').style.display = 'none';
+    }
+
+    // Render question grid
+    function renderQuestionGrid() {
+      const grid = document.getElementById('question-grid');
+      grid.innerHTML = '';
+      
+      quiz.questions.forEach((_, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'question-number';
+        btn.textContent = index + 1;
+        
+        // Set status class
+        if (flaggedQuestions.has(index)) {
+          btn.classList.add('flagged');
+        } else if (answers[index] !== null) {
+          btn.classList.add('answered');
+        } else {
+          btn.classList.add('unanswered');
+        }
+        
+        // Highlight current question
+        if (index === currentQuestionIndex) {
+          btn.classList.add('current');
+        }
+        
+        btn.onclick = () => goToQuestion(index);
+        grid.appendChild(btn);
       });
+
+      updateCounts();
+    }
+
+    // Update status counts
+    function updateCounts() {
+      const answered = answers.filter(a => a !== null && !flaggedQuestions.has(answers.indexOf(a))).length;
+      const flagged = flaggedQuestions.size;
+      const unanswered = quiz.questions.length - answered - flagged;
+
+      document.getElementById('answered-count').textContent = answered;
+      document.getElementById('flagged-count').textContent = flagged;
+      document.getElementById('unanswered-count').textContent = unanswered;
+    }
+
+    // Render current question
+    function renderQuestion() {
+      const question = quiz.questions[currentQuestionIndex];
+      const container = document.getElementById('question-container');
       
-      // Submit to API
+      const isComplex = question.type === 'complex-multiple-choice' || question.type === 'complex';
+      const inputType = isComplex ? 'checkbox' : 'radio';
+      
+      container.innerHTML = `
+        <div class="bg-white rounded-lg shadow-lg p-8">
+          <div class="flex items-center justify-between mb-6">
+            <div class="inline-block bg-blue-600 text-white px-4 py-2 rounded-lg font-bold">
+              SOAL NO. ${currentQuestionIndex + 1}
+            </div>
+          </div>
+
+          <div class="prose max-w-none mb-8">
+            <div class="text-lg text-gray-800 question-text" data-question="${escapeHtml(question.question)}"></div>
+          </div>
+
+          ${question.images && question.images.length > 0 ? `
+            <div class="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              ${question.images.map(img => `
+                <img src="${img}" alt="Question illustration" class="rounded-lg border shadow-sm" />
+              `).join('')}
+            </div>
+          ` : ''}
+
+          <div class="space-y-3">
+            ${question.options.map((option, optIndex) => `
+              <label class="option-label ${isAnswerSelected(currentQuestionIndex, optIndex + 1) ? 'selected' : ''}" data-option="${optIndex + 1}">
+                <input
+                  type="${inputType}"
+                  name="question-${currentQuestionIndex}"
+                  value="${optIndex + 1}"
+                  ${isAnswerSelected(currentQuestionIndex, optIndex + 1) ? 'checked' : ''}
+                  onchange="handleAnswerChange(${currentQuestionIndex}, ${optIndex + 1}, this.type)"
+                />
+                <div class="option-content" data-option-text="${escapeHtml(option)}"></div>
+              </label>
+            `).join('')}
+          </div>
+
+          ${isComplex ? `
+            <p class="mt-4 text-sm text-purple-600 font-medium">
+              🔣 Pilihan ganda kompleks - Beberapa jawaban mungkin benar
+            </p>
+          ` : ''}
+
+          ${question.metadata?.solution ? `
+            <details class="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <summary class="font-semibold text-gray-800 cursor-pointer hover:text-blue-600">
+                💡 Lihat Pembahasan
+              </summary>
+              <div class="prose max-w-none text-gray-700 mt-4">
+                <div class="solution-text" data-solution="${escapeHtml(question.metadata.solution)}"></div>
+              </div>
+              ${question.metadata.solutionImages && question.metadata.solutionImages.length > 0 ? `
+                <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  ${question.metadata.solutionImages.map(img => `
+                    <img src="${img}" alt="Solution" class="rounded-lg border" />
+                  `).join('')}
+                </div>
+              ` : ''}
+            </details>
+          ` : ''}
+        </div>
+      `;
+
+      // Update sidebar navigation buttons
+      document.getElementById('prev-btn-sidebar').disabled = currentQuestionIndex === 0;
+      const nextBtnText = currentQuestionIndex === quiz.questions.length - 1 ? 'Selesai' : 'Soal Selanjutnya →';
+      document.getElementById('next-btn-sidebar').innerHTML = `<span>${nextBtnText}</span>`;
+
+      // Update flag button in sidebar
+      const flagBtn = document.getElementById('flag-btn-sidebar');
+      if (flaggedQuestions.has(currentQuestionIndex)) {
+        flagBtn.classList.add('bg-orange-100');
+        document.getElementById('flag-text-sidebar').textContent = '✓ Ragu-Ragu';
+      } else {
+        flagBtn.classList.remove('bg-orange-100');
+        document.getElementById('flag-text-sidebar').textContent = '🚩 Ragu-Ragu';
+      }
+
+      // Render markdown content with LaTeX
+      renderMarkdownContent();
+    }
+
+    // Escape HTML for data attributes
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Render markdown content after DOM is ready
+    function renderMarkdownContent() {
+      // Render question text
+      const questionEl = document.querySelector('.question-text');
+      if (questionEl) {
+        const questionText = questionEl.getAttribute('data-question');
+        if (questionText) {
+          questionEl.innerHTML = questionText;
+        }
+      }
+
+      // Render option texts
+      document.querySelectorAll('.option-content').forEach(el => {
+        const optionText = el.getAttribute('data-option-text');
+        if (optionText) {
+          el.innerHTML = optionText;
+        }
+      });
+
+      // Render solution text
+      const solutionEl = document.querySelector('.solution-text');
+      if (solutionEl) {
+        const solutionText = solutionEl.getAttribute('data-solution');
+        if (solutionText) {
+          solutionEl.innerHTML = solutionText;
+        }
+      }
+
+      // After setting innerHTML, render LaTeX
+      setTimeout(() => renderLatex(), 50);
+    }
+
+    // Check if answer is selected
+    function isAnswerSelected(questionIndex, optionValue) {
+      const answer = answers[questionIndex];
+      if (answer === null) return false;
+      if (Array.isArray(answer)) {
+        return answer.includes(optionValue);
+      }
+      return answer === optionValue;
+    }
+
+    // Handle answer change
+    window.handleAnswerChange = function(questionIndex, optionValue, inputType) {
+      if (inputType === 'checkbox') {
+        // Complex multiple choice
+        if (!Array.isArray(answers[questionIndex])) {
+          answers[questionIndex] = [];
+        }
+        const index = answers[questionIndex].indexOf(optionValue);
+        if (index > -1) {
+          answers[questionIndex].splice(index, 1);
+        } else {
+          answers[questionIndex].push(optionValue);
+        }
+        if (answers[questionIndex].length === 0) {
+          answers[questionIndex] = null;
+        }
+      } else {
+        // Simple multiple choice
+        answers[questionIndex] = optionValue;
+      }
+
+      // Update UI
+      renderQuestionGrid();
+      
+      // Update option styling
+      document.querySelectorAll('.option-label').forEach(label => {
+        const option = parseInt(label.dataset.option);
+        if (isAnswerSelected(questionIndex, option)) {
+          label.classList.add('selected');
+        } else {
+          label.classList.remove('selected');
+        }
+      });
+    };
+
+    // Navigation functions
+    function goToQuestion(index) {
+      currentQuestionIndex = index;
+      renderQuestion();
+      renderQuestionGrid();
+      // Scroll main area to top
+      const mainArea = document.querySelector('.flex-1.overflow-y-auto');
+      if (mainArea) {
+        mainArea.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+    // Sidebar navigation buttons
+    document.getElementById('prev-btn-sidebar').onclick = () => {
+      if (currentQuestionIndex > 0) {
+        goToQuestion(currentQuestionIndex - 1);
+      }
+    };
+
+    document.getElementById('next-btn-sidebar').onclick = () => {
+      if (currentQuestionIndex < quiz.questions.length - 1) {
+        goToQuestion(currentQuestionIndex + 1);
+      } else {
+        submitQuiz();
+      }
+    };
+
+    document.getElementById('flag-btn-sidebar').onclick = () => {
+      if (flaggedQuestions.has(currentQuestionIndex)) {
+        flaggedQuestions.delete(currentQuestionIndex);
+      } else {
+        flaggedQuestions.add(currentQuestionIndex);
+      }
+      renderQuestion();
+      renderQuestionGrid();
+    };
+
+    // Submit quiz
+    document.getElementById('submit-quiz-btn').onclick = () => {
+      const unanswered = answers.filter(a => a === null).length;
+      if (unanswered > 0) {
+        if (!confirm(`Anda memiliki ${unanswered} soal yang belum dijawab. Yakin ingin menyelesaikan ujian?`)) {
+          return;
+        }
+      }
+      submitQuiz();
+    };
+
+    async function submitQuiz() {
+      if (timerInterval) clearInterval(timerInterval);
+      
+      const timeSpent = Math.floor((Date.now() - startTime) / 1000);
+      
       try {
         const response = await fetch('/api/quiz/submit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            quizId: {id},
-            answers,
-            timeSpent: 0
+            quizId: parseInt(id),
+            answers: answers.map((answer, index) => ({
+              questionId: index,
+              answer: answer === null ? [] : (Array.isArray(answer) ? answer : [answer])
+            })),
+            timeSpent
           })
         });
         
         const result = await response.json();
         
         if (response.ok) {
-          // Redirect to results
-          window.location.href = `/quizzes/${id}/results?score=${result.percentage}`;
+          window.location.href = `/quizzes/${id}/results?score=${result.percentage || 0}`;
         } else {
           alert('Error submitting quiz: ' + result.error);
         }
@@ -284,7 +596,69 @@ try {
         alert('Error submitting quiz. Please try again.');
         console.error(error);
       }
-    });
+    }
+
+    // Initialize
+    renderQuestionGrid();
+    renderQuestion();
+  </script>
+
+  <script>
+    // LaTeX rendering (same as before)
+    (function() {
+      if (typeof window !== 'undefined' && !document.querySelector('link[href*="katex"]')) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css';
+        document.head.appendChild(link);
+      }
+
+      function loadKaTeX() {
+        return new Promise((resolve, reject) => {
+          if (window.katex) {
+            resolve(window.katex);
+            return;
+          }
+          const script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js';
+          script.onload = () => resolve(window.katex);
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      }
+
+      window.renderLatex = async function() {
+        try {
+          await loadKaTeX();
+          const mathElements = document.querySelectorAll('.math-display, .math-inline');
+          mathElements.forEach((element) => {
+            const latex = element.getAttribute('data-latex') || '';
+            const displayMode = element.classList.contains('math-display');
+            
+            try {
+              window.katex.render(latex, element, {
+                displayMode,
+                throwOnError: false,
+                trust: true,
+                macros: {
+                  '\\degree': '^{\\circ}'
+                }
+              });
+            } catch (err) {
+              console.warn('KaTeX render error:', err);
+              element.innerHTML = `<span class="latex-error">LaTeX Error</span>`;
+            }
+          });
+        } catch (err) {
+          console.error('Failed to load KaTeX:', err);
+        }
+      };
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.renderLatex);
+      } else {
+        window.renderLatex();
+      }
+    })();
   </script>
 </Layout>
-
