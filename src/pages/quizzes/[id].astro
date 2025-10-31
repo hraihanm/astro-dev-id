@@ -172,25 +172,31 @@ try {
           </div>
 
           <div class="p-4 border-b">
-            <h3 class="font-bold text-gray-900 mb-4">NOMOR SOAL</h3>
-            <div id="question-grid" class="grid grid-cols-5 gap-2 max-h-96 overflow-y-auto">
+            <h3 class="font-semibold text-gray-700 text-sm mb-4 tracking-wide">NOMOR SOAL</h3>
+            <div id="question-grid" class="grid grid-cols-5 gap-2 max-h-96 overflow-y-auto p-1">
               <!-- Question numbers will be rendered here -->
             </div>
           </div>
 
           <div class="p-4 border-b">
-            <div class="space-y-2 text-sm">
+            <div class="space-y-2 text-sm text-gray-600">
               <div class="flex items-center space-x-2">
-                <div class="w-4 h-4 bg-green-500 rounded"></div>
-                <span class="text-gray-700">Sudah dijawab (<span id="answered-count">0</span>)</span>
+                <div class="w-5 h-5 bg-green-100 border-2 border-green-300 rounded flex items-center justify-center">
+                  <svg class="w-3 h-3 text-green-700" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                  </svg>
+                </div>
+                <span>Sudah dijawab (<span id="answered-count" class="font-semibold text-green-800">0</span>)</span>
               </div>
               <div class="flex items-center space-x-2">
-                <div class="w-4 h-4 bg-orange-500 rounded"></div>
-                <span class="text-gray-700">Ragu-ragu (<span id="flagged-count">0</span>)</span>
+                <div class="w-5 h-5 bg-orange-100 border-2 border-orange-300 rounded flex items-center justify-center">
+                  <span class="text-xs text-orange-700">🚩</span>
+                </div>
+                <span>Ragu-ragu (<span id="flagged-count" class="font-semibold text-orange-800">0</span>)</span>
               </div>
               <div class="flex items-center space-x-2">
-                <div class="w-4 h-4 bg-gray-300 rounded"></div>
-                <span class="text-gray-700">Belum dijawab (<span id="unanswered-count">0</span>)</span>
+                <div class="w-5 h-5 bg-gray-50 border-2 border-gray-300 rounded"></div>
+                <span>Belum dijawab (<span id="unanswered-count" class="font-semibold text-gray-700">0</span>)</span>
               </div>
             </div>
           </div>
@@ -210,7 +216,7 @@ try {
     )}
   </div>
 
-  <style>
+  <style is:global>
     .math-display {
       margin: 1.5rem 0;
       text-align: center;
@@ -230,48 +236,122 @@ try {
     }
 
     .question-number {
-      @apply w-10 h-10 flex items-center justify-center rounded border-2 cursor-pointer font-semibold transition-colors;
+      width: 2.5rem;
+      height: 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+      font-size: 0.875rem;
+      border: 2px solid transparent;
     }
 
+    .question-number:hover {
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      transform: translateY(-2px);
+    }
+
+    /* Answered - Light green with checkmark feel */
     .question-number.answered {
-      @apply bg-green-500 text-white border-green-600;
+      background-color: #dcfce7;
+      color: #166534;
+      border-color: #86efac;
     }
 
+    /* Flagged - Warm orange for attention */
     .question-number.flagged {
-      @apply bg-orange-500 text-white border-orange-600;
+      background-color: #ffedd5;
+      color: #9a3412;
+      border-color: #fdba74;
     }
 
+    /* Unanswered - Subtle gray */
     .question-number.unanswered {
-      @apply bg-gray-200 text-gray-700 border-gray-300;
+      background-color: #f9fafb;
+      color: #6b7280;
+      border-color: #e5e7eb;
     }
 
+    /* Current question - Bold blue, highly visible */
     .question-number.current {
-      @apply ring-4 ring-blue-300;
+      background-color: #2563eb !important;
+      color: white !important;
+      font-weight: 700 !important;
+      border-color: #2563eb !important;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15) !important;
+      transform: scale(1.15) !important;
+    }
+
+    .question-number.current:hover {
+      transform: scale(1.15) !important;
     }
 
     .option-label {
-      @apply flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all;
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      padding: 1rem;
+      border: 2px solid #e5e7eb;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 0.75rem;
     }
 
     .option-label:hover {
-      @apply bg-gray-50 border-blue-300;
+      background-color: #f9fafb;
+      border-color: #93c5fd;
     }
 
     .option-label.selected {
-      @apply bg-blue-50 border-blue-500;
+      background-color: #eff6ff;
+      border-color: #3b82f6;
     }
 
     .option-label input[type="radio"],
     .option-label input[type="checkbox"] {
-      @apply flex-shrink-0 w-5 h-5 mr-3;
+      flex-shrink: 0;
+      width: 1.25rem;
+      height: 1.25rem;
+      margin-right: 1rem;
+      margin-top: 0.125rem;
+      cursor: pointer;
     }
 
     .option-content {
-      @apply flex-1;
+      flex: 1;
+      text-align: left;
+      line-height: 1.6;
+    }
+
+    .option-content p {
+      margin: 0;
     }
   </style>
 
   <script define:vars={{ quiz, id }}>
+    // Client-side markdown renderer for LaTeX
+    function processLatex(text) {
+      if (!text) return '';
+      
+      // Convert display math blocks ($$ ... $$) to placeholders
+      let processed = text.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
+        const cleanLatex = (latex || '').trim();
+        return `<div class="math-display" data-latex="${cleanLatex}"></div>`;
+      });
+
+      // Convert inline math $...$ to placeholders
+      processed = processed.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (match, latex) => {
+        const cleanLatex = (latex || '').trim();
+        return `<span class="math-inline" data-latex="${cleanLatex}"></span>`;
+      });
+
+      return processed;
+    }
+
     // Quiz state
     let currentQuestionIndex = 0;
     let answers = new Array(quiz.questions.length).fill(null);
@@ -311,23 +391,23 @@ try {
       
       quiz.questions.forEach((_, index) => {
         const btn = document.createElement('button');
-        btn.className = 'question-number';
         btn.textContent = index + 1;
         
-        // Set status class
-        if (flaggedQuestions.has(index)) {
-          btn.classList.add('flagged');
-        } else if (answers[index] !== null) {
-          btn.classList.add('answered');
-        } else {
-          btn.classList.add('unanswered');
-        }
+        // Build class list
+        const classes = ['question-number'];
         
-        // Highlight current question
+        // Add status class (current takes precedence)
         if (index === currentQuestionIndex) {
-          btn.classList.add('current');
+          classes.push('current');
+        } else if (flaggedQuestions.has(index)) {
+          classes.push('flagged');
+        } else if (answers[index] !== null) {
+          classes.push('answered');
+        } else {
+          classes.push('unanswered');
         }
         
+        btn.className = classes.join(' ');
         btn.onclick = () => goToQuestion(index);
         grid.appendChild(btn);
       });
@@ -354,6 +434,31 @@ try {
       const isComplex = question.type === 'complex-multiple-choice' || question.type === 'complex';
       const inputType = isComplex ? 'checkbox' : 'radio';
       
+      // Process question text with LaTeX
+      const questionHtml = processLatex(question.question || '');
+      
+      // Process options with LaTeX
+      const optionsHtml = question.options.map((option, optIndex) => {
+        const optionHtml = processLatex(option || '');
+        const isSelected = isAnswerSelected(currentQuestionIndex, optIndex + 1);
+        
+        return `
+          <label class="option-label ${isSelected ? 'selected' : ''}" data-option="${optIndex + 1}">
+            <input
+              type="${inputType}"
+              name="question-${currentQuestionIndex}"
+              value="${optIndex + 1}"
+              ${isSelected ? 'checked' : ''}
+              onchange="handleAnswerChange(${currentQuestionIndex}, ${optIndex + 1}, this.type)"
+            />
+            <div class="option-content">${optionHtml}</div>
+          </label>
+        `;
+      }).join('');
+      
+      // Process solution with LaTeX
+      const solutionHtml = question.metadata?.solution ? processLatex(question.metadata.solution) : '';
+      
       container.innerHTML = `
         <div class="bg-white rounded-lg shadow-lg p-8">
           <div class="flex items-center justify-between mb-6">
@@ -363,7 +468,7 @@ try {
           </div>
 
           <div class="prose max-w-none mb-8">
-            <div class="text-lg text-gray-800 question-text" data-question="${escapeHtml(question.question)}"></div>
+            <div class="text-lg text-gray-800">${questionHtml}</div>
           </div>
 
           ${question.images && question.images.length > 0 ? `
@@ -375,18 +480,7 @@ try {
           ` : ''}
 
           <div class="space-y-3">
-            ${question.options.map((option, optIndex) => `
-              <label class="option-label ${isAnswerSelected(currentQuestionIndex, optIndex + 1) ? 'selected' : ''}" data-option="${optIndex + 1}">
-                <input
-                  type="${inputType}"
-                  name="question-${currentQuestionIndex}"
-                  value="${optIndex + 1}"
-                  ${isAnswerSelected(currentQuestionIndex, optIndex + 1) ? 'checked' : ''}
-                  onchange="handleAnswerChange(${currentQuestionIndex}, ${optIndex + 1}, this.type)"
-                />
-                <div class="option-content" data-option-text="${escapeHtml(option)}"></div>
-              </label>
-            `).join('')}
+            ${optionsHtml}
           </div>
 
           ${isComplex ? `
@@ -401,7 +495,7 @@ try {
                 💡 Lihat Pembahasan
               </summary>
               <div class="prose max-w-none text-gray-700 mt-4">
-                <div class="solution-text" data-solution="${escapeHtml(question.metadata.solution)}"></div>
+                ${solutionHtml}
               </div>
               ${question.metadata.solutionImages && question.metadata.solutionImages.length > 0 ? `
                 <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -430,46 +524,7 @@ try {
         document.getElementById('flag-text-sidebar').textContent = '🚩 Ragu-Ragu';
       }
 
-      // Render markdown content with LaTeX
-      renderMarkdownContent();
-    }
-
-    // Escape HTML for data attributes
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
-    // Render markdown content after DOM is ready
-    function renderMarkdownContent() {
-      // Render question text
-      const questionEl = document.querySelector('.question-text');
-      if (questionEl) {
-        const questionText = questionEl.getAttribute('data-question');
-        if (questionText) {
-          questionEl.innerHTML = questionText;
-        }
-      }
-
-      // Render option texts
-      document.querySelectorAll('.option-content').forEach(el => {
-        const optionText = el.getAttribute('data-option-text');
-        if (optionText) {
-          el.innerHTML = optionText;
-        }
-      });
-
-      // Render solution text
-      const solutionEl = document.querySelector('.solution-text');
-      if (solutionEl) {
-        const solutionText = solutionEl.getAttribute('data-solution');
-        if (solutionText) {
-          solutionEl.innerHTML = solutionText;
-        }
-      }
-
-      // After setting innerHTML, render LaTeX
+      // Render LaTeX after DOM is ready
       setTimeout(() => renderLatex(), 50);
     }
 
