@@ -126,17 +126,33 @@ try {
       <!-- Multiple Choice Quiz with Pagination -->
       <div class="flex flex-col h-screen bg-gray-100">
         <!-- Quiz Title Header - Spans entire width -->
-        <div class="bg-white shadow-sm px-6 py-4">
+        <div class="bg-white shadow-sm px-6 py-4 border-b">
           <h1 class="text-xl font-bold text-gray-900">{quiz.title}</h1>
+        </div>
+
+        <!-- Navigation Row - Nav and Timer aligned -->
+        <div class="flex border-b bg-white">
+          <!-- Navigation Bar Column -->
+          <div id="nav-container" class="flex-1 px-6 py-4 flex items-center justify-between">
+            <!-- Navigation bar will be rendered here by JavaScript -->
+          </div>
+          
+          <!-- Timer Column -->
+          <div class="w-80 border-l px-4 py-4">
+            <div id="timer" class="flex items-center justify-center space-x-2 bg-blue-100 px-4 py-3 rounded-lg">
+              <span class="text-sm font-medium text-blue-900">SISA WAKTU</span>
+              <span id="timer-display" class="text-lg font-mono font-bold text-blue-900">--:--:--</span>
+            </div>
+          </div>
         </div>
 
         <!-- Main Content Area with Sidebar -->
         <div class="flex flex-1 overflow-hidden">
           <!-- Main Quiz Area -->
           <div class="flex-1 flex flex-col overflow-hidden">
-            <!-- Question Display Area -->
+            <!-- Question Display Area - Scroll only at this level, not inside container -->
             <div class="flex-1 overflow-y-auto px-6 py-6">
-              <div id="question-container" class="max-w-4xl mx-auto">
+              <div id="question-container" class="max-w-4xl mx-auto overflow-visible">
                 <!-- Questions will be rendered here by JavaScript -->
               </div>
             </div>
@@ -144,13 +160,6 @@ try {
 
           <!-- Sidebar - Question Navigator -->
           <div class="w-80 bg-white border-l flex flex-col overflow-y-auto">
-            <!-- Timer at Top of Sidebar -->
-            <div class="p-4 border-b">
-              <div id="timer" class="flex items-center justify-center space-x-2 bg-blue-100 px-4 py-3 rounded-lg">
-                <span class="text-sm font-medium text-blue-900">SISA WAKTU</span>
-                <span id="timer-display" class="text-lg font-mono font-bold text-blue-900">--:--:--</span>
-              </div>
-            </div>
 
             <!-- Question Grid -->
             <div class="p-4 border-b">
@@ -452,30 +461,31 @@ try {
       // Process solution with LaTeX
       const solutionHtml = question.metadata?.solution ? processLatex(question.metadata.solution) : '';
       
-      container.innerHTML = `
-        <!-- Navigation Bar -->
-        <div class="bg-white rounded-lg shadow-sm p-4 mb-4 flex items-center justify-between">
-          <button
-            id="prev-btn-main"
-            class="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium"
-            ${currentQuestionIndex === 0 ? 'disabled' : ''}
-          >
-            <span>← Soal Sebelumnya</span>
-          </button>
-          
-          <div class="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg font-bold">
-            SOAL NO. ${currentQuestionIndex + 1}
-          </div>
-          
-          <button
-            id="next-btn-main"
-            class="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
-          >
-            <span>${currentQuestionIndex === quiz.questions.length - 1 ? 'Selesai' : 'Soal Selanjutnya →'}</span>
-          </button>
+      // Render navigation bar directly into nav-container
+      const navContainer = document.getElementById('nav-container');
+      navContainer.innerHTML = `
+        <button
+          id="prev-btn-main"
+          class="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium"
+          ${currentQuestionIndex === 0 ? 'disabled' : ''}
+        >
+          <span>← Soal Sebelumnya</span>
+        </button>
+        
+        <div class="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg font-bold">
+          SOAL NO. ${currentQuestionIndex + 1}
         </div>
+        
+        <button
+          id="next-btn-main"
+          class="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+        >
+          <span>${currentQuestionIndex === quiz.questions.length - 1 ? 'Selesai' : 'Soal Selanjutnya →'}</span>
+        </button>
+      `;
 
-        <!-- Question Content -->
+      // Render question content (no navigation bar inside)
+      container.innerHTML = `
         <div class="bg-white rounded-lg shadow-lg p-8">
 
           <div class="prose max-w-none mb-8">
