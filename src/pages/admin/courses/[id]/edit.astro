@@ -676,6 +676,34 @@ if (!course) {
             return translations[key] || key;
           }
           
+          // Delete quiz function
+          async function deleteQuiz(quizId: number, quizTitle: string) {
+            if (!confirm(`Are you sure you want to delete "${quizTitle}"? This action cannot be undone.`)) {
+              return;
+            }
+
+            try {
+              const response = await fetch(`/api/admin/quiz/${quizId}/delete`, {
+                method: 'DELETE'
+              });
+
+              const result = await response.json();
+
+              if (response.ok) {
+                alert('Quiz deleted successfully!');
+                loadQuizzes();
+              } else {
+                alert('Error: ' + (result.error || 'Failed to delete quiz'));
+              }
+            } catch (error) {
+              console.error('Error:', error);
+              alert('An error occurred while deleting the quiz');
+            }
+          }
+
+          // Make deleteQuiz available globally
+          (window as any).deleteQuiz = deleteQuiz;
+
           // Load quizzes for this course
           async function loadQuizzes() {
             const quizList = document.getElementById('quiz-list');
@@ -726,9 +754,20 @@ if (!course) {
                           </div>
                           <p class="text-xs text-gray-500 mt-1">${countText}</p>
                         </div>
-                        <button class="text-red-600 hover:text-red-900 text-sm">
-                          ${deleteText}
-                        </button>
+                        <div class="flex items-center space-x-3">
+                          <a href="/admin/quizzes/${quiz.id}/edit" class="text-blue-600 hover:text-blue-900 text-sm font-medium">
+                            Edit
+                          </a>
+                          <a href="/quizzes/${quiz.id}" target="_blank" class="text-green-600 hover:text-green-900 text-sm">
+                            Preview
+                          </a>
+                          <button 
+                            onclick="deleteQuiz(${quiz.id}, '${quiz.title.replace(/'/g, "\\'")}')" 
+                            class="text-red-600 hover:text-red-900 text-sm"
+                          >
+                            ${deleteText}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   `;
