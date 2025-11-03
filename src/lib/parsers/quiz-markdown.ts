@@ -1,14 +1,70 @@
 /**
  * Parse Markdown quiz files into system-compatible format
- * Supports simple and complex multiple choice questions
+ * Supports multiple question types
  */
 
-export interface QuizQuestion {
+export type QuestionType = 
+  | 'multiple-choice'           // Single answer
+  | 'complex-multiple-choice'   // Multiple answers  
+  | 'essay'                     // Free text
+  | 'fill-in-the-blank';        // Short answer with blanks
+
+export interface BaseQuestion {
+  id: number;
+  type: QuestionType;
+  question: string;
+  images?: string[];
+  metadata?: {
+    solution?: string;
+    solutionImages?: string[];
+    difficulty?: string;
+    category?: string;
+  };
+}
+
+export interface MultipleChoiceQuestion extends BaseQuestion {
+  type: 'multiple-choice';
+  options: string[];
+  correctAnswer: number; // Index (1-based)
+}
+
+export interface ComplexMultipleChoiceQuestion extends BaseQuestion {
+  type: 'complex-multiple-choice';
+  options: string[];
+  correctAnswers: number[]; // Multiple indices (1-based)
+}
+
+export interface EssayQuestion extends BaseQuestion {
+  type: 'essay';
+  maxWords?: number;
+  allowFileUpload?: boolean;
+  rubric?: string;
+  // No correctAnswer - manually graded
+}
+
+export interface FillInTheBlankQuestion extends BaseQuestion {
+  type: 'fill-in-the-blank';
+  questionTemplate: string; // "The capital of {0} is {1}"
+  blanks: {
+    index: number;
+    correctAnswers: string[]; // Accept multiple valid answers
+    caseSensitive?: boolean;
+  }[];
+}
+
+export type QuizQuestion = 
+  | MultipleChoiceQuestion 
+  | ComplexMultipleChoiceQuestion 
+  | EssayQuestion 
+  | FillInTheBlankQuestion;
+
+// Legacy interface for backward compatibility
+export interface LegacyQuizQuestion {
   id: number;
   type: 'multiple-choice' | 'complex-multiple-choice' | 'text' | 'number';
   question: string;
   options: string[];
-  correctAnswer: number | number[];  // number for simple, array for complex
+  correctAnswer: number | number[];
   images?: string[];
   metadata?: {
     category?: string;

@@ -69,7 +69,7 @@ function evaluateQuestion(question: any, userAnswer?: QuizAnswer): QuestionResul
       questionId: question.id || 0,
       question,
       userAnswer: [],
-      correctAnswer: question.correctAnswer,
+      correctAnswer: question.correctAnswer || question.correctAnswers || null,
       isCorrect: false,
       points: 0,
       maxPoints
@@ -111,13 +111,25 @@ function evaluateQuestion(question: any, userAnswer?: QuizAnswer): QuestionResul
       isCorrect = Math.abs(userNumber - correctNumber) <= tolerance;
       points = isCorrect ? maxPoints : 0;
       break;
+    
+    case 'essay':
+      // Essays require manual grading - return 0 points for now
+      // Can be manually graded later by instructor
+      points = 0;
+      isCorrect = false;
+      break;
+    
+    case 'fill-in-the-blank':
+      points = evaluateFillInTheBlank(question, userAnswer);
+      isCorrect = points === maxPoints;
+      break;
   }
 
   return {
     questionId: question.id || 0,
     question,
     userAnswer: userAnswer.answer,
-    correctAnswer: question.correctAnswer,
+    correctAnswer: question.correctAnswer || question.correctAnswers || question.blanks || null,
     isCorrect,
     points,
     maxPoints
@@ -129,10 +141,12 @@ function evaluateQuestion(question: any, userAnswer?: QuizAnswer): QuestionResul
  * Formula: Score = (correct / N) - (incorrect / N), minimum 0
  */
 function evaluateComplexMultipleChoice(question: any, userAnswer: QuizAnswer): number {
-  // Ensure correctAnswer is array
-  const correctAnswers = Array.isArray(question.correctAnswer)
-    ? question.correctAnswer
-    : [question.correctAnswer];
+  // Ensure correctAnswer is array - support both correctAnswer and correctAnswers
+  const correctAnswers = Array.isArray(question.correctAnswers)
+    ? question.correctAnswers
+    : (Array.isArray(question.correctAnswer)
+      ? question.correctAnswer
+      : [question.correctAnswer]);
   
   const N = correctAnswers.length; // Number of correct answers
   if (N === 0) return 0;
@@ -159,6 +173,44 @@ function evaluateComplexMultipleChoice(question: any, userAnswer: QuizAnswer): n
   
   // Ensure minimum is 0 (no negative scores)
   return Math.max(0, score);
+}
+
+/**
+ * Evaluate fill-in-the-blank questions
+ * Each blank must match one of the accepted answers
+ */
+function evaluateFillInTheBlank(question: any, userAnswer: QuizAnswer): number {
+  if (!question.blanks || question.blanks.length === 0) {
+    return 0;
+  }
+
+  const blanks = question.blanks;
+  const userAnswers = userAnswer.answer; // Array of user's answers for each blank
+  
+  let correctBlanks = 0;
+  
+  blanks.forEach((blank: any, index: number) => {
+    const userBlankAnswer = (userAnswers[index] || '').toString().trim();
+    const correctAnswers = blank.correctAnswers || [];
+    const caseSensitive = blank.caseSensitive || false;
+    
+    // Check if user's answer matches any of the correct answers
+    const isMatch = correctAnswers.some((correctAns: string) => {
+      const correct = correctAns.trim();
+      if (caseSensitive) {
+        return userBlankAnswer === correct;
+      } else {
+        return userBlankAnswer.toLowerCase() === correct.toLowerCase();
+      }
+    });
+    
+    if (isMatch) {
+      correctBlanks++;
+    }
+  });
+  
+  // Return proportional score (e.g., 3/4 blanks correct = 0.75 points)
+  return correctBlanks / blanks.length;
 }
 
 export async function saveQuizResult(data: {

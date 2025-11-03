@@ -17,80 +17,61 @@ if (!quiz) {
 }
 
 const settings = quiz.settings || {};
-// Handle both array and object formats for questions
-let questions: any[] = [];
-try {
-  if (Array.isArray(quiz.questions)) {
-    questions = quiz.questions;
-  } else if (quiz.questions && typeof quiz.questions === 'object') {
-    // Handle problem set format
-    if (quiz.questions.type === 'multiple-choice-problem-set' && quiz.questions.problems) {
-      questions = [quiz.questions];
-    } else if (quiz.questions.questions && Array.isArray(quiz.questions.questions)) {
-      // Handle nested questions property
-      questions = quiz.questions.questions;
-    } else {
-      // Try to extract questions from object
-      questions = [];
-    }
+const questions = quiz.questions || [];
+
+// Normalize questions to ensure correct format
+function normalizeQuestion(q: any): any {
+  const baseQuestion = {
+    id: q.id,
+    type: q.type || 'multiple-choice',
+    question: q.question || '',
+    images: q.images || [],
+    metadata: q.metadata || {}
+  };
+
+  switch (q.type) {
+    case 'complex-multiple-choice':
+      return {
+        ...baseQuestion,
+        options: q.options || [],
+        correctAnswers: Array.isArray(q.correctAnswers) 
+          ? q.correctAnswers 
+          : (Array.isArray(q.correctAnswer) ? q.correctAnswer : [q.correctAnswer || 1])
+      };
+    case 'essay':
+      return {
+        ...baseQuestion,
+        maxWords: q.maxWords,
+        allowFileUpload: q.allowFileUpload || false,
+        rubric: q.rubric || ''
+      };
+    case 'fill-in-the-blank':
+      return {
+        ...baseQuestion,
+        questionTemplate: q.questionTemplate || q.question || '',
+        blanks: q.blanks || []
+      };
+    case 'multiple-choice':
+    default:
+      return {
+        ...baseQuestion,
+        type: 'multiple-choice',
+        options: q.options || [],
+        correctAnswer: q.correctAnswer || 1
+      };
   }
-} catch (error) {
-  console.error('Error parsing questions:', error);
-  questions = [];
 }
 
-// Normalize questions to a consistent format
-function normalizeQuestions(qs: any[]): any[] {
-  const normalized: any[] = [];
-  
-  qs.forEach((q, index) => {
-    // Handle MC problem set format
-    if (q.type === 'multiple-choice-problem-set' && q.problems) {
-      q.problems.forEach((p: any, pIndex: number) => {
-        normalized.push({
-          id: p.id || normalized.length + 1,
-          type: 'multiple-choice',
-          question: p.question || '',
-          options: Array.isArray(p.options) 
-            ? p.options.map((opt: any) => typeof opt === 'string' ? opt : (opt.text || opt.id || ''))
-            : [],
-          correctAnswer: typeof p.correctAnswer === 'number' 
-            ? p.correctAnswer 
-            : (typeof p.correctAnswer === 'string' && p.correctAnswer.length > 0 
-                ? p.correctAnswer.charCodeAt(0) - 64 
-                : 1),
-          images: p.questionImages || [],
-          metadata: {
-            solution: p.solution || '',
-            solutionImages: p.solutionImages || []
-          }
-        });
-      });
-    } else {
-      // Handle standard format
-      normalized.push({
-        id: q.id || normalized.length + 1,
-        type: q.type || 'multiple-choice',
-        question: q.question || '',
-        options: Array.isArray(q.options) ? q.options : [],
-        correctAnswer: q.correctAnswer || 1,
-        images: q.images || [],
-        metadata: q.metadata || {}
-      });
-    }
-  });
-  
-  return normalized;
-}
-
-const normalizedQuestions = normalizeQuestions(questions);
-
-// Debug: Log quiz data structure
-console.log('Quiz questions structure:', JSON.stringify(quiz.questions, null, 2));
-console.log('Normalized questions count:', normalizedQuestions.length);
+const normalizedQuestions = Array.isArray(questions) 
+  ? questions.map(normalizeQuestion)
+  : [];
 ---
 
 <Layout title={`Edit ${quiz.title}`}>
+  <!-- Load KaTeX for LaTeX rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
   <div class="min-h-screen bg-gray-50">
     <!-- Header -->
     <div class="bg-white shadow mb-8">
@@ -101,9 +82,6 @@ console.log('Normalized questions count:', normalizedQuestions.length);
             <h1 class="text-2xl font-bold text-gray-900">Edit Quiz</h1>
           </div>
           <div class="flex items-center space-x-4">
-            <a href={`/quizzes/${id}`} target="_blank" class="text-green-600 hover:text-green-700">
-              Preview
-            </a>
             <button
               id="delete-quiz-btn"
               class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 text-sm"
@@ -116,7 +94,7 @@ console.log('Normalized questions count:', normalizedQuestions.length);
     </div>
 
     <!-- Quiz Edit Form -->
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <form id="quiz-form" class="space-y-6">
         <input type="hidden" name="quizId" value={id} />
         
@@ -147,7 +125,7 @@ console.log('Normalized questions count:', normalizedQuestions.length);
                 name="description"
                 id="description"
                 rows="3"
-                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm resize-y"
               >{settings.description || ''}</textarea>
             </div>
 
@@ -185,20 +163,25 @@ console.log('Normalized questions count:', normalizedQuestions.length);
 
         <!-- Questions -->
         <div class="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
-          <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-medium text-gray-900">
               Questions (<span id="question-count">{normalizedQuestions.length}</span>)
             </h3>
-            <div class="text-xs text-gray-500" id="question-debug">
-              Raw: {Array.isArray(quiz.questions) ? quiz.questions.length : (quiz.questions ? 'object' : 'null')} | Normalized: {normalizedQuestions.length}
+            <div class="flex items-center space-x-2">
+              <select id="question-type-select" class="px-3 py-2 border border-gray-300 rounded-md text-sm">
+                <option value="multiple-choice">Multiple Choice</option>
+                <option value="complex-multiple-choice">Complex Multiple Choice</option>
+                <option value="essay">Essay</option>
+                <option value="fill-in-the-blank">Fill in the Blank</option>
+              </select>
+              <button
+                type="button"
+                id="add-question-btn"
+                class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
+              >
+                + Add Question
+              </button>
             </div>
-            <button
-              type="button"
-              id="add-question-btn"
-              class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
-            >
-              + Add Question
-            </button>
           </div>
 
           <div id="questions-container" class="space-y-6">
@@ -223,307 +206,869 @@ console.log('Normalized questions count:', normalizedQuestions.length);
   </div>
 
   <style>
-    .question-editor {
+    .question-card {
       border: 2px solid #e5e7eb;
-      border-radius: 0.5rem;
-      padding: 1.5rem;
-      background: #f9fafb;
+      border-radius: 0.75rem;
+      background: white;
+      transition: all 0.2s;
+      overflow: hidden;
     }
 
-    .question-editor.expanded {
+    .question-card:hover {
       border-color: #3b82f6;
-      background: white;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .question-card.dragging {
+      opacity: 0.5;
+    }
+
+    .drag-handle {
+      cursor: grab;
+      padding: 0.75rem;
+      color: #9ca3af;
+      transition: color 0.2s;
+    }
+
+    .drag-handle:hover {
+      color: #4b5563;
+    }
+
+    .drag-handle:active {
+      cursor: grabbing;
     }
 
     .option-input-group {
       display: flex;
-      gap: 0.5rem;
-      align-items: center;
-      margin-bottom: 0.5rem;
+      gap: 0.75rem;
+      align-items: start;
+      margin-bottom: 0.75rem;
     }
 
-    .option-input-group input[type="radio"] {
-      margin-top: 0;
+    .option-input {
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* Auto-resize textarea */
+    textarea {
+      resize: vertical;
+      min-height: 60px;
+      field-sizing: content; /* Modern browsers */
+    }
+
+    /* Preview styles matching quiz view */
+    .preview-container {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .preview-question {
+      font-size: 1.125rem;
+      color: #111827;
+      line-height: 1.75;
+      margin-bottom: 1.5rem;
+    }
+
+    .preview-option {
+      display: flex;
+      align-items: start;
+      padding: 1rem;
+      border: 2px solid #e5e7eb;
+      border-radius: 0.5rem;
+      margin-bottom: 0.75rem;
+      background: white;
+      cursor: default;
+    }
+
+    .preview-option.correct {
+      border-color: #10b981;
+      background: #f0fdf4;
+    }
+
+    .preview-option-bullet {
+      width: 1.5rem;
+      height: 1.5rem;
+      border: 2px solid #d1d5db;
+      border-radius: 50%;
+      margin-right: 1rem;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .preview-option.correct .preview-option-bullet {
+      border-color: #10b981;
+      background: #10b981;
+    }
+
+    .preview-option.correct .preview-option-bullet::after {
+      content: '✓';
+      color: white;
+      font-size: 0.875rem;
+      font-weight: bold;
+    }
+
+    .preview-option-content {
+      flex: 1;
+      color: #374151;
+      line-height: 1.625;
+    }
+
+    /* LaTeX rendering */
+    .math-inline, .math-display {
+      font-size: inherit;
+    }
+
+    .math-display {
+      margin: 1rem 0;
+      overflow-x: auto;
     }
   </style>
 
   <script define:vars={{questions: normalizedQuestions, quizId: id}}>
-    // Wait for DOM to be ready
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initializeEditor);
-    } else {
-      initializeEditor();
+    let questionCounter = questions.length > 0 ? Math.max(...questions.map(q => q.id || 0)) : 0;
+    let questionsData = [...questions];
+
+    const questionsContainer = document.getElementById('questions-container');
+    const addQuestionBtn = document.getElementById('add-question-btn');
+    const questionTypeSelect = document.getElementById('question-type-select');
+    const quizForm = document.getElementById('quiz-form');
+    const deleteQuizBtn = document.getElementById('delete-quiz-btn');
+
+    // LaTeX rendering function
+    function renderLatex(container) {
+      if (!window.katex) return;
+      
+      const mathElements = container.querySelectorAll('.math-display, .math-inline');
+      mathElements.forEach((element) => {
+        if (element.querySelector('.katex')) return;
+        
+        const latex = element.getAttribute('data-latex') || '';
+        if (!latex) return;
+        
+        const displayMode = element.classList.contains('math-display');
+        
+        try {
+          element.innerHTML = '';
+          window.katex.render(latex, element, {
+            displayMode,
+            throwOnError: false,
+            trust: true,
+            macros: { '\\degree': '^{\\circ}' }
+          });
+        } catch (err) {
+          console.warn('KaTeX render error:', err);
+          element.innerHTML = `<span style="color: red;">LaTeX Error</span>`;
+        }
+      });
     }
 
-    function initializeEditor() {
-      let questionCounter = questions.length > 0 ? Math.max(...questions.map(q => q.id || 0)) : 0;
-      let questionsData = [...questions];
+    // Process LaTeX in text
+    function processLatex(text) {
+      if (!text) return '';
+      
+      let processed = text.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
+        const cleanLatex = (latex || '').trim();
+        return `<div class="math-display" data-latex="${escapeHtml(cleanLatex)}"></div>`;
+      });
 
-      console.log('Quiz Editor - Questions loaded:', questions.length, questions);
-      console.log('Quiz Editor - Question counter:', questionCounter);
+      processed = processed.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (match, latex) => {
+        const cleanLatex = (latex || '').trim();
+        return `<span class="math-inline" data-latex="${escapeHtml(cleanLatex)}"></span>`;
+      });
 
-      const questionsContainer = document.getElementById('questions-container');
-      const addQuestionBtn = document.getElementById('add-question-btn');
-      const quizForm = document.getElementById('quiz-form');
-      const deleteQuizBtn = document.getElementById('delete-quiz-btn');
+      return processed;
+    }
 
-      if (!questionsContainer) {
-        console.error('Questions container not found!');
-        return;
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+
+    // Auto-resize textarea
+    function autoResizeTextarea(textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = textarea.scrollHeight + 'px';
+    }
+
+    function setupTextareaAutoResize(textarea) {
+      autoResizeTextarea(textarea);
+      textarea.addEventListener('input', () => autoResizeTextarea(textarea));
+    }
+
+    function renderMultipleChoiceEditor(question, questionDiv) {
+      const options = question.options || ['', ''];
+      const correctAnswer = question.correctAnswer || 1;
+      const isComplex = question.type === 'complex-multiple-choice';
+      const correctAnswers = question.correctAnswers || [correctAnswer];
+
+      return `
+        <div class="space-y-4">
+          <!-- Edit Mode -->
+          <div class="edit-section">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Question Text * <span class="text-xs text-gray-500">(Supports LaTeX: $...$ or $$...$$)</span>
+              </label>
+              <textarea
+                class="question-text w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base resize-y"
+                rows="3"
+                required
+                placeholder="Enter question text"
+              >${escapeHtml(question.question)}</textarea>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <label class="block text-sm font-medium text-gray-700">
+                  Options * ${isComplex ? '<span class="text-blue-600">(Multiple correct answers)</span>' : ''}
+                </label>
+                <button
+                  type="button"
+                  class="add-option-btn text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
+                  + Add Option
+                </button>
+              </div>
+              <div class="options-container space-y-3">
+                ${options.map((opt, idx) => `
+                  <div class="option-input-group">
+                    <input
+                      type="${isComplex ? 'checkbox' : 'radio'}"
+                      name="correct-${question.id}"
+                      value="${idx + 1}"
+                      ${isComplex 
+                        ? (correctAnswers.includes(idx + 1) ? 'checked' : '')
+                        : (idx + 1 === correctAnswer ? 'checked' : '')}
+                      class="correct-answer-check mt-3"
+                      title="Mark as correct answer"
+                    />
+                    <input
+                      type="text"
+                      class="option-text option-input px-4 py-2 border border-gray-300 rounded-md text-base"
+                      value="${escapeHtml(opt)}"
+                      placeholder="Option ${idx + 1}"
+                      required
+                    />
+                    <button
+                      type="button"
+                      class="delete-option-btn text-red-600 hover:text-red-800 px-3 py-2 font-bold text-lg"
+                      ${options.length <= 2 ? 'disabled' : ''}
+                      title="Delete option"
+                    >
+                      ×
+                    </button>
+                  </div>
+                `).join('')}
+              </div>
+              <p class="mt-2 text-xs text-gray-500">
+                ${isComplex ? 'Check multiple boxes for correct answers' : 'Select the radio button to mark the correct answer'}
+              </p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Solution Explanation (Optional)
+              </label>
+              <textarea
+                class="solution-text w-full px-4 py-3 border border-gray-300 rounded-md text-sm resize-y"
+                rows="2"
+                placeholder="Explain the correct answer and reasoning"
+              >${escapeHtml(question.metadata?.solution || '')}</textarea>
+            </div>
+          </div>
+
+          <!-- Live Preview -->
+          <div class="preview-container">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Preview</h4>
+              <button type="button" class="refresh-preview-btn text-blue-600 hover:text-blue-800 text-xs font-medium">
+                🔄 Refresh
+              </button>
+            </div>
+            <div class="preview-content">
+              <!-- Preview will be rendered here -->
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderEssayEditor(question) {
+      return `
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Question/Prompt *
+            </label>
+            <textarea
+              class="question-text w-full px-4 py-3 border border-gray-300 rounded-md text-base resize-y"
+              rows="3"
+              required
+              placeholder="Enter essay prompt"
+            >${escapeHtml(question.question)}</textarea>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Max Words (Optional)
+              </label>
+              <input
+                type="number"
+                class="essay-max-words w-full px-4 py-2 border border-gray-300 rounded-md text-base"
+                min="1"
+                value="${question.maxWords || ''}"
+                placeholder="e.g., 500"
+              />
+            </div>
+            <div class="flex items-center">
+              <label class="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  class="essay-allow-upload w-4 h-4"
+                  ${question.allowFileUpload ? 'checked' : ''}
+                />
+                <span class="text-sm text-gray-700">Allow file upload (future)</span>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Grading Rubric (Optional)
+            </label>
+            <textarea
+              class="essay-rubric w-full px-4 py-3 border border-gray-300 rounded-md text-sm resize-y"
+              rows="3"
+              placeholder="Guidelines for grading this essay"
+            >${escapeHtml(question.rubric || question.metadata?.solution || '')}</textarea>
+          </div>
+
+          <!-- Preview -->
+          <div class="preview-container">
+            <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Preview</h4>
+            <div class="preview-content">
+              <div class="preview-question">${processLatex(question.question || 'No prompt entered yet')}</div>
+              <div class="text-sm text-gray-500 italic">Essay answer box will appear for students</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderFillInBlankEditor(question) {
+      const template = question.questionTemplate || question.question || '';
+      const blanks = question.blanks || [];
+
+      return `
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Question Template *
+            </label>
+            <textarea
+              class="question-template w-full px-4 py-3 border border-gray-300 rounded-md text-base resize-y"
+              rows="3"
+              required
+              placeholder="Use {0}, {1}, etc. for blanks. E.g., 'The capital of {0} is {1}.'"
+            >${escapeHtml(template)}</textarea>
+            <p class="mt-1 text-xs text-gray-500">Use {'{0}'}, {'{1}'}, etc. to mark where blanks should appear</p>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="block text-sm font-medium text-gray-700">
+                Blank Answers
+              </label>
+              <button
+                type="button"
+                class="add-blank-btn text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                + Add Blank
+              </button>
+            </div>
+            <div class="blanks-container space-y-3">
+              ${blanks.length > 0 ? blanks.map((blank, idx) => `
+                <div class="blank-group border border-gray-200 rounded-lg p-4 bg-gray-50">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-medium text-gray-700">Blank {${blank.index}}</span>
+                    <button
+                      type="button"
+                      class="delete-blank-btn text-red-600 hover:text-red-800 text-xs font-medium"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    class="blank-answers w-full px-4 py-2 border border-gray-300 rounded-md text-base mb-2"
+                    value="${escapeHtml((blank.correctAnswers || []).join(', '))}"
+                    placeholder="Correct answer(s), separated by commas"
+                    required
+                  />
+                  <label class="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      class="blank-case-sensitive w-4 h-4"
+                      ${blank.caseSensitive ? 'checked' : ''}
+                    />
+                    <span class="text-xs text-gray-600">Case sensitive</span>
+                  </label>
+                </div>
+              `).join('') : '<p class="text-sm text-gray-500 py-4 text-center">No blanks defined yet. Click "+ Add Blank" to start.</p>'}
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Solution Explanation (Optional)
+            </label>
+            <textarea
+              class="solution-text w-full px-4 py-3 border border-gray-300 rounded-md text-sm resize-y"
+              rows="2"
+            >${escapeHtml(question.metadata?.solution || '')}</textarea>
+          </div>
+        </div>
+      `;
+    }
+
+    function updatePreview(questionDiv, question) {
+      const previewContent = questionDiv.querySelector('.preview-content');
+      if (!previewContent) return;
+
+      const questionText = questionDiv.querySelector('.question-text')?.value || '';
+      const questionHtml = processLatex(questionText || 'No question entered yet');
+
+      if (question.type === 'multiple-choice' || question.type === 'complex-multiple-choice') {
+        const options = [];
+        questionDiv.querySelectorAll('.option-text').forEach(input => {
+          const val = input.value.trim();
+          if (val) options.push(val);
+        });
+
+        const correctAnswers = [];
+        questionDiv.querySelectorAll('.correct-answer-check:checked').forEach(input => {
+          correctAnswers.push(parseInt(input.value));
+        });
+
+        const optionsHtml = options.map((opt, idx) => {
+          const isCorrect = correctAnswers.includes(idx + 1);
+          const optionHtml = processLatex(opt);
+          return `
+            <div class="preview-option ${isCorrect ? 'correct' : ''}">
+              <div class="preview-option-bullet"></div>
+              <div class="preview-option-content">${optionHtml}</div>
+            </div>
+          `;
+        }).join('');
+
+        previewContent.innerHTML = `
+          <div class="preview-question">${questionHtml}</div>
+          ${optionsHtml || '<p class="text-sm text-gray-500 italic">No options added yet</p>'}
+        `;
       }
 
-      // Render a question editor
-      function renderQuestion(question: any, index: number) {
-      const questionId = question.id || ++questionCounter;
-      const isExpanded = question.isExpanded || false;
-      
-      const questionDiv = document.createElement('div');
-      questionDiv.className = `question-editor ${isExpanded ? 'expanded' : ''}`;
-      questionDiv.dataset.questionId = questionId;
-      questionDiv.dataset.index = index;
+      // Render LaTeX
+      requestAnimationFrame(() => renderLatex(previewContent));
+    }
 
-      const options = Array.isArray(question.options) ? question.options : [];
-      const correctAnswer = question.correctAnswer || 1;
-      const solution = question.metadata?.solution || '';
+    function renderQuestion(question, index) {
+      const questionDiv = document.createElement('div');
+      questionDiv.className = 'question-card';
+      questionDiv.dataset.questionId = question.id;
+      questionDiv.dataset.index = index;
+      questionDiv.draggable = true;
+
+      let editorHtml = '';
+      switch (question.type) {
+        case 'complex-multiple-choice':
+        case 'multiple-choice':
+          editorHtml = renderMultipleChoiceEditor(question, questionDiv);
+          break;
+        case 'essay':
+          editorHtml = renderEssayEditor(question);
+          break;
+        case 'fill-in-the-blank':
+          editorHtml = renderFillInBlankEditor(question);
+          break;
+      }
+
+      const typeLabels = {
+        'multiple-choice': 'Multiple Choice',
+        'complex-multiple-choice': 'Complex Multiple Choice',
+        'essay': 'Essay',
+        'fill-in-the-blank': 'Fill in the Blank'
+      };
 
       questionDiv.innerHTML = `
-        <div class="flex items-start justify-between mb-4">
-          <div class="flex-1">
-            <h4 class="text-md font-semibold text-gray-900">Question ${index + 1}</h4>
+        <div class="flex items-center bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <div class="drag-handle" title="Drag to reorder">
+            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
+            </svg>
+          </div>
+          <div class="flex-1 ml-3">
+            <h4 class="text-lg font-semibold text-gray-900">Question ${index + 1}</h4>
+            <span class="text-xs text-gray-500 uppercase tracking-wide">${typeLabels[question.type]}</span>
           </div>
           <div class="flex items-center space-x-2">
             <button
               type="button"
-              class="toggle-question-btn text-blue-600 hover:text-blue-800 text-sm"
+              class="move-up-btn px-3 py-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition"
+              ${index === 0 ? 'disabled' : ''}
+              title="Move up"
             >
-              ${isExpanded ? '▼ Collapse' : '▶ Expand'}
+              ↑
             </button>
             <button
               type="button"
-              class="delete-question-btn text-red-600 hover:text-red-800 text-sm"
+              class="move-down-btn px-3 py-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition"
+              title="Move down"
             >
-              🗑️ Delete
+              ↓
+            </button>
+            <button
+              type="button"
+              class="delete-question-btn px-3 py-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition"
+              title="Delete question"
+            >
+              🗑️
             </button>
           </div>
         </div>
-
-        <div class="question-content" style="display: ${isExpanded ? 'block' : 'none'}">
-          <!-- Question Text -->
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Question Text *
-            </label>
-            <textarea
-              class="question-text w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              rows="4"
-              required
-              placeholder="Enter the question text (supports LaTeX: $...$ or $$...$$)"
-            >${escapeHtml(question.question || '')}</textarea>
-          </div>
-
-          <!-- Options -->
-          <div class="mb-4">
-            <div class="flex items-center justify-between mb-2">
-              <label class="block text-sm font-medium text-gray-700">
-                Options *
-              </label>
-              <button
-                type="button"
-                class="add-option-btn text-blue-600 hover:text-blue-800 text-sm"
-              >
-                + Add Option
-              </button>
-            </div>
-            <div class="options-container space-y-2">
-              ${options.map((opt: string, optIndex: number) => `
-                <div class="option-input-group">
-                  <input
-                    type="radio"
-                    name="correct-${questionId}"
-                    value="${optIndex + 1}"
-                    ${optIndex + 1 === correctAnswer ? 'checked' : ''}
-                    class="correct-answer-radio"
-                  />
-                  <input
-                    type="text"
-                    class="option-text flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    value="${escapeHtml(opt)}"
-                    placeholder="Option ${optIndex + 1}"
-                    required
-                  />
-                  <button
-                    type="button"
-                    class="delete-option-btn text-red-600 hover:text-red-800 text-sm px-2"
-                    ${options.length <= 2 ? 'disabled' : ''}
-                  >
-                    ×
-                  </button>
-                </div>
-              `).join('')}
-            </div>
-            <p class="mt-2 text-xs text-gray-500">
-              Select the radio button to mark the correct answer
-            </p>
-          </div>
-
-          <!-- Solution -->
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Solution (Optional)
-            </label>
-            <textarea
-              class="solution-text w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              rows="3"
-              placeholder="Enter solution explanation (supports LaTeX)"
-            >${escapeHtml(solution)}</textarea>
-          </div>
+        <div class="question-content p-6">
+          ${editorHtml}
         </div>
       `;
 
-      // Add event listeners
-      const toggleBtn = questionDiv.querySelector('.toggle-question-btn');
-      toggleBtn?.addEventListener('click', () => {
-        const content = questionDiv.querySelector('.question-content') as HTMLElement;
-        const isExpanded = content.style.display === 'block';
-        content.style.display = isExpanded ? 'none' : 'block';
-        questionDiv.classList.toggle('expanded');
-        toggleBtn.textContent = isExpanded ? '▶ Expand' : '▼ Collapse';
-      });
+      // Setup all textareas for auto-resize
+      questionDiv.querySelectorAll('textarea').forEach(setupTextareaAutoResize);
 
-      const deleteBtn = questionDiv.querySelector('.delete-question-btn');
-      deleteBtn?.addEventListener('click', () => {
-        if (confirm('Are you sure you want to delete this question?')) {
+      // Attach event listeners
+      attachQuestionEventListeners(questionDiv, question);
+      
+      // Initial preview update
+      if (question.type === 'multiple-choice' || question.type === 'complex-multiple-choice') {
+        updatePreview(questionDiv, question);
+      }
+
+      return questionDiv;
+    }
+
+    function attachQuestionEventListeners(questionDiv, question) {
+      // Delete question
+      questionDiv.querySelector('.delete-question-btn')?.addEventListener('click', () => {
+        if (confirm('Delete this question?')) {
           questionDiv.remove();
           updateQuestionIndices();
           updateQuestionCount();
         }
       });
 
-      // Add option
-      const addOptionBtn = questionDiv.querySelector('.add-option-btn');
-      addOptionBtn?.addEventListener('click', () => {
-        const container = questionDiv.querySelector('.options-container');
-        const optionCount = container?.children.length || 0;
-        if (optionCount >= 10) {
-          alert('Maximum 10 options allowed');
-          return;
-        }
-
-        const newOption = document.createElement('div');
-        newOption.className = 'option-input-group';
-        newOption.innerHTML = `
-          <input
-            type="radio"
-            name="correct-${questionId}"
-            value="${optionCount + 1}"
-            class="correct-answer-radio"
-          />
-          <input
-            type="text"
-            class="option-text flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            placeholder="Option ${optionCount + 1}"
-            required
-          />
-          <button
-            type="button"
-            class="delete-option-btn text-red-600 hover:text-red-800 text-sm px-2"
-          >
-            ×
-          </button>
-        `;
-
-        const deleteOptBtn = newOption.querySelector('.delete-option-btn');
-        deleteOptBtn?.addEventListener('click', () => {
-          const container = deleteOptBtn.closest('.options-container');
-          if (container && container.children.length > 2) {
-            newOption.remove();
-            updateRadioValues(questionDiv);
-          } else {
-            alert('At least 2 options are required');
-          }
-        });
-
-        container?.appendChild(newOption);
-      });
-
-      // Delete option
-      questionDiv.querySelectorAll('.delete-option-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const container = (e.target as HTMLElement).closest('.options-container');
-          if (container && container.children.length > 2) {
-            (e.target as HTMLElement).closest('.option-input-group')?.remove();
-            updateRadioValues(questionDiv);
-          } else {
-            alert('At least 2 options are required');
-          }
-        });
-      });
-
-      return questionDiv;
-    }
-
-    function updateRadioValues(questionDiv: HTMLElement) {
-      const radios = questionDiv.querySelectorAll('.correct-answer-radio');
-      radios.forEach((radio, index) => {
-        (radio as HTMLInputElement).value = String(index + 1);
-        const textInput = radio.parentElement?.querySelector('.option-text') as HTMLInputElement;
-        if (textInput) {
-          textInput.placeholder = `Option ${index + 1}`;
+      // Move up/down
+      questionDiv.querySelector('.move-up-btn')?.addEventListener('click', () => {
+        const prev = questionDiv.previousElementSibling;
+        if (prev) {
+          questionsContainer.insertBefore(questionDiv, prev);
+          updateQuestionIndices();
         }
       });
+
+      questionDiv.querySelector('.move-down-btn')?.addEventListener('click', () => {
+        const next = questionDiv.nextElementSibling;
+        if (next) {
+          questionsContainer.insertBefore(next, questionDiv);
+          updateQuestionIndices();
+        }
+      });
+
+      // Drag and drop
+      questionDiv.addEventListener('dragstart', (e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        questionDiv.classList.add('dragging');
+      });
+
+      questionDiv.addEventListener('dragend', () => {
+        questionDiv.classList.remove('dragging');
+        updateQuestionIndices();
+      });
+
+      questionDiv.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const dragging = document.querySelector('.dragging');
+        if (dragging && dragging !== questionDiv) {
+          const box = questionDiv.getBoundingClientRect();
+          const offset = e.clientY - box.top;
+          if (offset > box.height / 2) {
+            questionsContainer.insertBefore(dragging, questionDiv.nextSibling);
+          } else {
+            questionsContainer.insertBefore(dragging, questionDiv);
+          }
+        }
+      });
+
+      // Preview refresh button
+      const refreshBtn = questionDiv.querySelector('.refresh-preview-btn');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+          updatePreview(questionDiv, question);
+        });
+      }
+
+      // Auto-update preview on input
+      const questionTextarea = questionDiv.querySelector('.question-text');
+      if (questionTextarea) {
+        questionTextarea.addEventListener('input', () => {
+          setTimeout(() => updatePreview(questionDiv, question), 300);
+        });
+      }
+
+      questionDiv.querySelectorAll('.option-text, .correct-answer-check').forEach(el => {
+        el.addEventListener('change', () => {
+          setTimeout(() => updatePreview(questionDiv, question), 300);
+        });
+      });
+
+      // Type-specific listeners
+      if (question.type === 'multiple-choice' || question.type === 'complex-multiple-choice') {
+        // Add option
+        questionDiv.querySelector('.add-option-btn')?.addEventListener('click', () => {
+          const container = questionDiv.querySelector('.options-container');
+          const optionCount = container.children.length;
+          if (optionCount >= 10) {
+            alert('Maximum 10 options allowed');
+            return;
+          }
+
+          const isComplex = question.type === 'complex-multiple-choice';
+          const newOption = document.createElement('div');
+          newOption.className = 'option-input-group';
+          newOption.innerHTML = `
+            <input
+              type="${isComplex ? 'checkbox' : 'radio'}"
+              name="correct-${question.id}"
+              value="${optionCount + 1}"
+              class="correct-answer-check mt-3"
+            />
+            <input
+              type="text"
+              class="option-text option-input px-4 py-2 border border-gray-300 rounded-md text-base"
+              placeholder="Option ${optionCount + 1}"
+              required
+            />
+            <button
+              type="button"
+              class="delete-option-btn text-red-600 hover:text-red-800 px-3 py-2 font-bold text-lg"
+            >
+              ×
+            </button>
+          `;
+
+          newOption.querySelector('.delete-option-btn')?.addEventListener('click', () => {
+            if (container.children.length > 2) {
+              newOption.remove();
+              updatePreview(questionDiv, question);
+            } else {
+              alert('At least 2 options required');
+            }
+          });
+
+          newOption.querySelector('.option-text')?.addEventListener('input', () => {
+            setTimeout(() => updatePreview(questionDiv, question), 300);
+          });
+
+          newOption.querySelector('.correct-answer-check')?.addEventListener('change', () => {
+            updatePreview(questionDiv, question);
+          });
+
+          container.appendChild(newOption);
+          updatePreview(questionDiv, question);
+        });
+
+        // Delete option
+        questionDiv.querySelectorAll('.delete-option-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const container = questionDiv.querySelector('.options-container');
+            if (container.children.length > 2) {
+              btn.closest('.option-input-group')?.remove();
+              updatePreview(questionDiv, question);
+            } else {
+              alert('At least 2 options required');
+            }
+          });
+        });
+      }
+
+      if (question.type === 'fill-in-the-blank') {
+        // Add blank
+        questionDiv.querySelector('.add-blank-btn')?.addEventListener('click', () => {
+          const container = questionDiv.querySelector('.blanks-container');
+          const blankCount = container.querySelectorAll('.blank-group').length;
+          
+          const newBlank = document.createElement('div');
+          newBlank.className = 'blank-group border border-gray-200 rounded-lg p-4 bg-gray-50';
+          newBlank.innerHTML = `
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sm font-medium text-gray-700">Blank {${blankCount}}</span>
+              <button
+                type="button"
+                class="delete-blank-btn text-red-600 hover:text-red-800 text-xs font-medium"
+              >
+                Remove
+              </button>
+            </div>
+            <input
+              type="text"
+              class="blank-answers w-full px-4 py-2 border border-gray-300 rounded-md text-base mb-2"
+              placeholder="Correct answer(s), separated by commas"
+              required
+            />
+            <label class="flex items-center space-x-2">
+              <input type="checkbox" class="blank-case-sensitive w-4 h-4" />
+              <span class="text-xs text-gray-600">Case sensitive</span>
+            </label>
+          `;
+
+          newBlank.querySelector('.delete-blank-btn')?.addEventListener('click', () => {
+            newBlank.remove();
+          });
+
+          if (container.querySelector('p')) {
+            container.innerHTML = '';
+          }
+          container.appendChild(newBlank);
+        });
+
+        // Delete blank
+        questionDiv.querySelectorAll('.delete-blank-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            btn.closest('.blank-group')?.remove();
+          });
+        });
+      }
     }
 
     function updateQuestionIndices() {
-      const questions = questionsContainer.querySelectorAll('.question-editor');
+      const questions = questionsContainer.querySelectorAll('.question-card');
       questions.forEach((q, index) => {
         const title = q.querySelector('h4');
-        if (title) title.textContent = `Question ${index + 1}`;
-        q.dataset.index = String(index);
+        if (title) {
+          const typeSpan = q.querySelector('.text-xs.text-gray-500');
+          title.textContent = `Question ${index + 1}`;
+        }
+        q.dataset.index = index;
+
+        // Update move buttons
+        const moveUpBtn = q.querySelector('.move-up-btn');
+        const moveDownBtn = q.querySelector('.move-down-btn');
+        if (moveUpBtn) moveUpBtn.disabled = index === 0;
+        if (moveDownBtn) moveDownBtn.disabled = index === questions.length - 1;
       });
     }
 
     function updateQuestionCount() {
       const count = questionsContainer.children.length;
-      const countEl = document.getElementById('question-count');
-      if (countEl) countEl.textContent = String(count);
+      document.getElementById('question-count').textContent = count;
     }
 
-    function escapeHtml(text: string): string {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
+    function collectQuestions() {
+      const questions = [];
+      const questionCards = questionsContainer.querySelectorAll('.question-card');
 
-    function collectQuestions(): any[] {
-      const questions: any[] = [];
-      const questionEditors = questionsContainer.querySelectorAll('.question-editor');
-
-      questionEditors.forEach((editor, index) => {
-        const questionId = parseInt(editor.getAttribute('data-question-id') || String(index + 1));
-        const questionText = (editor.querySelector('.question-text') as HTMLTextAreaElement)?.value || '';
-        const solutionText = (editor.querySelector('.solution-text') as HTMLTextAreaElement)?.value || '';
+      questionCards.forEach((card, index) => {
+        const questionId = parseInt(card.dataset.questionId);
+        const typeSpan = card.querySelector('.text-xs.text-gray-500');
+        const typeText = typeSpan?.textContent.toLowerCase();
         
-        const options: string[] = [];
-        editor.querySelectorAll('.option-text').forEach(input => {
-          const value = (input as HTMLInputElement).value.trim();
-          if (value) options.push(value);
-        });
+        let type = 'multiple-choice';
+        if (typeText.includes('complex')) type = 'complex-multiple-choice';
+        else if (typeText.includes('essay')) type = 'essay';
+        else if (typeText.includes('fill')) type = 'fill-in-the-blank';
 
-        const correctRadio = editor.querySelector('.correct-answer-radio:checked') as HTMLInputElement;
-        const correctAnswer = correctRadio ? parseInt(correctRadio.value) : 1;
+        const baseQuestion = {
+          id: questionId,
+          type: type,
+          images: [],
+          metadata: {}
+        };
 
-        if (questionText && options.length >= 2) {
+        if (type === 'multiple-choice' || type === 'complex-multiple-choice') {
+          const questionText = card.querySelector('.question-text')?.value || '';
+          const solution = card.querySelector('.solution-text')?.value || '';
+          const options = [];
+          card.querySelectorAll('.option-text').forEach(input => {
+            const val = input.value.trim();
+            if (val) options.push(val);
+          });
+
+          if (type === 'complex-multiple-choice') {
+            const correctAnswers = [];
+            card.querySelectorAll('.correct-answer-check:checked').forEach(input => {
+              correctAnswers.push(parseInt(input.value));
+            });
+            questions.push({
+              ...baseQuestion,
+              question: questionText,
+              options: options,
+              correctAnswers: correctAnswers.length > 0 ? correctAnswers : [1],
+              metadata: { solution }
+            });
+          } else {
+            const correctRadio = card.querySelector('.correct-answer-check:checked');
+            const correctAnswer = correctRadio ? parseInt(correctRadio.value) : 1;
+            questions.push({
+              ...baseQuestion,
+              question: questionText,
+              options: options,
+              correctAnswer: correctAnswer,
+              metadata: { solution }
+            });
+          }
+        } else if (type === 'essay') {
+          const questionText = card.querySelector('.question-text')?.value || '';
+          const maxWords = parseInt(card.querySelector('.essay-max-words')?.value) || undefined;
+          const allowFileUpload = card.querySelector('.essay-allow-upload')?.checked || false;
+          const rubric = card.querySelector('.essay-rubric')?.value || '';
+
           questions.push({
-            id: questionId,
-            type: 'multiple-choice',
+            ...baseQuestion,
             question: questionText,
-            options: options,
-            correctAnswer: correctAnswer,
-            images: [],
-            metadata: {
-              solution: solutionText,
-              solutionImages: []
+            maxWords: maxWords,
+            allowFileUpload: allowFileUpload,
+            rubric: rubric
+          });
+        } else if (type === 'fill-in-the-blank') {
+          const template = card.querySelector('.question-template')?.value || '';
+          const solution = card.querySelector('.solution-text')?.value || '';
+          const blanks = [];
+
+          card.querySelectorAll('.blank-group').forEach((blankGroup, idx) => {
+            const answersInput = blankGroup.querySelector('.blank-answers')?.value || '';
+            const caseSensitive = blankGroup.querySelector('.blank-case-sensitive')?.checked || false;
+            const answers = answersInput.split(',').map(a => a.trim()).filter(a => a);
+
+            if (answers.length > 0) {
+              blanks.push({
+                index: idx,
+                correctAnswers: answers,
+                caseSensitive: caseSensitive
+              });
             }
+          });
+
+          questions.push({
+            ...baseQuestion,
+            question: template,
+            questionTemplate: template,
+            blanks: blanks,
+            metadata: { solution }
           });
         }
       });
@@ -532,44 +1077,61 @@ console.log('Normalized questions count:', normalizedQuestions.length);
     }
 
     // Initialize questions
-    console.log('Initializing questions. Container:', questionsContainer);
-    console.log('Questions to render:', questions.length, questions);
-    
     if (questions.length > 0) {
       questions.forEach((q, index) => {
-        try {
-          console.log(`Rendering question ${index + 1}:`, q);
-          const editor = renderQuestion({ ...q, isExpanded: true }, index);
-          questionsContainer.appendChild(editor);
-        } catch (error) {
-          console.error(`Error rendering question ${index + 1}:`, error, q);
-        }
+        const editor = renderQuestion(q, index);
+        questionsContainer.appendChild(editor);
       });
       updateQuestionCount();
-      console.log('Questions rendered. Total editors:', questionsContainer.querySelectorAll('.question-editor').length);
+      updateQuestionIndices();
     } else {
       questionsContainer.innerHTML = `
-        <div class="text-center py-8 text-gray-500">
-          <p class="text-sm">No questions yet. Click "+ Add Question" to get started.</p>
+        <div class="text-center py-12 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+          <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          <p class="text-lg font-medium mb-2">No questions yet</p>
+          <p class="text-sm">Click "+ Add Question" to start creating your quiz</p>
         </div>
       `;
     }
 
     // Add new question
     addQuestionBtn?.addEventListener('click', () => {
+      const selectedType = questionTypeSelect.value;
       const newQuestion = {
         id: ++questionCounter,
-        type: 'multiple-choice',
+        type: selectedType,
         question: '',
-        options: ['', ''],
-        correctAnswer: 1,
         images: [],
-        metadata: { solution: '', solutionImages: [] },
-        isExpanded: true
+        metadata: {}
       };
+
+      if (selectedType === 'multiple-choice' || selectedType === 'complex-multiple-choice') {
+        newQuestion.options = ['', ''];
+        if (selectedType === 'complex-multiple-choice') {
+          newQuestion.correctAnswers = [1];
+        } else {
+          newQuestion.correctAnswer = 1;
+        }
+      } else if (selectedType === 'essay') {
+        newQuestion.maxWords = undefined;
+        newQuestion.allowFileUpload = false;
+        newQuestion.rubric = '';
+      } else if (selectedType === 'fill-in-the-blank') {
+        newQuestion.questionTemplate = '';
+        newQuestion.blanks = [];
+      }
+
+      if (questionsContainer.querySelector('.text-center')) {
+        questionsContainer.innerHTML = '';
+      }
+
       const editor = renderQuestion(newQuestion, questionsContainer.children.length);
       questionsContainer.appendChild(editor);
       updateQuestionCount();
+      updateQuestionIndices();
+      editor.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
 
     // Submit form
@@ -578,23 +1140,18 @@ console.log('Normalized questions count:', normalizedQuestions.length);
       
       const questions = collectQuestions();
       
-      console.log('Submitting quiz with questions:', questions.length);
-      
       if (questions.length === 0) {
-        alert('Please add at least one question. If questions are not showing, please refresh the page.');
-        console.error('No questions found. Question editors:', questionsContainer.querySelectorAll('.question-editor').length);
+        alert('Please add at least one question');
         return;
       }
 
       const formData = {
-        title: (document.getElementById('title') as HTMLInputElement).value,
-        description: (document.getElementById('description') as HTMLTextAreaElement).value,
-        timeLimit: parseInt((document.getElementById('timeLimit') as HTMLInputElement).value) || undefined,
-        maxAttempts: parseInt((document.getElementById('maxAttempts') as HTMLInputElement).value) || undefined,
+        title: document.getElementById('title').value,
+        description: document.getElementById('description').value,
+        timeLimit: parseInt(document.getElementById('timeLimit').value) || undefined,
+        maxAttempts: parseInt(document.getElementById('maxAttempts').value) || undefined,
         questions: questions
       };
-
-      console.log('Form data:', formData);
 
       try {
         const response = await fetch(`/api/admin/quiz/${quizId}/update`, {
@@ -609,18 +1166,17 @@ console.log('Normalized questions count:', normalizedQuestions.length);
           alert('Quiz updated successfully!');
           window.location.reload();
         } else {
-          console.error('Update error:', result);
           alert('Error: ' + (result.error || 'Failed to update quiz'));
         }
       } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred while updating the quiz: ' + (error instanceof Error ? error.message : 'Unknown error'));
+        alert('An error occurred while updating the quiz');
       }
     });
 
     // Delete quiz
     deleteQuizBtn?.addEventListener('click', async () => {
-      if (!confirm(`Are you sure you want to delete "${quiz.title}"? This action cannot be undone.`)) {
+      if (!confirm('Are you sure you want to delete this quiz? This cannot be undone.')) {
         return;
       }
 
@@ -642,8 +1198,5 @@ console.log('Normalized questions count:', normalizedQuestions.length);
         alert('An error occurred while deleting the quiz');
       }
     });
-
-      updateQuestionCount();
-    } // End of initializeEditor
   </script>
 </Layout>
