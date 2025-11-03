@@ -72,198 +72,202 @@ const normalizedQuestions = Array.isArray(questions)
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 
-  <div class="min-h-screen bg-gray-50">
+  <div class="flex flex-col h-screen bg-gray-100">
     <!-- Header -->
-    <div class="bg-white shadow mb-8">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16 items-center">
-          <div class="flex items-center">
-            <a href="/admin/quizzes" class="text-gray-700 hover:text-blue-600 mr-4">← Back to Quizzes</a>
-            <h1 class="text-2xl font-bold text-gray-900">Edit Quiz</h1>
+    <div class="bg-white shadow-sm px-6 py-4 border-b flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <a href="/admin/quizzes" class="text-gray-700 hover:text-blue-600">← Back to Quizzes</a>
+        <h1 class="text-xl font-bold text-gray-900">{quiz.title}</h1>
+      </div>
+      <div class="flex items-center space-x-4">
+        <button
+          id="save-quiz-btn"
+          class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 font-medium"
+        >
+          Save Quiz
+        </button>
+        <button
+          id="delete-quiz-btn"
+          class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 text-sm"
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+
+    <!-- Quiz Settings (Collapsible) -->
+    <div id="settings-panel" class="bg-white border-b">
+      <button
+        id="toggle-settings-btn"
+        class="w-full px-6 py-3 flex items-center justify-between text-left hover:bg-gray-50"
+      >
+        <span class="font-medium text-gray-900">Quiz Settings</span>
+        <svg id="settings-chevron" class="w-5 h-5 text-gray-500 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+        </svg>
+      </button>
+      <div id="settings-content" class="px-6 pb-4 hidden">
+        <div class="grid grid-cols-2 gap-4 max-w-4xl">
+          <div>
+            <label for="title" class="block text-sm font-medium text-gray-700 mb-1">
+              Quiz Title *
+            </label>
+            <input
+              type="text"
+              id="title"
+              required
+              value={quiz.title}
+              class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+            />
           </div>
-          <div class="flex items-center space-x-4">
-            <button
-              id="delete-quiz-btn"
-              class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 text-sm"
-            >
-              Delete Quiz
-            </button>
+          <div>
+            <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
+              Description
+            </label>
+            <input
+              type="text"
+              id="description"
+              value={settings.description || ''}
+              class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+            />
+          </div>
+          <div>
+            <label for="timeLimit" class="block text-sm font-medium text-gray-700 mb-1">
+              Time Limit (minutes)
+            </label>
+            <input
+              type="number"
+              id="timeLimit"
+              min="1"
+              value={settings.timeLimit ? Math.floor(settings.timeLimit / 60) : ''}
+              class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+            />
+          </div>
+          <div>
+            <label for="maxAttempts" class="block text-sm font-medium text-gray-700 mb-1">
+              Max Attempts
+            </label>
+            <input
+              type="number"
+              id="maxAttempts"
+              min="1"
+              value={settings.maxAttempts || ''}
+              class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+            />
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Quiz Edit Form -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <form id="quiz-form" class="space-y-6">
-        <input type="hidden" name="quizId" value={id} />
-        
-        <!-- Quiz Info -->
-        <div class="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
-          <h3 class="text-lg font-medium text-gray-900 mb-6">Quiz Information</h3>
-          
-          <div class="space-y-4">
-            <div>
-              <label for="title" class="block text-sm font-medium text-gray-700">
-                Quiz Title *
-              </label>
-              <input
-                type="text"
-                name="title"
-                id="title"
-                required
-                value={quiz.title}
-                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              />
-            </div>
+    <!-- Navigation Row -->
+    <div class="flex border-b bg-white">
+      <div id="nav-container" class="flex-1 px-6 py-4 flex items-center justify-between">
+        <!-- Navigation will be rendered here -->
+      </div>
+      <div class="w-80 border-l px-4 py-4 flex items-center justify-center">
+        <select id="question-type-select" class="px-3 py-2 border border-gray-300 rounded-md text-sm mr-2">
+          <option value="multiple-choice">Multiple Choice</option>
+          <option value="complex-multiple-choice">Complex Multiple Choice</option>
+          <option value="essay">Essay</option>
+          <option value="fill-in-the-blank">Fill in the Blank</option>
+        </select>
+        <button
+          id="add-question-btn"
+          class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm whitespace-nowrap"
+        >
+          + Add
+        </button>
+      </div>
+    </div>
 
-            <div>
-              <label for="description" class="block text-sm font-medium text-gray-700">
-                Description
-              </label>
-              <textarea
-                name="description"
-                id="description"
-                rows="3"
-                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm resize-y"
-              >{settings.description || ''}</textarea>
-            </div>
+    <!-- Main Content Area with Sidebar -->
+    <div class="flex flex-1 overflow-hidden">
+      <!-- Main Editor Area -->
+      <div class="flex-1 flex flex-col overflow-hidden">
+        <div class="flex-1 overflow-y-auto px-6 py-6">
+          <div id="question-editor" class="max-w-4xl mx-auto">
+            <!-- Question editor will be rendered here -->
+          </div>
+        </div>
+      </div>
 
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label for="timeLimit" class="block text-sm font-medium text-gray-700">
-                  Time Limit (minutes)
-                </label>
-                <input
-                  type="number"
-                  name="timeLimit"
-                  id="timeLimit"
-                  min="1"
-                  value={settings.timeLimit ? Math.floor(settings.timeLimit / 60) : ''}
-                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label for="maxAttempts" class="block text-sm font-medium text-gray-700">
-                  Max Attempts
-                </label>
-                <input
-                  type="number"
-                  name="maxAttempts"
-                  id="maxAttempts"
-                  min="1"
-                  value={settings.maxAttempts || ''}
-                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-            </div>
+      <!-- Sidebar - Question Navigator -->
+      <div class="w-80 bg-white border-l flex flex-col overflow-y-auto">
+        <!-- Question Grid -->
+        <div class="p-4 border-b">
+          <h3 class="font-semibold text-gray-700 text-sm mb-3 tracking-wide">QUESTION LIST</h3>
+          <div id="question-grid" class="grid grid-cols-5 gap-2 max-h-96 overflow-y-auto p-1">
+            <!-- Question numbers will be rendered here -->
           </div>
         </div>
 
-        <!-- Questions -->
-        <div class="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
-          <div class="flex items-center justify-between mb-6">
-            <h3 class="text-lg font-medium text-gray-900">
-              Questions (<span id="question-count">{normalizedQuestions.length}</span>)
-            </h3>
-            <div class="flex items-center space-x-2">
-              <select id="question-type-select" class="px-3 py-2 border border-gray-300 rounded-md text-sm">
-                <option value="multiple-choice">Multiple Choice</option>
-                <option value="complex-multiple-choice">Complex Multiple Choice</option>
-                <option value="essay">Essay</option>
-                <option value="fill-in-the-blank">Fill in the Blank</option>
-              </select>
-              <button
-                type="button"
-                id="add-question-btn"
-                class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
-              >
-                + Add Question
-              </button>
-            </div>
-          </div>
-
-          <div id="questions-container" class="space-y-6">
-            <!-- Questions will be loaded here -->
-          </div>
+        <!-- Instructions -->
+        <div class="p-4 border-b bg-blue-50">
+          <p class="text-xs text-blue-900">
+            <strong>💡 Tip:</strong> Click a question number to edit it. Drag to reorder questions.
+          </p>
         </div>
 
-        <!-- Submit -->
-        <div class="flex justify-end space-x-4">
-          <a href="/admin/quizzes" class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
-            Cancel
-          </a>
+        <!-- Quick Actions -->
+        <div class="p-4 space-y-2">
           <button
-            type="submit"
-            class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            id="delete-current-btn"
+            class="w-full px-4 py-2 bg-red-50 text-red-700 rounded-md hover:bg-red-100 text-sm font-medium border border-red-200"
           >
-            Update Quiz
+            🗑️ Delete Current Question
           </button>
         </div>
-      </form>
+      </div>
     </div>
   </div>
 
   <style>
-    .question-card {
-      border: 2px solid #e5e7eb;
-      border-radius: 0.75rem;
-      background: white;
-      transition: all 0.2s;
-      overflow: hidden;
-    }
-
-    .question-card:hover {
-      border-color: #3b82f6;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    }
-
-    .question-card.dragging {
-      opacity: 0.5;
-    }
-
-    .drag-handle {
-      cursor: grab;
+    /* Question number buttons */
+    .question-number-btn {
       padding: 0.75rem;
-      color: #9ca3af;
-      transition: color 0.2s;
+      border: 2px solid #e5e7eb;
+      border-radius: 0.5rem;
+      background: white;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+      user-select: none;
     }
 
-    .drag-handle:hover {
-      color: #4b5563;
+    .question-number-btn:hover {
+      border-color: #3b82f6;
+      background: #eff6ff;
     }
 
-    .drag-handle:active {
+    .question-number-btn.active {
+      background: #3b82f6;
+      color: white;
+      border-color: #2563eb;
+    }
+
+    .question-number-btn.dragging {
+      opacity: 0.5;
       cursor: grabbing;
     }
 
-    .option-input-group {
-      display: flex;
-      gap: 0.75rem;
-      align-items: start;
-      margin-bottom: 0.75rem;
-    }
-
-    .option-input {
-      flex: 1;
-      min-width: 0;
+    .question-number-btn.drag-over {
+      border-color: #10b981;
+      background: #d1fae5;
     }
 
     /* Auto-resize textarea */
     textarea {
       resize: vertical;
       min-height: 60px;
-      field-sizing: content; /* Modern browsers */
     }
 
-    /* Preview styles matching quiz view */
+    /* Preview styles */
     .preview-container {
       background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 0.5rem;
+      border: 2px solid #e5e7eb;
+      border-radius: 0.75rem;
       padding: 1.5rem;
-      margin-top: 1rem;
+      margin-top: 1.5rem;
     }
 
     .preview-question {
@@ -281,7 +285,6 @@ const normalizedQuestions = Array.isArray(questions)
       border-radius: 0.5rem;
       margin-bottom: 0.75rem;
       background: white;
-      cursor: default;
     }
 
     .preview-option.correct {
@@ -319,28 +322,52 @@ const normalizedQuestions = Array.isArray(questions)
       line-height: 1.625;
     }
 
-    /* LaTeX rendering */
-    .math-inline, .math-display {
-      font-size: inherit;
+    /* Option input styling */
+    .option-input-group {
+      display: flex;
+      gap: 0.75rem;
+      align-items: start;
+      margin-bottom: 0.75rem;
     }
 
-    .math-display {
-      margin: 1rem 0;
-      overflow-x: auto;
+    .option-input {
+      flex: 1;
+      min-width: 0;
     }
   </style>
 
   <script define:vars={{questions: normalizedQuestions, quizId: id}}>
     let questionCounter = questions.length > 0 ? Math.max(...questions.map(q => q.id || 0)) : 0;
     let questionsData = [...questions];
+    let currentQuestionIndex = 0;
+    let draggedIndex = null;
 
-    const questionsContainer = document.getElementById('questions-container');
+    const questionEditor = document.getElementById('question-editor');
+    const questionGrid = document.getElementById('question-grid');
+    const navContainer = document.getElementById('nav-container');
     const addQuestionBtn = document.getElementById('add-question-btn');
     const questionTypeSelect = document.getElementById('question-type-select');
-    const quizForm = document.getElementById('quiz-form');
+    const saveQuizBtn = document.getElementById('save-quiz-btn');
     const deleteQuizBtn = document.getElementById('delete-quiz-btn');
+    const deleteCurrentBtn = document.getElementById('delete-current-btn');
 
-    // LaTeX rendering function
+    // Settings toggle
+    const toggleSettingsBtn = document.getElementById('toggle-settings-btn');
+    const settingsContent = document.getElementById('settings-content');
+    const settingsChevron = document.getElementById('settings-chevron');
+
+    toggleSettingsBtn?.addEventListener('click', () => {
+      const isHidden = settingsContent.classList.contains('hidden');
+      if (isHidden) {
+        settingsContent.classList.remove('hidden');
+        settingsChevron.classList.add('rotate-180');
+      } else {
+        settingsContent.classList.add('hidden');
+        settingsChevron.classList.remove('rotate-180');
+      }
+    });
+
+    // LaTeX rendering
     function renderLatex(container) {
       if (!window.katex) return;
       
@@ -362,13 +389,11 @@ const normalizedQuestions = Array.isArray(questions)
             macros: { '\\degree': '^{\\circ}' }
           });
         } catch (err) {
-          console.warn('KaTeX render error:', err);
           element.innerHTML = `<span style="color: red;">LaTeX Error</span>`;
         }
       });
     }
 
-    // Process LaTeX in text
     function processLatex(text) {
       if (!text) return '';
       
@@ -391,7 +416,6 @@ const normalizedQuestions = Array.isArray(questions)
       return div.innerHTML;
     }
 
-    // Auto-resize textarea
     function autoResizeTextarea(textarea) {
       textarea.style.height = 'auto';
       textarea.style.height = textarea.scrollHeight + 'px';
@@ -402,92 +426,309 @@ const normalizedQuestions = Array.isArray(questions)
       textarea.addEventListener('input', () => autoResizeTextarea(textarea));
     }
 
-    function renderMultipleChoiceEditor(question, questionDiv) {
+    // Render question grid
+    function renderQuestionGrid() {
+      questionGrid.innerHTML = '';
+      
+      questionsData.forEach((q, index) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'question-number-btn' + (index === currentQuestionIndex ? ' active' : '');
+        btn.textContent = index + 1;
+        btn.draggable = true;
+        btn.dataset.index = index;
+
+        // Click to navigate
+        btn.addEventListener('click', () => {
+          currentQuestionIndex = index;
+          renderCurrentQuestion();
+          renderQuestionGrid();
+        });
+
+        // Drag and drop
+        btn.addEventListener('dragstart', (e) => {
+          draggedIndex = index;
+          btn.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+        });
+
+        btn.addEventListener('dragend', () => {
+          btn.classList.remove('dragging');
+          draggedIndex = null;
+        });
+
+        btn.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          btn.classList.add('drag-over');
+        });
+
+        btn.addEventListener('dragleave', () => {
+          btn.classList.remove('drag-over');
+        });
+
+        btn.addEventListener('drop', (e) => {
+          e.preventDefault();
+          btn.classList.remove('drag-over');
+          
+          if (draggedIndex !== null && draggedIndex !== index) {
+            // Reorder questions
+            const draggedQuestion = questionsData[draggedIndex];
+            questionsData.splice(draggedIndex, 1);
+            questionsData.splice(index, 0, draggedQuestion);
+            
+            // Adjust current index
+            if (currentQuestionIndex === draggedIndex) {
+              currentQuestionIndex = index;
+            } else if (currentQuestionIndex > draggedIndex && currentQuestionIndex <= index) {
+              currentQuestionIndex--;
+            } else if (currentQuestionIndex < draggedIndex && currentQuestionIndex >= index) {
+              currentQuestionIndex++;
+            }
+            
+            renderQuestionGrid();
+          }
+        });
+
+        questionGrid.appendChild(btn);
+      });
+    }
+
+    // Render navigation
+    function renderNavigation() {
+      const total = questionsData.length;
+      const current = currentQuestionIndex + 1;
+
+      navContainer.innerHTML = `
+        <button
+          type="button"
+          id="prev-btn"
+          class="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          ${currentQuestionIndex === 0 ? 'disabled' : ''}
+        >
+          ← Previous
+        </button>
+        <span class="text-gray-700 font-medium">
+          Question ${current} of ${total}
+        </span>
+        <button
+          type="button"
+          id="next-btn"
+          class="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          ${currentQuestionIndex >= total - 1 ? 'disabled' : ''}
+        >
+          Next →
+        </button>
+      `;
+
+      document.getElementById('prev-btn')?.addEventListener('click', () => {
+        if (currentQuestionIndex > 0) {
+          saveCurrentQuestion();
+          currentQuestionIndex--;
+          renderCurrentQuestion();
+          renderQuestionGrid();
+        }
+      });
+
+      document.getElementById('next-btn')?.addEventListener('click', () => {
+        if (currentQuestionIndex < total - 1) {
+          saveCurrentQuestion();
+          currentQuestionIndex++;
+          renderCurrentQuestion();
+          renderQuestionGrid();
+        }
+      });
+    }
+
+    // Save current question data from form
+    function saveCurrentQuestion() {
+      if (questionsData.length === 0) return;
+      
+      const question = questionsData[currentQuestionIndex];
+      const editor = questionEditor.querySelector('.question-edit-form');
+      if (!editor) return;
+
+      if (question.type === 'multiple-choice' || question.type === 'complex-multiple-choice') {
+        question.question = editor.querySelector('.question-text')?.value || '';
+        question.metadata.solution = editor.querySelector('.solution-text')?.value || '';
+        
+        const options = [];
+        editor.querySelectorAll('.option-text').forEach(input => {
+          const val = input.value.trim();
+          if (val) options.push(val);
+        });
+        question.options = options;
+
+        if (question.type === 'complex-multiple-choice') {
+          const correctAnswers = [];
+          editor.querySelectorAll('.correct-answer-check:checked').forEach(input => {
+            correctAnswers.push(parseInt(input.value));
+          });
+          question.correctAnswers = correctAnswers.length > 0 ? correctAnswers : [1];
+        } else {
+          const correctRadio = editor.querySelector('.correct-answer-check:checked');
+          question.correctAnswer = correctRadio ? parseInt(correctRadio.value) : 1;
+        }
+      } else if (question.type === 'essay') {
+        question.question = editor.querySelector('.question-text')?.value || '';
+        question.maxWords = parseInt(editor.querySelector('.essay-max-words')?.value) || undefined;
+        question.allowFileUpload = editor.querySelector('.essay-allow-upload')?.checked || false;
+        question.rubric = editor.querySelector('.essay-rubric')?.value || '';
+      } else if (question.type === 'fill-in-the-blank') {
+        question.questionTemplate = editor.querySelector('.question-template')?.value || '';
+        question.question = question.questionTemplate;
+        question.metadata.solution = editor.querySelector('.solution-text')?.value || '';
+        
+        const blanks = [];
+        editor.querySelectorAll('.blank-group').forEach((blankGroup, idx) => {
+          const answersInput = blankGroup.querySelector('.blank-answers')?.value || '';
+          const caseSensitive = blankGroup.querySelector('.blank-case-sensitive')?.checked || false;
+          const answers = answersInput.split(',').map(a => a.trim()).filter(a => a);
+
+          if (answers.length > 0) {
+            blanks.push({
+              index: idx,
+              correctAnswers: answers,
+              caseSensitive: caseSensitive
+            });
+          }
+        });
+        question.blanks = blanks;
+      }
+    }
+
+    // Render current question editor
+    function renderCurrentQuestion() {
+      if (questionsData.length === 0) {
+        questionEditor.innerHTML = `
+          <div class="text-center py-20">
+            <svg class="w-20 h-20 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <p class="text-xl text-gray-600 mb-2">No questions yet</p>
+            <p class="text-sm text-gray-500">Click "+ Add" to create your first question</p>
+          </div>
+        `;
+        navContainer.innerHTML = '';
+        return;
+      }
+
+      const question = questionsData[currentQuestionIndex];
+      
+      let editorHtml = '';
+      if (question.type === 'multiple-choice' || question.type === 'complex-multiple-choice') {
+        editorHtml = renderMultipleChoiceEditor(question);
+      } else if (question.type === 'essay') {
+        editorHtml = renderEssayEditor(question);
+      } else if (question.type === 'fill-in-the-blank') {
+        editorHtml = renderFillInBlankEditor(question);
+      }
+
+      questionEditor.innerHTML = `<div class="question-edit-form">${editorHtml}</div>`;
+
+      // Setup all textareas for auto-resize
+      questionEditor.querySelectorAll('textarea').forEach(setupTextareaAutoResize);
+
+      // Setup event listeners
+      setupQuestionEventListeners(question);
+
+      // Initial preview update
+      updatePreview(question);
+
+      // Render navigation
+      renderNavigation();
+    }
+
+    function renderMultipleChoiceEditor(question) {
       const options = question.options || ['', ''];
       const correctAnswer = question.correctAnswer || 1;
       const isComplex = question.type === 'complex-multiple-choice';
       const correctAnswers = question.correctAnswers || [correctAnswer];
 
+      const typeLabels = {
+        'multiple-choice': 'Single Answer',
+        'complex-multiple-choice': 'Multiple Answers'
+      };
+
       return `
-        <div class="space-y-4">
-          <!-- Edit Mode -->
-          <div class="edit-section">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-6">
+          <div class="flex items-center justify-between pb-4 border-b">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                Question Text * <span class="text-xs text-gray-500">(Supports LaTeX: $...$ or $$...$$)</span>
-              </label>
-              <textarea
-                class="question-text w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base resize-y"
-                rows="3"
-                required
-                placeholder="Enter question text"
-              >${escapeHtml(question.question)}</textarea>
+              <h3 class="text-lg font-semibold text-gray-900">Question ${currentQuestionIndex + 1}</h3>
+              <p class="text-sm text-gray-500 uppercase tracking-wide">${typeLabels[question.type]}</p>
             </div>
+          </div>
 
-            <div>
-              <div class="flex items-center justify-between mb-3">
-                <label class="block text-sm font-medium text-gray-700">
-                  Options * ${isComplex ? '<span class="text-blue-600">(Multiple correct answers)</span>' : ''}
-                </label>
-                <button
-                  type="button"
-                  class="add-option-btn text-blue-600 hover:text-blue-800 text-sm font-medium"
-                >
-                  + Add Option
-                </button>
-              </div>
-              <div class="options-container space-y-3">
-                ${options.map((opt, idx) => `
-                  <div class="option-input-group">
-                    <input
-                      type="${isComplex ? 'checkbox' : 'radio'}"
-                      name="correct-${question.id}"
-                      value="${idx + 1}"
-                      ${isComplex 
-                        ? (correctAnswers.includes(idx + 1) ? 'checked' : '')
-                        : (idx + 1 === correctAnswer ? 'checked' : '')}
-                      class="correct-answer-check mt-3"
-                      title="Mark as correct answer"
-                    />
-                    <input
-                      type="text"
-                      class="option-text option-input px-4 py-2 border border-gray-300 rounded-md text-base"
-                      value="${escapeHtml(opt)}"
-                      placeholder="Option ${idx + 1}"
-                      required
-                    />
-                    <button
-                      type="button"
-                      class="delete-option-btn text-red-600 hover:text-red-800 px-3 py-2 font-bold text-lg"
-                      ${options.length <= 2 ? 'disabled' : ''}
-                      title="Delete option"
-                    >
-                      ×
-                    </button>
-                  </div>
-                `).join('')}
-              </div>
-              <p class="mt-2 text-xs text-gray-500">
-                ${isComplex ? 'Check multiple boxes for correct answers' : 'Select the radio button to mark the correct answer'}
-              </p>
-            </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Question Text * <span class="text-xs text-gray-500">(Supports LaTeX: $...$ or $$...$$)</span>
+            </label>
+            <textarea
+              class="question-text w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base resize-y"
+              rows="3"
+              required
+              placeholder="Enter question text"
+            >${escapeHtml(question.question)}</textarea>
+          </div>
 
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                Solution Explanation (Optional)
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <label class="block text-sm font-medium text-gray-700">
+                Options * ${isComplex ? '<span class="text-blue-600">(Select multiple correct)</span>' : ''}
               </label>
-              <textarea
-                class="solution-text w-full px-4 py-3 border border-gray-300 rounded-md text-sm resize-y"
-                rows="2"
-                placeholder="Explain the correct answer and reasoning"
-              >${escapeHtml(question.metadata?.solution || '')}</textarea>
+              <button
+                type="button"
+                class="add-option-btn text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                + Add Option
+              </button>
             </div>
+            <div class="options-container space-y-3">
+              ${options.map((opt, idx) => `
+                <div class="option-input-group">
+                  <input
+                    type="${isComplex ? 'checkbox' : 'radio'}"
+                    name="correct-${question.id}"
+                    value="${idx + 1}"
+                    ${isComplex 
+                      ? (correctAnswers.includes(idx + 1) ? 'checked' : '')
+                      : (idx + 1 === correctAnswer ? 'checked' : '')}
+                    class="correct-answer-check mt-3"
+                  />
+                  <input
+                    type="text"
+                    class="option-text option-input px-4 py-2 border border-gray-300 rounded-md text-base"
+                    value="${escapeHtml(opt)}"
+                    placeholder="Option ${idx + 1}"
+                    required
+                  />
+                  <button
+                    type="button"
+                    class="delete-option-btn text-red-600 hover:text-red-800 px-3 py-2 font-bold text-lg"
+                    ${options.length <= 2 ? 'disabled' : ''}
+                  >
+                    ×
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Solution Explanation (Optional)
+            </label>
+            <textarea
+              class="solution-text w-full px-4 py-3 border border-gray-300 rounded-md text-sm resize-y"
+              rows="2"
+              placeholder="Explain the correct answer"
+            >${escapeHtml(question.metadata?.solution || '')}</textarea>
           </div>
 
           <!-- Live Preview -->
           <div class="preview-container">
             <div class="flex items-center justify-between mb-3">
-              <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Preview</h4>
+              <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Live Preview</h4>
               <button type="button" class="refresh-preview-btn text-blue-600 hover:text-blue-800 text-xs font-medium">
                 🔄 Refresh
               </button>
@@ -502,7 +743,14 @@ const normalizedQuestions = Array.isArray(questions)
 
     function renderEssayEditor(question) {
       return `
-        <div class="space-y-4">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-6">
+          <div class="flex items-center justify-between pb-4 border-b">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">Question ${currentQuestionIndex + 1}</h3>
+              <p class="text-sm text-gray-500 uppercase tracking-wide">Essay Question</p>
+            </div>
+          </div>
+
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Question/Prompt *
@@ -529,7 +777,7 @@ const normalizedQuestions = Array.isArray(questions)
               />
             </div>
             <div class="flex items-center">
-              <label class="flex items-center space-x-2 cursor-pointer">
+              <label class="flex items-center space-x-2">
                 <input
                   type="checkbox"
                   class="essay-allow-upload w-4 h-4"
@@ -547,17 +795,8 @@ const normalizedQuestions = Array.isArray(questions)
             <textarea
               class="essay-rubric w-full px-4 py-3 border border-gray-300 rounded-md text-sm resize-y"
               rows="3"
-              placeholder="Guidelines for grading this essay"
+              placeholder="Guidelines for grading"
             >${escapeHtml(question.rubric || question.metadata?.solution || '')}</textarea>
-          </div>
-
-          <!-- Preview -->
-          <div class="preview-container">
-            <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Preview</h4>
-            <div class="preview-content">
-              <div class="preview-question">${processLatex(question.question || 'No prompt entered yet')}</div>
-              <div class="text-sm text-gray-500 italic">Essay answer box will appear for students</div>
-            </div>
           </div>
         </div>
       `;
@@ -568,7 +807,14 @@ const normalizedQuestions = Array.isArray(questions)
       const blanks = question.blanks || [];
 
       return `
-        <div class="space-y-4">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-6">
+          <div class="flex items-center justify-between pb-4 border-b">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">Question ${currentQuestionIndex + 1}</h3>
+              <p class="text-sm text-gray-500 uppercase tracking-wide">Fill in the Blank</p>
+            </div>
+          </div>
+
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Question Template *
@@ -577,9 +823,9 @@ const normalizedQuestions = Array.isArray(questions)
               class="question-template w-full px-4 py-3 border border-gray-300 rounded-md text-base resize-y"
               rows="3"
               required
-              placeholder="Use {0}, {1}, etc. for blanks. E.g., 'The capital of {0} is {1}.'"
+              placeholder="Use {0}, {1}, etc. for blanks"
             >${escapeHtml(template)}</textarea>
-            <p class="mt-1 text-xs text-gray-500">Use {'{0}'}, {'{1}'}, etc. to mark where blanks should appear</p>
+            <p class="mt-1 text-xs text-gray-500">Use {'{0}'}, {'{1}'} to mark blanks</p>
           </div>
 
           <div>
@@ -610,25 +856,21 @@ const normalizedQuestions = Array.isArray(questions)
                     type="text"
                     class="blank-answers w-full px-4 py-2 border border-gray-300 rounded-md text-base mb-2"
                     value="${escapeHtml((blank.correctAnswers || []).join(', '))}"
-                    placeholder="Correct answer(s), separated by commas"
+                    placeholder="Correct answers (comma-separated)"
                     required
                   />
                   <label class="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      class="blank-case-sensitive w-4 h-4"
-                      ${blank.caseSensitive ? 'checked' : ''}
-                    />
+                    <input type="checkbox" class="blank-case-sensitive w-4 h-4" ${blank.caseSensitive ? 'checked' : ''} />
                     <span class="text-xs text-gray-600">Case sensitive</span>
                   </label>
                 </div>
-              `).join('') : '<p class="text-sm text-gray-500 py-4 text-center">No blanks defined yet. Click "+ Add Blank" to start.</p>'}
+              `).join('') : '<p class="text-sm text-gray-500 py-4 text-center">No blanks yet</p>'}
             </div>
           </div>
 
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-              Solution Explanation (Optional)
+              Solution (Optional)
             </label>
             <textarea
               class="solution-text w-full px-4 py-3 border border-gray-300 rounded-md text-sm resize-y"
@@ -639,22 +881,140 @@ const normalizedQuestions = Array.isArray(questions)
       `;
     }
 
-    function updatePreview(questionDiv, question) {
-      const previewContent = questionDiv.querySelector('.preview-content');
+    function setupQuestionEventListeners(question) {
+      const editor = questionEditor.querySelector('.question-edit-form');
+
+      // Auto-update preview
+      const questionTextarea = editor.querySelector('.question-text, .question-template');
+      if (questionTextarea) {
+        questionTextarea.addEventListener('input', () => {
+          setTimeout(() => updatePreview(question), 300);
+        });
+      }
+
+      editor.querySelectorAll('.option-text, .correct-answer-check').forEach(el => {
+        el.addEventListener('change', () => {
+          setTimeout(() => updatePreview(question), 300);
+        });
+      });
+
+      // Refresh preview button
+      const refreshBtn = editor.querySelector('.refresh-preview-btn');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => updatePreview(question));
+      }
+
+      // Add option
+      const addOptionBtn = editor.querySelector('.add-option-btn');
+      if (addOptionBtn) {
+        addOptionBtn.addEventListener('click', () => {
+          const container = editor.querySelector('.options-container');
+          const optionCount = container.children.length;
+          if (optionCount >= 10) {
+            alert('Maximum 10 options');
+            return;
+          }
+
+          const isComplex = question.type === 'complex-multiple-choice';
+          const newOption = document.createElement('div');
+          newOption.className = 'option-input-group';
+          newOption.innerHTML = `
+            <input type="${isComplex ? 'checkbox' : 'radio'}" name="correct-${question.id}" value="${optionCount + 1}" class="correct-answer-check mt-3" />
+            <input type="text" class="option-text option-input px-4 py-2 border border-gray-300 rounded-md text-base" placeholder="Option ${optionCount + 1}" required />
+            <button type="button" class="delete-option-btn text-red-600 hover:text-red-800 px-3 py-2 font-bold text-lg">×</button>
+          `;
+
+          newOption.querySelector('.delete-option-btn')?.addEventListener('click', () => {
+            if (container.children.length > 2) {
+              newOption.remove();
+              updatePreview(question);
+            } else {
+              alert('At least 2 options required');
+            }
+          });
+
+          newOption.querySelector('.option-text')?.addEventListener('input', () => {
+            setTimeout(() => updatePreview(question), 300);
+          });
+
+          newOption.querySelector('.correct-answer-check')?.addEventListener('change', () => {
+            updatePreview(question);
+          });
+
+          container.appendChild(newOption);
+        });
+      }
+
+      // Delete option
+      editor.querySelectorAll('.delete-option-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const container = editor.querySelector('.options-container');
+          if (container.children.length > 2) {
+            btn.closest('.option-input-group')?.remove();
+            updatePreview(question);
+          } else {
+            alert('At least 2 options required');
+          }
+        });
+      });
+
+      // Add blank
+      const addBlankBtn = editor.querySelector('.add-blank-btn');
+      if (addBlankBtn) {
+        addBlankBtn.addEventListener('click', () => {
+          const container = editor.querySelector('.blanks-container');
+          const blankCount = container.querySelectorAll('.blank-group').length;
+          
+          const newBlank = document.createElement('div');
+          newBlank.className = 'blank-group border border-gray-200 rounded-lg p-4 bg-gray-50';
+          newBlank.innerHTML = `
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sm font-medium text-gray-700">Blank {${blankCount}}</span>
+              <button type="button" class="delete-blank-btn text-red-600 hover:text-red-800 text-xs font-medium">Remove</button>
+            </div>
+            <input type="text" class="blank-answers w-full px-4 py-2 border border-gray-300 rounded-md text-base mb-2" placeholder="Correct answers (comma-separated)" required />
+            <label class="flex items-center space-x-2">
+              <input type="checkbox" class="blank-case-sensitive w-4 h-4" />
+              <span class="text-xs text-gray-600">Case sensitive</span>
+            </label>
+          `;
+
+          newBlank.querySelector('.delete-blank-btn')?.addEventListener('click', () => {
+            newBlank.remove();
+          });
+
+          if (container.querySelector('p')) {
+            container.innerHTML = '';
+          }
+          container.appendChild(newBlank);
+        });
+      }
+
+      // Delete blank
+      editor.querySelectorAll('.delete-blank-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          btn.closest('.blank-group')?.remove();
+        });
+      });
+    }
+
+    function updatePreview(question) {
+      const previewContent = questionEditor.querySelector('.preview-content');
       if (!previewContent) return;
 
-      const questionText = questionDiv.querySelector('.question-text')?.value || '';
-      const questionHtml = processLatex(questionText || 'No question entered yet');
+      const editor = questionEditor.querySelector('.question-edit-form');
+      const questionText = editor.querySelector('.question-text')?.value || '';
+      const questionHtml = processLatex(questionText || 'No question entered');
 
       if (question.type === 'multiple-choice' || question.type === 'complex-multiple-choice') {
         const options = [];
-        questionDiv.querySelectorAll('.option-text').forEach(input => {
+        editor.querySelectorAll('.option-text').forEach(input => {
           const val = input.value.trim();
           if (val) options.push(val);
         });
 
         const correctAnswers = [];
-        questionDiv.querySelectorAll('.correct-answer-check:checked').forEach(input => {
+        editor.querySelectorAll('.correct-answer-check:checked').forEach(input => {
           correctAnswers.push(parseInt(input.value));
         });
 
@@ -671,434 +1031,22 @@ const normalizedQuestions = Array.isArray(questions)
 
         previewContent.innerHTML = `
           <div class="preview-question">${questionHtml}</div>
-          ${optionsHtml || '<p class="text-sm text-gray-500 italic">No options added yet</p>'}
+          ${optionsHtml || '<p class="text-sm text-gray-500 italic">No options yet</p>'}
         `;
       }
 
-      // Render LaTeX
       requestAnimationFrame(() => renderLatex(previewContent));
     }
 
-    function renderQuestion(question, index) {
-      const questionDiv = document.createElement('div');
-      questionDiv.className = 'question-card';
-      questionDiv.dataset.questionId = question.id;
-      questionDiv.dataset.index = index;
-      questionDiv.draggable = true;
-
-      let editorHtml = '';
-      switch (question.type) {
-        case 'complex-multiple-choice':
-        case 'multiple-choice':
-          editorHtml = renderMultipleChoiceEditor(question, questionDiv);
-          break;
-        case 'essay':
-          editorHtml = renderEssayEditor(question);
-          break;
-        case 'fill-in-the-blank':
-          editorHtml = renderFillInBlankEditor(question);
-          break;
-      }
-
-      const typeLabels = {
-        'multiple-choice': 'Multiple Choice',
-        'complex-multiple-choice': 'Complex Multiple Choice',
-        'essay': 'Essay',
-        'fill-in-the-blank': 'Fill in the Blank'
-      };
-
-      questionDiv.innerHTML = `
-        <div class="flex items-center bg-gray-50 px-4 py-3 border-b border-gray-200">
-          <div class="drag-handle" title="Drag to reorder">
-            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
-            </svg>
-          </div>
-          <div class="flex-1 ml-3">
-            <h4 class="text-lg font-semibold text-gray-900">Question ${index + 1}</h4>
-            <span class="text-xs text-gray-500 uppercase tracking-wide">${typeLabels[question.type]}</span>
-          </div>
-          <div class="flex items-center space-x-2">
-            <button
-              type="button"
-              class="move-up-btn px-3 py-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition"
-              ${index === 0 ? 'disabled' : ''}
-              title="Move up"
-            >
-              ↑
-            </button>
-            <button
-              type="button"
-              class="move-down-btn px-3 py-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition"
-              title="Move down"
-            >
-              ↓
-            </button>
-            <button
-              type="button"
-              class="delete-question-btn px-3 py-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition"
-              title="Delete question"
-            >
-              🗑️
-            </button>
-          </div>
-        </div>
-        <div class="question-content p-6">
-          ${editorHtml}
-        </div>
-      `;
-
-      // Setup all textareas for auto-resize
-      questionDiv.querySelectorAll('textarea').forEach(setupTextareaAutoResize);
-
-      // Attach event listeners
-      attachQuestionEventListeners(questionDiv, question);
-      
-      // Initial preview update
-      if (question.type === 'multiple-choice' || question.type === 'complex-multiple-choice') {
-        updatePreview(questionDiv, question);
-      }
-
-      return questionDiv;
-    }
-
-    function attachQuestionEventListeners(questionDiv, question) {
-      // Delete question
-      questionDiv.querySelector('.delete-question-btn')?.addEventListener('click', () => {
-        if (confirm('Delete this question?')) {
-          questionDiv.remove();
-          updateQuestionIndices();
-          updateQuestionCount();
-        }
-      });
-
-      // Move up/down
-      questionDiv.querySelector('.move-up-btn')?.addEventListener('click', () => {
-        const prev = questionDiv.previousElementSibling;
-        if (prev) {
-          questionsContainer.insertBefore(questionDiv, prev);
-          updateQuestionIndices();
-        }
-      });
-
-      questionDiv.querySelector('.move-down-btn')?.addEventListener('click', () => {
-        const next = questionDiv.nextElementSibling;
-        if (next) {
-          questionsContainer.insertBefore(next, questionDiv);
-          updateQuestionIndices();
-        }
-      });
-
-      // Drag and drop
-      questionDiv.addEventListener('dragstart', (e) => {
-        e.dataTransfer.effectAllowed = 'move';
-        questionDiv.classList.add('dragging');
-      });
-
-      questionDiv.addEventListener('dragend', () => {
-        questionDiv.classList.remove('dragging');
-        updateQuestionIndices();
-      });
-
-      questionDiv.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        const dragging = document.querySelector('.dragging');
-        if (dragging && dragging !== questionDiv) {
-          const box = questionDiv.getBoundingClientRect();
-          const offset = e.clientY - box.top;
-          if (offset > box.height / 2) {
-            questionsContainer.insertBefore(dragging, questionDiv.nextSibling);
-          } else {
-            questionsContainer.insertBefore(dragging, questionDiv);
-          }
-        }
-      });
-
-      // Preview refresh button
-      const refreshBtn = questionDiv.querySelector('.refresh-preview-btn');
-      if (refreshBtn) {
-        refreshBtn.addEventListener('click', () => {
-          updatePreview(questionDiv, question);
-        });
-      }
-
-      // Auto-update preview on input
-      const questionTextarea = questionDiv.querySelector('.question-text');
-      if (questionTextarea) {
-        questionTextarea.addEventListener('input', () => {
-          setTimeout(() => updatePreview(questionDiv, question), 300);
-        });
-      }
-
-      questionDiv.querySelectorAll('.option-text, .correct-answer-check').forEach(el => {
-        el.addEventListener('change', () => {
-          setTimeout(() => updatePreview(questionDiv, question), 300);
-        });
-      });
-
-      // Type-specific listeners
-      if (question.type === 'multiple-choice' || question.type === 'complex-multiple-choice') {
-        // Add option
-        questionDiv.querySelector('.add-option-btn')?.addEventListener('click', () => {
-          const container = questionDiv.querySelector('.options-container');
-          const optionCount = container.children.length;
-          if (optionCount >= 10) {
-            alert('Maximum 10 options allowed');
-            return;
-          }
-
-          const isComplex = question.type === 'complex-multiple-choice';
-          const newOption = document.createElement('div');
-          newOption.className = 'option-input-group';
-          newOption.innerHTML = `
-            <input
-              type="${isComplex ? 'checkbox' : 'radio'}"
-              name="correct-${question.id}"
-              value="${optionCount + 1}"
-              class="correct-answer-check mt-3"
-            />
-            <input
-              type="text"
-              class="option-text option-input px-4 py-2 border border-gray-300 rounded-md text-base"
-              placeholder="Option ${optionCount + 1}"
-              required
-            />
-            <button
-              type="button"
-              class="delete-option-btn text-red-600 hover:text-red-800 px-3 py-2 font-bold text-lg"
-            >
-              ×
-            </button>
-          `;
-
-          newOption.querySelector('.delete-option-btn')?.addEventListener('click', () => {
-            if (container.children.length > 2) {
-              newOption.remove();
-              updatePreview(questionDiv, question);
-            } else {
-              alert('At least 2 options required');
-            }
-          });
-
-          newOption.querySelector('.option-text')?.addEventListener('input', () => {
-            setTimeout(() => updatePreview(questionDiv, question), 300);
-          });
-
-          newOption.querySelector('.correct-answer-check')?.addEventListener('change', () => {
-            updatePreview(questionDiv, question);
-          });
-
-          container.appendChild(newOption);
-          updatePreview(questionDiv, question);
-        });
-
-        // Delete option
-        questionDiv.querySelectorAll('.delete-option-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const container = questionDiv.querySelector('.options-container');
-            if (container.children.length > 2) {
-              btn.closest('.option-input-group')?.remove();
-              updatePreview(questionDiv, question);
-            } else {
-              alert('At least 2 options required');
-            }
-          });
-        });
-      }
-
-      if (question.type === 'fill-in-the-blank') {
-        // Add blank
-        questionDiv.querySelector('.add-blank-btn')?.addEventListener('click', () => {
-          const container = questionDiv.querySelector('.blanks-container');
-          const blankCount = container.querySelectorAll('.blank-group').length;
-          
-          const newBlank = document.createElement('div');
-          newBlank.className = 'blank-group border border-gray-200 rounded-lg p-4 bg-gray-50';
-          newBlank.innerHTML = `
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-sm font-medium text-gray-700">Blank {${blankCount}}</span>
-              <button
-                type="button"
-                class="delete-blank-btn text-red-600 hover:text-red-800 text-xs font-medium"
-              >
-                Remove
-              </button>
-            </div>
-            <input
-              type="text"
-              class="blank-answers w-full px-4 py-2 border border-gray-300 rounded-md text-base mb-2"
-              placeholder="Correct answer(s), separated by commas"
-              required
-            />
-            <label class="flex items-center space-x-2">
-              <input type="checkbox" class="blank-case-sensitive w-4 h-4" />
-              <span class="text-xs text-gray-600">Case sensitive</span>
-            </label>
-          `;
-
-          newBlank.querySelector('.delete-blank-btn')?.addEventListener('click', () => {
-            newBlank.remove();
-          });
-
-          if (container.querySelector('p')) {
-            container.innerHTML = '';
-          }
-          container.appendChild(newBlank);
-        });
-
-        // Delete blank
-        questionDiv.querySelectorAll('.delete-blank-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-            btn.closest('.blank-group')?.remove();
-          });
-        });
-      }
-    }
-
-    function updateQuestionIndices() {
-      const questions = questionsContainer.querySelectorAll('.question-card');
-      questions.forEach((q, index) => {
-        const title = q.querySelector('h4');
-        if (title) {
-          const typeSpan = q.querySelector('.text-xs.text-gray-500');
-          title.textContent = `Question ${index + 1}`;
-        }
-        q.dataset.index = index;
-
-        // Update move buttons
-        const moveUpBtn = q.querySelector('.move-up-btn');
-        const moveDownBtn = q.querySelector('.move-down-btn');
-        if (moveUpBtn) moveUpBtn.disabled = index === 0;
-        if (moveDownBtn) moveDownBtn.disabled = index === questions.length - 1;
-      });
-    }
-
-    function updateQuestionCount() {
-      const count = questionsContainer.children.length;
-      document.getElementById('question-count').textContent = count;
-    }
-
-    function collectQuestions() {
-      const questions = [];
-      const questionCards = questionsContainer.querySelectorAll('.question-card');
-
-      questionCards.forEach((card, index) => {
-        const questionId = parseInt(card.dataset.questionId);
-        const typeSpan = card.querySelector('.text-xs.text-gray-500');
-        const typeText = typeSpan?.textContent.toLowerCase();
-        
-        let type = 'multiple-choice';
-        if (typeText.includes('complex')) type = 'complex-multiple-choice';
-        else if (typeText.includes('essay')) type = 'essay';
-        else if (typeText.includes('fill')) type = 'fill-in-the-blank';
-
-        const baseQuestion = {
-          id: questionId,
-          type: type,
-          images: [],
-          metadata: {}
-        };
-
-        if (type === 'multiple-choice' || type === 'complex-multiple-choice') {
-          const questionText = card.querySelector('.question-text')?.value || '';
-          const solution = card.querySelector('.solution-text')?.value || '';
-          const options = [];
-          card.querySelectorAll('.option-text').forEach(input => {
-            const val = input.value.trim();
-            if (val) options.push(val);
-          });
-
-          if (type === 'complex-multiple-choice') {
-            const correctAnswers = [];
-            card.querySelectorAll('.correct-answer-check:checked').forEach(input => {
-              correctAnswers.push(parseInt(input.value));
-            });
-            questions.push({
-              ...baseQuestion,
-              question: questionText,
-              options: options,
-              correctAnswers: correctAnswers.length > 0 ? correctAnswers : [1],
-              metadata: { solution }
-            });
-          } else {
-            const correctRadio = card.querySelector('.correct-answer-check:checked');
-            const correctAnswer = correctRadio ? parseInt(correctRadio.value) : 1;
-            questions.push({
-              ...baseQuestion,
-              question: questionText,
-              options: options,
-              correctAnswer: correctAnswer,
-              metadata: { solution }
-            });
-          }
-        } else if (type === 'essay') {
-          const questionText = card.querySelector('.question-text')?.value || '';
-          const maxWords = parseInt(card.querySelector('.essay-max-words')?.value) || undefined;
-          const allowFileUpload = card.querySelector('.essay-allow-upload')?.checked || false;
-          const rubric = card.querySelector('.essay-rubric')?.value || '';
-
-          questions.push({
-            ...baseQuestion,
-            question: questionText,
-            maxWords: maxWords,
-            allowFileUpload: allowFileUpload,
-            rubric: rubric
-          });
-        } else if (type === 'fill-in-the-blank') {
-          const template = card.querySelector('.question-template')?.value || '';
-          const solution = card.querySelector('.solution-text')?.value || '';
-          const blanks = [];
-
-          card.querySelectorAll('.blank-group').forEach((blankGroup, idx) => {
-            const answersInput = blankGroup.querySelector('.blank-answers')?.value || '';
-            const caseSensitive = blankGroup.querySelector('.blank-case-sensitive')?.checked || false;
-            const answers = answersInput.split(',').map(a => a.trim()).filter(a => a);
-
-            if (answers.length > 0) {
-              blanks.push({
-                index: idx,
-                correctAnswers: answers,
-                caseSensitive: caseSensitive
-              });
-            }
-          });
-
-          questions.push({
-            ...baseQuestion,
-            question: template,
-            questionTemplate: template,
-            blanks: blanks,
-            metadata: { solution }
-          });
-        }
-      });
-
-      return questions;
-    }
-
-    // Initialize questions
-    if (questions.length > 0) {
-      questions.forEach((q, index) => {
-        const editor = renderQuestion(q, index);
-        questionsContainer.appendChild(editor);
-      });
-      updateQuestionCount();
-      updateQuestionIndices();
-    } else {
-      questionsContainer.innerHTML = `
-        <div class="text-center py-12 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-          <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-          </svg>
-          <p class="text-lg font-medium mb-2">No questions yet</p>
-          <p class="text-sm">Click "+ Add Question" to start creating your quiz</p>
-        </div>
-      `;
-    }
-
-    // Add new question
+    // Add question
     addQuestionBtn?.addEventListener('click', () => {
       const selectedType = questionTypeSelect.value;
+      
+      // Save current question first
+      if (questionsData.length > 0) {
+        saveCurrentQuestion();
+      }
+
       const newQuestion = {
         id: ++questionCounter,
         type: selectedType,
@@ -1123,24 +1071,37 @@ const normalizedQuestions = Array.isArray(questions)
         newQuestion.blanks = [];
       }
 
-      if (questionsContainer.querySelector('.text-center')) {
-        questionsContainer.innerHTML = '';
-      }
-
-      const editor = renderQuestion(newQuestion, questionsContainer.children.length);
-      questionsContainer.appendChild(editor);
-      updateQuestionCount();
-      updateQuestionIndices();
-      editor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      questionsData.push(newQuestion);
+      currentQuestionIndex = questionsData.length - 1;
+      
+      renderQuestionGrid();
+      renderCurrentQuestion();
     });
 
-    // Submit form
-    quizForm?.addEventListener('submit', async (e) => {
-      e.preventDefault();
+    // Delete current question
+    deleteCurrentBtn?.addEventListener('click', () => {
+      if (questionsData.length === 0) return;
       
-      const questions = collectQuestions();
+      if (!confirm('Delete this question?')) return;
+
+      questionsData.splice(currentQuestionIndex, 1);
       
-      if (questions.length === 0) {
+      if (currentQuestionIndex >= questionsData.length) {
+        currentQuestionIndex = Math.max(0, questionsData.length - 1);
+      }
+      
+      renderQuestionGrid();
+      renderCurrentQuestion();
+    });
+
+    // Save quiz
+    saveQuizBtn?.addEventListener('click', async () => {
+      // Save current question first
+      if (questionsData.length > 0) {
+        saveCurrentQuestion();
+      }
+
+      if (questionsData.length === 0) {
         alert('Please add at least one question');
         return;
       }
@@ -1150,7 +1111,7 @@ const normalizedQuestions = Array.isArray(questions)
         description: document.getElementById('description').value,
         timeLimit: parseInt(document.getElementById('timeLimit').value) || undefined,
         maxAttempts: parseInt(document.getElementById('maxAttempts').value) || undefined,
-        questions: questions
+        questions: questionsData
       };
 
       try {
@@ -1163,22 +1124,19 @@ const normalizedQuestions = Array.isArray(questions)
         const result = await response.json();
 
         if (response.ok) {
-          alert('Quiz updated successfully!');
-          window.location.reload();
+          alert('Quiz saved successfully!');
         } else {
-          alert('Error: ' + (result.error || 'Failed to update quiz'));
+          alert('Error: ' + (result.error || 'Failed to save'));
         }
       } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred while updating the quiz');
+        alert('An error occurred while saving');
       }
     });
 
     // Delete quiz
     deleteQuizBtn?.addEventListener('click', async () => {
-      if (!confirm('Are you sure you want to delete this quiz? This cannot be undone.')) {
-        return;
-      }
+      if (!confirm('Delete this quiz? This cannot be undone.')) return;
 
       try {
         const response = await fetch(`/api/admin/quiz/${quizId}/delete`, {
@@ -1188,15 +1146,19 @@ const normalizedQuestions = Array.isArray(questions)
         const result = await response.json();
 
         if (response.ok) {
-          alert('Quiz deleted successfully!');
+          alert('Quiz deleted!');
           window.location.href = '/admin/quizzes';
         } else {
-          alert('Error: ' + (result.error || 'Failed to delete quiz'));
+          alert('Error: ' + (result.error || 'Failed to delete'));
         }
       } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred while deleting the quiz');
+        alert('An error occurred');
       }
     });
+
+    // Initialize
+    renderQuestionGrid();
+    renderCurrentQuestion();
   </script>
 </Layout>
