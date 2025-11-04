@@ -1,0 +1,655 @@
+---
+import Layout from '../../../components/Layout.astro';
+import { getQuiz } from '../../../lib/quizzes';
+import { getQuizResults } from '../../../lib/scoring';
+import { prisma } from '../../../lib/db';
+
+export const prerender = false;
+
+const { id } = Astro.params;
+const url = Astro.url;
+const scoreParam = url.searchParams.get('score');
+
+// Get user ID from cookies
+const userId = Astro.cookies.get('user_id')?.value;
+
+let quiz: any = null;
+let attempt: any = null;
+let error = '';
+
+try {
+  const quizId = parseInt(id || '0');
+  
+  // Get quiz
+  const rawQuiz = await getQuiz(quizId);
+  
+  if (!rawQuiz) {
+    error = 'Quiz not found';
+  } else {
+    // Parse quiz data
+    quiz = {
+      ...rawQuiz,
+      questions: typeof rawQuiz.questions === 'string' 
+        ? JSON.parse(rawQuiz.questions) 
+        : rawQuiz.questions,
+      settings: typeof rawQuiz.settings === 'string'
+        ? JSON.parse(rawQuiz.settings)
+        : rawQuiz.settings
+    };
+    
+    // Get latest attempt for this user
+    if (userId) {
+      // Try getQuizResults first
+      const results = await getQuizResults(parseInt(userId), quizId);
+      if (results && results.length > 0) {
+        attempt = results[0]; // Latest attempt
+      } else {
+        // Fallback: query directly
+        const latestAttempt = await prisma.quizAttempt.findFirst({
+          where: { userId: parseInt(userId), quizId },
+          orderBy: { completedAt: 'desc' }
+        });
+        if (latestAttempt) {
+          attempt = {
+            ...latestAttempt,
+            answers: JSON.parse(latestAttempt.answers),
+            detailedResults: JSON.parse(latestAttempt.detailedResults)
+          };
+        }
+      }
+    }
+    
+    if (!attempt) {
+      error = 'Quiz attempt not found';
+    }
+  }
+} catch (err) {
+  error = 'Error loading quiz results';
+  console.error(err);
+}
+
+// Format time spent
+function formatTime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+---
+
+<Layout title={`Results - ${quiz?.title || 'Quiz'}`}>
+  <div class="min-h-screen bg-gray-50">
+    {error ? (
+      <div class="max-w-2xl mx-auto px-4 py-8">
+        <div class="bg-white rounded-lg shadow p-8 text-center">
+          <div class="text-red-500 text-6xl mb-4">❌</div>
+          <h2 class="text-2xl font-bold text-gray-900 mb-2">{error}</h2>
+          <p class="text-gray-600 mb-4">The quiz results you're looking for don't exist.</p>
+          <a href="/quizzes" class="text-blue-600 hover:text-blue-700">
+            ← Back to Practice Quizzes
+          </a>
+        </div>
+      </div>
+    ) : (
+      <!-- Quiz Results Display -->
+      <div class="flex flex-col h-screen bg-gray-100">
+        <!-- Quiz Title Header -->
+        <div class="bg-white shadow-sm px-6 py-4 border-b">
+          <h1 class="text-xl font-bold text-gray-900">{quiz.title}</h1>
+        </div>
+
+        <!-- Navigation Row - Nav and Score aligned -->
+        <div class="flex border-b bg-white">
+          <!-- Navigation Bar Column -->
+          <div id="nav-container" class="flex-1 px-6 py-4 flex items-center justify-between">
+            <!-- Navigation bar will be rendered here by JavaScript -->
+          </div>
+          
+          <!-- Score Column (replaces timer) -->
+          <div class="w-80 border-l px-4 py-4">
+            <div class="flex items-center justify-center space-x-2 bg-green-100 px-4 py-3 rounded-lg">
+              <span class="text-sm font-medium text-green-900">SKOR</span>
+              <span id="score-display" class="text-lg font-mono font-bold text-green-900">
+                {attempt?.percentage || 0}%
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Content Area with Sidebar -->
+        <div class="flex flex-1 overflow-hidden">
+          <!-- Main Quiz Area -->
+          <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Question Display Area -->
+            <div class="flex-1 overflow-y-auto px-6 py-6">
+              <div id="question-container" class="max-w-4xl mx-auto overflow-visible">
+                <!-- Questions will be rendered here by JavaScript -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Sidebar - Question Navigator -->
+          <div class="w-80 bg-white border-l flex flex-col overflow-y-auto">
+            <!-- Question Grid -->
+            <div class="p-4 border-b">
+              <h3 class="font-semibold text-gray-700 text-sm mb-3 tracking-wide">NOMOR SOAL</h3>
+              <div id="question-grid" class="grid grid-cols-5 gap-2 max-h-96 overflow-y-auto p-1">
+                <!-- Question numbers will be rendered here -->
+              </div>
+            </div>
+
+            <!-- Status Legend -->
+            <div class="p-4 border-b">
+              <div class="space-y-2 text-sm">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-4 h-4 bg-green-100 border border-green-300 rounded"></div>
+                    <span class="text-gray-700">Benar</span>
+                  </div>
+                  <span id="correct-count" class="font-semibold text-gray-900 min-w-[2rem] text-right">0</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-4 h-4 bg-red-100 border border-red-300 rounded"></div>
+                    <span class="text-gray-700">Salah</span>
+                  </div>
+                  <span id="incorrect-count" class="font-semibold text-gray-900 min-w-[2rem] text-right">0</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-4 h-4 bg-gray-100 border border-gray-300 rounded"></div>
+                    <span class="text-gray-700">Kosong</span>
+                  </div>
+                  <span id="blank-count" class="font-semibold text-gray-900 min-w-[2rem] text-right">0</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Time Spent -->
+            <div class="p-4 border-b">
+              <div class="text-sm">
+                <div class="flex items-center justify-between">
+                  <span class="text-gray-700 font-medium">Waktu yang Digunakan</span>
+                </div>
+                <div class="mt-2 text-lg font-mono font-bold text-gray-900">
+                  {formatTime(attempt?.timeSpent || 0)}
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="p-4 space-y-3">
+              <a
+                href="/quizzes"
+                class="block w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-semibold text-center"
+              >
+                Kembali ke Daftar Kuis
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+
+  <style is:global>
+    .math-display {
+      margin: 1.5rem 0;
+      text-align: center;
+    }
+
+    .math-inline {
+      display: inline-block;
+      vertical-align: baseline;
+      line-height: inherit;
+    }
+
+    .math-inline .katex {
+      vertical-align: baseline;
+      display: inline-block;
+      line-height: inherit;
+    }
+
+    .math-inline .katex-html {
+      line-height: inherit;
+    }
+
+    .prose .math-inline,
+    .prose p .math-inline,
+    .option-content .math-inline {
+      vertical-align: baseline;
+    }
+
+    .math-inline .katex-display {
+      margin: 0;
+    }
+
+    .latex-error {
+      background-color: #fee;
+      border: 1px solid #fcc;
+      padding: 0.5rem;
+      border-radius: 0.25rem;
+      color: #c33;
+    }
+
+    .question-number {
+      width: 2.5rem;
+      height: 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+      font-size: 0.875rem;
+      border: 2px solid transparent;
+    }
+
+    .question-number:hover {
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      transform: translateY(-2px);
+    }
+
+    /* Correct answer - Green */
+    .question-number.correct {
+      background-color: #dcfce7;
+      color: #166534;
+      border-color: #86efac;
+    }
+
+    /* Wrong answer - Red */
+    .question-number.incorrect {
+      background-color: #fee2e2;
+      color: #991b1b;
+      border-color: #fca5a5;
+    }
+
+    /* Blank/Unanswered - More greyed out */
+    .question-number.blank {
+      background-color: #f3f4f6;
+      color: #9ca3af;
+      border-color: #d1d5db;
+      opacity: 0.6;
+    }
+
+    /* Current question - Bold blue */
+    .question-number.current {
+      background-color: #2563eb !important;
+      color: white !important;
+      font-weight: 700 !important;
+      border-color: #2563eb !important;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15) !important;
+      transform: scale(1.15) !important;
+    }
+
+    .question-number.current:hover {
+      transform: scale(1.15) !important;
+    }
+
+    .option-label {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      padding: 1rem;
+      border: 2px solid #e5e7eb;
+      border-radius: 0.5rem;
+      transition: all 0.2s;
+      margin-bottom: 0.75rem;
+    }
+
+    .option-label:hover {
+      background-color: #f9fafb;
+    }
+
+    .option-label.selected {
+      background-color: #eff6ff;
+      border-color: #3b82f6;
+    }
+
+    .option-label.correct {
+      background-color: #f0fdf4;
+      border-color: #10b981;
+    }
+
+    .option-label.incorrect {
+      background-color: #fef2f2;
+      border-color: #ef4444;
+    }
+
+    .option-label input[type="radio"],
+    .option-label input[type="checkbox"] {
+      flex-shrink: 0;
+      width: 1.25rem;
+      height: 1.25rem;
+      margin-right: 1rem;
+      margin-top: 0.125rem;
+      cursor: default;
+    }
+
+    .option-content {
+      flex: 1;
+      text-align: left;
+      line-height: 1.6;
+    }
+
+    .option-content p {
+      margin: 0;
+    }
+  </style>
+
+  <script>
+    // Preload KaTeX CSS/JS
+    (function() {
+      if (typeof window !== 'undefined' && !document.querySelector('link[href*="katex"]')) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css';
+        document.head.appendChild(link);
+      }
+
+      if (typeof window !== 'undefined' && !window.katex) {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js';
+        script.async = false;
+        document.head.appendChild(script);
+      }
+
+      window.renderLatex = function() {
+        if (!window.katex) {
+          setTimeout(() => {
+            if (window.katex) {
+              window.renderLatex();
+            }
+          }, 10);
+          return;
+        }
+
+        const mathElements = document.querySelectorAll('.math-display, .math-inline');
+        mathElements.forEach((element) => {
+          if (element.querySelector('.katex')) {
+            return;
+          }
+
+          const latex = element.getAttribute('data-latex') || '';
+          if (!latex) return;
+
+          const displayMode = element.classList.contains('math-display');
+          
+          try {
+            element.innerHTML = '';
+            window.katex.render(latex, element, {
+              displayMode,
+              throwOnError: false,
+              trust: true,
+              macros: {
+                '\\degree': '^{\\circ}'
+              }
+            });
+          } catch (err) {
+            console.warn('KaTeX render error:', err);
+            element.innerHTML = `<span class="latex-error">LaTeX Error</span>`;
+          }
+        });
+      };
+    })();
+  </script>
+
+  <script define:vars={{ quiz, attempt }}>
+    if (!quiz || !attempt) {
+      document.body.innerHTML = '<div class="text-center py-20"><p class="text-xl text-gray-600">Loading...</p></div>';
+    } else {
+      // Client-side markdown renderer for LaTeX
+      function processLatex(text) {
+        if (!text) return '';
+        
+        let processed = text.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
+          const cleanLatex = (latex || '').trim();
+          return `<div class="math-display" data-latex="${cleanLatex}"></div>`;
+        });
+
+        processed = processed.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (match, latex) => {
+          const cleanLatex = (latex || '').trim();
+          return `<span class="math-inline" data-latex="${cleanLatex}"></span>`;
+        });
+
+        return processed;
+      }
+
+      // Quiz state
+      let currentQuestionIndex = 0;
+      const detailedResults = attempt.detailedResults || [];
+      const questions = quiz.questions || [];
+
+      // Render question grid
+      function renderQuestionGrid() {
+        const grid = document.getElementById('question-grid');
+        grid.innerHTML = '';
+        
+        detailedResults.forEach((result, index) => {
+          const btn = document.createElement('button');
+          btn.textContent = index + 1;
+          
+          // Build class list based on result
+          const classes = ['question-number'];
+          
+          // Priority: current > correct/incorrect/blank
+          if (index === currentQuestionIndex) {
+            classes.push('current');
+          }
+          
+          // Apply status class (but current takes visual precedence)
+          if (result.isCorrect) {
+            classes.push('correct');
+          } else if (result.userAnswer && result.userAnswer.length > 0) {
+            classes.push('incorrect');
+          } else {
+            classes.push('blank');
+          }
+          
+          btn.className = classes.join(' ');
+          btn.onclick = () => goToQuestion(index);
+          grid.appendChild(btn);
+        });
+
+        updateCounts();
+      }
+
+      // Update status counts
+      function updateCounts() {
+        let correct = 0;
+        let incorrect = 0;
+        let blank = 0;
+
+        detailedResults.forEach(result => {
+          if (result.isCorrect) {
+            correct++;
+          } else if (result.userAnswer && result.userAnswer.length > 0) {
+            incorrect++;
+          } else {
+            blank++;
+          }
+        });
+
+        document.getElementById('correct-count').textContent = correct;
+        document.getElementById('incorrect-count').textContent = incorrect;
+        document.getElementById('blank-count').textContent = blank;
+      }
+
+      // Render current question
+      function renderQuestion() {
+        const result = detailedResults[currentQuestionIndex];
+        const question = result.question;
+        const container = document.getElementById('question-container');
+        
+        const isComplex = question.type === 'complex-multiple-choice' || question.type === 'complex';
+        const inputType = isComplex ? 'checkbox' : 'radio';
+        
+        // Process question text with LaTeX
+        const questionHtml = processLatex(question.question || '');
+        
+        // Process options with LaTeX
+        const userAnswers = result.userAnswer || [];
+        const correctAnswers = isComplex 
+          ? (Array.isArray(question.correctAnswers) ? question.correctAnswers : [question.correctAnswers])
+          : [question.correctAnswer];
+        
+        const optionsHtml = question.options.map((option, optIndex) => {
+          const optionHtml = processLatex(option || '');
+          const optionValue = optIndex + 1;
+          const isUserSelected = userAnswers.includes(optionValue);
+          const isCorrect = correctAnswers.includes(optionValue);
+          
+          // Determine option styling
+          let optionClass = '';
+          if (isCorrect) {
+            optionClass = 'correct';
+          } else if (isUserSelected && !isCorrect) {
+            optionClass = 'incorrect';
+          } else if (isUserSelected) {
+            optionClass = 'selected';
+          }
+          
+          return `
+            <label class="option-label ${optionClass}">
+              <input
+                type="${inputType}"
+                name="question-${currentQuestionIndex}"
+                value="${optionValue}"
+                ${isUserSelected ? 'checked' : ''}
+                disabled
+              />
+              <div class="option-content">${optionHtml}</div>
+            </label>
+          `;
+        }).join('');
+        
+        // Process solution with LaTeX
+        const solutionHtml = question.metadata?.solution ? processLatex(question.metadata.solution) : '';
+        
+        // Render navigation bar
+        const navContainer = document.getElementById('nav-container');
+        navContainer.innerHTML = `
+          <button
+            id="prev-btn-main"
+            class="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium"
+            ${currentQuestionIndex === 0 ? 'disabled' : ''}
+          >
+            <span>← Soal Sebelumnya</span>
+          </button>
+          
+          <div class="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg font-bold">
+            SOAL NO. ${currentQuestionIndex + 1}
+          </div>
+          
+          <button
+            id="next-btn-main"
+            class="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+            ${currentQuestionIndex === questions.length - 1 ? 'disabled' : ''}
+          >
+            <span>${currentQuestionIndex === questions.length - 1 ? 'Selesai' : 'Soal Selanjutnya →'}</span>
+          </button>
+        `;
+
+        // Render question content
+        container.innerHTML = `
+          <div class="bg-white rounded-lg shadow-lg p-8">
+            <div class="prose max-w-none mb-8">
+              <div class="text-lg text-gray-800">${questionHtml}</div>
+            </div>
+
+            ${question.images && question.images.length > 0 ? `
+              <div class="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                ${question.images.map(img => `
+                  <img src="${img}" alt="Question illustration" class="rounded-lg border shadow-sm" />
+                `).join('')}
+              </div>
+            ` : ''}
+
+            <div class="space-y-3">
+              ${optionsHtml}
+            </div>
+
+            ${isComplex ? `
+              <p class="mt-4 text-sm text-purple-600 font-medium">
+                🔣 Pilihan ganda kompleks - Beberapa jawaban mungkin benar
+              </p>
+            ` : ''}
+
+            ${solutionHtml ? `
+              <details class="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4" open>
+                <summary class="font-semibold text-gray-800 cursor-pointer hover:text-blue-600">
+                  💡 Lihat Pembahasan
+                </summary>
+                <div class="prose max-w-none text-gray-700 mt-4">
+                  ${solutionHtml}
+                </div>
+                ${question.metadata?.solutionImages && question.metadata.solutionImages.length > 0 ? `
+                  <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    ${question.metadata.solutionImages.map(img => `
+                      <img src="${img}" alt="Solution" class="rounded-lg border" />
+                    `).join('')}
+                  </div>
+                ` : ''}
+              </details>
+            ` : ''}
+          </div>
+        `;
+
+        // Add event handlers for navigation buttons
+        document.getElementById('prev-btn-main').onclick = () => {
+          if (currentQuestionIndex > 0) {
+            goToQuestion(currentQuestionIndex - 1);
+          }
+        };
+
+        document.getElementById('next-btn-main').onclick = () => {
+          if (currentQuestionIndex < questions.length - 1) {
+            goToQuestion(currentQuestionIndex + 1);
+          }
+        };
+
+        // Render LaTeX immediately after content is set
+        requestAnimationFrame(() => {
+          renderLatex();
+        });
+      }
+
+      // Navigation functions
+      function goToQuestion(index) {
+        currentQuestionIndex = index;
+        renderQuestion();
+        renderQuestionGrid();
+        // Scroll main area to top
+        const mainArea = document.querySelector('.flex-1.overflow-y-auto');
+        if (mainArea) {
+          mainArea.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }
+
+      // Initialize - wait for KaTeX to be ready before rendering first question
+      function initializeResults() {
+        if (window.katex) {
+          renderQuestionGrid();
+          renderQuestion();
+        } else {
+          const checkInterval = setInterval(() => {
+            if (window.katex) {
+              clearInterval(checkInterval);
+              renderQuestionGrid();
+              renderQuestion();
+            }
+          }, 10);
+        }
+      }
+
+      // Wait for DOM to be ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeResults);
+      } else {
+        initializeResults();
+      }
+    }
+  </script>
+</Layout>
+
