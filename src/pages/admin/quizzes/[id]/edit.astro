@@ -195,7 +195,19 @@ const normalizedQuestions = Array.isArray(questions)
       <div class="w-80 bg-white border-l flex flex-col overflow-y-auto">
         <!-- Question Grid -->
         <div class="p-4 border-b">
-          <h3 class="font-semibold text-gray-700 text-sm mb-3 tracking-wide">QUESTION LIST</h3>
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-semibold text-gray-700 text-sm tracking-wide">QUESTION LIST</h3>
+            <div class="flex items-center space-x-2 text-xs">
+              <label class="flex items-center space-x-1 cursor-pointer">
+                <input type="radio" name="reorder-mode" value="shift" checked class="reorder-mode-radio">
+                <span>Shift</span>
+              </label>
+              <label class="flex items-center space-x-1 cursor-pointer">
+                <input type="radio" name="reorder-mode" value="swap" class="reorder-mode-radio">
+                <span>Swap</span>
+              </label>
+            </div>
+          </div>
           <div id="question-grid" class="grid grid-cols-5 gap-2 max-h-96 overflow-y-auto p-1">
             <!-- Question numbers will be rendered here -->
           </div>
@@ -204,12 +216,18 @@ const normalizedQuestions = Array.isArray(questions)
         <!-- Instructions -->
         <div class="p-4 border-b bg-blue-50">
           <p class="text-xs text-blue-900">
-            <strong>💡 Tip:</strong> Click a question number to edit it. Drag to reorder questions.
+            <strong>💡 Tip:</strong> Click to edit. Drag to reorder. Shift = insert, Swap = exchange.
           </p>
         </div>
 
         <!-- Quick Actions -->
         <div class="p-4 space-y-2">
+          <button
+            id="save-quiz-sidebar-btn"
+            class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+          >
+            💾 Save Quiz
+          </button>
           <button
             id="delete-current-btn"
             class="w-full px-4 py-2 bg-red-50 text-red-700 rounded-md hover:bg-red-100 text-sm font-medium border border-red-200"
@@ -221,38 +239,98 @@ const normalizedQuestions = Array.isArray(questions)
     </div>
   </div>
 
-  <style>
-    /* Question number buttons */
-    .question-number-btn {
-      padding: 0.75rem;
-      border: 2px solid #e5e7eb;
-      border-radius: 0.5rem;
-      background: white;
-      cursor: pointer;
-      font-weight: 600;
+  <style is:global>
+    /* Reuse exact styles from quiz view page */
+    .question-number {
+      width: 2.5rem;
+      height: 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.375rem;
+      cursor: grab;
+      font-weight: 500;
       transition: all 0.2s;
+      font-size: 0.875rem;
+      border: 2px solid transparent;
       user-select: none;
     }
 
-    .question-number-btn:hover {
-      border-color: #3b82f6;
-      background: #eff6ff;
+    .question-number:hover {
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      transform: translateY(-2px);
     }
 
-    .question-number-btn.active {
-      background: #3b82f6;
-      color: white;
-      border-color: #2563eb;
+    /* Unanswered - Subtle gray (default state) */
+    .question-number.unanswered {
+      background-color: #f9fafb;
+      color: #6b7280;
+      border-color: #e5e7eb;
     }
 
-    .question-number-btn.dragging {
+    /* Current question - Bold blue, highly visible */
+    .question-number.current {
+      background-color: #2563eb !important;
+      color: white !important;
+      font-weight: 700 !important;
+      border-color: #2563eb !important;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15) !important;
+      transform: scale(1.15) !important;
+    }
+
+    .question-number.current:hover {
+      transform: scale(1.15) !important;
+    }
+
+    /* Drag state - Orange like "ragu-ragu" */
+    .question-number.dragging {
       opacity: 0.5;
       cursor: grabbing;
+      z-index: 1000;
     }
 
-    .question-number-btn.drag-over {
-      border-color: #10b981;
-      background: #d1fae5;
+    /* Drag-over state - Orange (like flagged/ragu-ragu) */
+    .question-number.drag-over {
+      background-color: #ffedd5 !important;
+      color: #9a3412 !important;
+      border-color: #fdba74 !important;
+      transform: scale(1.1);
+    }
+
+    .question-number.current.drag-over {
+      /* Keep current styling even when drag-over */
+      background-color: #2563eb !important;
+      color: white !important;
+      border-color: #2563eb !important;
+    }
+
+    /* Animation for swap/shift */
+    @keyframes slideSwap {
+      0% {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+      }
+      25% {
+        transform: translateX(var(--swap-offset, 0)) scale(1.1);
+        opacity: 0.8;
+      }
+      50% {
+        transform: translateX(calc(var(--swap-offset, 0) * 1.2)) scale(1.05);
+        opacity: 0.9;
+      }
+      75% {
+        transform: translateX(var(--swap-offset, 0)) scale(1.05);
+        opacity: 0.95;
+      }
+      100% {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+      }
+    }
+
+    .question-number.swapping {
+      animation: slideSwap 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 10;
     }
 
     /* Auto-resize textarea */
@@ -348,6 +426,7 @@ const normalizedQuestions = Array.isArray(questions)
     const addQuestionBtn = document.getElementById('add-question-btn');
     const questionTypeSelect = document.getElementById('question-type-select');
     const saveQuizBtn = document.getElementById('save-quiz-btn');
+    const saveQuizSidebarBtn = document.getElementById('save-quiz-sidebar-btn');
     const deleteQuizBtn = document.getElementById('delete-quiz-btn');
     const deleteCurrentBtn = document.getElementById('delete-current-btn');
 
@@ -426,6 +505,70 @@ const normalizedQuestions = Array.isArray(questions)
       textarea.addEventListener('input', () => autoResizeTextarea(textarea));
     }
 
+    // Get reorder mode (shift or swap)
+    function getReorderMode() {
+      const checked = document.querySelector('.reorder-mode-radio:checked');
+      return checked ? checked.value : 'shift';
+    }
+
+    // Animate swap/shift
+    function animateReorder(fromIndex, toIndex, mode) {
+      const buttons = Array.from(questionGrid.children);
+      const affectedIndices = [];
+      const gridCols = 5; // 5 columns in grid
+      const buttonWidth = 2.5; // rem
+      const gap = 0.5; // rem
+      const totalButtonWidth = buttonWidth + gap;
+      
+      if (mode === 'swap') {
+        // Swap: animate both buttons
+        affectedIndices.push({ index: fromIndex, offset: (toIndex - fromIndex) * totalButtonWidth });
+        affectedIndices.push({ index: toIndex, offset: (fromIndex - toIndex) * totalButtonWidth });
+      } else {
+        // Shift: animate all buttons between fromIndex and toIndex
+        const start = Math.min(fromIndex, toIndex);
+        const end = Math.max(fromIndex, toIndex);
+        const direction = toIndex > fromIndex ? 1 : -1;
+        
+        for (let i = start; i <= end; i++) {
+          if (i !== fromIndex) {
+            const offset = direction * totalButtonWidth;
+            affectedIndices.push({ index: i, offset: -offset });
+          }
+        }
+      }
+
+      affectedIndices.forEach(({ index, offset }) => {
+        const btn = buttons[index];
+        if (btn) {
+          // Calculate visual offset based on grid position
+          const fromRow = Math.floor(fromIndex / gridCols);
+          const toRow = Math.floor(toIndex / gridCols);
+          const fromCol = fromIndex % gridCols;
+          const toCol = toIndex % gridCols;
+          
+          // For vertical movement, add row offset
+          const rowDiff = (toRow - fromRow) * (2.5 + 0.5); // button height + gap
+          const colDiff = (toCol - fromCol) * totalButtonWidth;
+          
+          btn.style.setProperty('--swap-offset', `${colDiff}rem`);
+          btn.classList.add('swapping');
+          setTimeout(() => {
+            btn.classList.remove('swapping');
+            btn.style.removeProperty('--swap-offset');
+            // Re-apply correct classes after animation
+            if (index === currentQuestionIndex) {
+              btn.classList.add('current');
+              btn.classList.remove('unanswered');
+            } else {
+              btn.classList.add('unanswered');
+              btn.classList.remove('current');
+            }
+          }, 500);
+        }
+      });
+    }
+
     // Render question grid
     function renderQuestionGrid() {
       questionGrid.innerHTML = '';
@@ -433,7 +576,14 @@ const normalizedQuestions = Array.isArray(questions)
       questionsData.forEach((q, index) => {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'question-number-btn' + (index === currentQuestionIndex ? ' active' : '');
+        // Use same class names as quiz view page
+        const classes = ['question-number'];
+        if (index === currentQuestionIndex) {
+          classes.push('current');
+        } else {
+          classes.push('unanswered');
+        }
+        btn.className = classes.join(' ');
         btn.textContent = index + 1;
         btn.draggable = true;
         btn.dataset.index = index;
@@ -455,12 +605,18 @@ const normalizedQuestions = Array.isArray(questions)
         btn.addEventListener('dragend', () => {
           btn.classList.remove('dragging');
           draggedIndex = null;
+          // Remove all drag-over classes
+          questionGrid.querySelectorAll('.drag-over').forEach(el => {
+            el.classList.remove('drag-over');
+          });
         });
 
         btn.addEventListener('dragover', (e) => {
           e.preventDefault();
           e.dataTransfer.dropEffect = 'move';
-          btn.classList.add('drag-over');
+          if (draggedIndex !== null && draggedIndex !== index) {
+            btn.classList.add('drag-over');
+          }
         });
 
         btn.addEventListener('dragleave', () => {
@@ -472,21 +628,48 @@ const normalizedQuestions = Array.isArray(questions)
           btn.classList.remove('drag-over');
           
           if (draggedIndex !== null && draggedIndex !== index) {
-            // Reorder questions
-            const draggedQuestion = questionsData[draggedIndex];
-            questionsData.splice(draggedIndex, 1);
-            questionsData.splice(index, 0, draggedQuestion);
+            const mode = getReorderMode();
+            const fromIndex = draggedIndex;
+            const toIndex = index;
             
-            // Adjust current index
-            if (currentQuestionIndex === draggedIndex) {
-              currentQuestionIndex = index;
-            } else if (currentQuestionIndex > draggedIndex && currentQuestionIndex <= index) {
-              currentQuestionIndex--;
-            } else if (currentQuestionIndex < draggedIndex && currentQuestionIndex >= index) {
-              currentQuestionIndex++;
+            // Save current question before reordering
+            saveCurrentQuestion();
+            
+            if (mode === 'swap') {
+              // Swap: exchange positions
+              [questionsData[fromIndex], questionsData[toIndex]] = 
+                [questionsData[toIndex], questionsData[fromIndex]];
+              
+              // Update current index if needed
+              if (currentQuestionIndex === fromIndex) {
+                currentQuestionIndex = toIndex;
+              } else if (currentQuestionIndex === toIndex) {
+                currentQuestionIndex = fromIndex;
+              }
+            } else {
+              // Shift: insert at new position
+              const draggedQuestion = questionsData[fromIndex];
+              questionsData.splice(fromIndex, 1);
+              questionsData.splice(toIndex, 0, draggedQuestion);
+              
+              // Adjust current index
+              if (currentQuestionIndex === fromIndex) {
+                currentQuestionIndex = toIndex;
+              } else if (currentQuestionIndex > fromIndex && currentQuestionIndex <= toIndex) {
+                currentQuestionIndex--;
+              } else if (currentQuestionIndex < fromIndex && currentQuestionIndex >= toIndex) {
+                currentQuestionIndex++;
+              }
             }
             
-            renderQuestionGrid();
+            // Animate the reorder
+            animateReorder(fromIndex, toIndex, mode);
+            
+            // Re-render everything
+            setTimeout(() => {
+              renderQuestionGrid();
+              renderCurrentQuestion();
+            }, 50);
           }
         });
 
@@ -644,6 +827,7 @@ const normalizedQuestions = Array.isArray(questions)
       const correctAnswer = question.correctAnswer || 1;
       const isComplex = question.type === 'complex-multiple-choice';
       const correctAnswers = question.correctAnswers || [correctAnswer];
+      const questionNumber = currentQuestionIndex + 1;
 
       const typeLabels = {
         'multiple-choice': 'Single Answer',
@@ -654,7 +838,7 @@ const normalizedQuestions = Array.isArray(questions)
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-6">
           <div class="flex items-center justify-between pb-4 border-b">
             <div>
-              <h3 class="text-lg font-semibold text-gray-900">Question ${currentQuestionIndex + 1}</h3>
+              <h3 class="text-lg font-semibold text-gray-900">Question ${questionNumber}</h3>
               <p class="text-sm text-gray-500 uppercase tracking-wide">${typeLabels[question.type]}</p>
             </div>
           </div>
@@ -742,11 +926,13 @@ const normalizedQuestions = Array.isArray(questions)
     }
 
     function renderEssayEditor(question) {
+      const questionNumber = currentQuestionIndex + 1;
+      
       return `
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-6">
           <div class="flex items-center justify-between pb-4 border-b">
             <div>
-              <h3 class="text-lg font-semibold text-gray-900">Question ${currentQuestionIndex + 1}</h3>
+              <h3 class="text-lg font-semibold text-gray-900">Question ${questionNumber}</h3>
               <p class="text-sm text-gray-500 uppercase tracking-wide">Essay Question</p>
             </div>
           </div>
@@ -805,12 +991,13 @@ const normalizedQuestions = Array.isArray(questions)
     function renderFillInBlankEditor(question) {
       const template = question.questionTemplate || question.question || '';
       const blanks = question.blanks || [];
+      const questionNumber = currentQuestionIndex + 1;
 
       return `
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-6">
           <div class="flex items-center justify-between pb-4 border-b">
             <div>
-              <h3 class="text-lg font-semibold text-gray-900">Question ${currentQuestionIndex + 1}</h3>
+              <h3 class="text-lg font-semibold text-gray-900">Question ${questionNumber}</h3>
               <p class="text-sm text-gray-500 uppercase tracking-wide">Fill in the Blank</p>
             </div>
           </div>
@@ -1094,8 +1281,8 @@ const normalizedQuestions = Array.isArray(questions)
       renderCurrentQuestion();
     });
 
-    // Save quiz
-    saveQuizBtn?.addEventListener('click', async () => {
+    // Save quiz (shared function)
+    async function saveQuiz() {
       // Save current question first
       if (questionsData.length > 0) {
         saveCurrentQuestion();
@@ -1132,7 +1319,11 @@ const normalizedQuestions = Array.isArray(questions)
         console.error('Error:', error);
         alert('An error occurred while saving');
       }
-    });
+    }
+
+    // Attach save handlers
+    saveQuizBtn?.addEventListener('click', saveQuiz);
+    saveQuizSidebarBtn?.addEventListener('click', saveQuiz);
 
     // Delete quiz
     deleteQuizBtn?.addEventListener('click', async () => {
