@@ -1,14 +1,23 @@
 ---
+import { getTranslations } from '../lib/i18n';
+
 export interface Props {
   title: string;
   description?: string;
 }
 
 const { title, description } = Astro.props;
+
+// Server-side locale detection from cookie
+const cookieLocale = Astro.cookies.get('locale')?.value;
+const currentLocale = (cookieLocale === 'en' || cookieLocale === 'id') ? cookieLocale : 'id';
+
+// Get translations for server-side rendering (if we were to use them directly)
+// For now, we just ensure the client knows the correct initial locale
 ---
 
 <!DOCTYPE html>
-<html lang="id" id="html-root">
+<html lang={currentLocale} id="html-root">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,13 +25,16 @@ const { title, description } = Astro.props;
   {description && <meta name="description" content={description}>}
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <link rel="stylesheet" href="/src/styles/global.css">
-  <script is:inline>
+  <script is:inline define:vars={{ initialLocale: currentLocale }}>
     // Inline critical translation script
     console.log('=== INLINE I18N SCRIPT LOADING ===');
     
-    // Get or set initial locale
-    let currentLocale = localStorage.getItem('locale') || 'id';
-    console.log('Current locale from localStorage:', currentLocale);
+    // Use server-provided locale as source of truth
+    let currentLocale = initialLocale;
+    console.log('Initial locale from server:', currentLocale);
+    
+    // Sync to localStorage for client-side logic compatibility
+    localStorage.setItem('locale', currentLocale);
     
     // Listen for DOM content loaded
     document.addEventListener('DOMContentLoaded', function() {
@@ -41,11 +53,11 @@ const { title, description } = Astro.props;
           const newLocale = e.target.value;
           console.log('Language switched to:', newLocale);
           
-          // Save to localStorage
+          // Save to localStorage AND Cookie
           localStorage.setItem('locale', newLocale);
-          currentLocale = newLocale;
+          document.cookie = `locale=${newLocale}; path=/; max-age=31536000`; // 1 year
           
-          // Reload the page to apply new language
+          // Reload the page to apply new language via server
           console.log('Reloading page...');
           window.location.reload();
         });
@@ -71,8 +83,8 @@ const { title, description } = Astro.props;
           <a href="/admin" class="text-gray-700 hover:text-blue-600" data-i18n="nav.admin">Admin</a>
           <a href="/auth/signin" class="text-gray-700 hover:text-blue-600" data-i18n="nav.signIn">Sign In</a>
           <select id="locale-switcher" class="text-gray-700 bg-transparent border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="en">English</option>
-            <option value="id" selected>Bahasa Indonesia</option>
+            <option value="en" selected={currentLocale === 'en'}>English</option>
+            <option value="id" selected={currentLocale === 'id'}>Bahasa Indonesia</option>
           </select>
         </div>
       </div>

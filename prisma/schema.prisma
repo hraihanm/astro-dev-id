@@ -37,16 +37,19 @@ model Chapter {
   order    Int
   content  String?
   course   Course  @relation(fields: [courseId], references: [id])
+  quizzes  Quiz[]
 }
 
 model Quiz {
   id        Int           @id @default(autoincrement())
   courseId  Int? // Made nullable for standalone quizzes
+  chapterId Int?
   title     String
   questions String
   settings  String?
   createdAt DateTime      @default(now())
   course    Course?       @relation(fields: [courseId], references: [id])
+  chapter   Chapter?      @relation(fields: [chapterId], references: [id])
   attempts  QuizAttempt[]
 }
 

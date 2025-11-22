@@ -1,9 +1,11 @@
 ---
 export const prerender = false;
 
-import Layout from '../../../../components/Layout.astro';
+import CourseLayout from '../../../../layouts/CourseLayout.astro';
+import QuizCard from '../../../../components/QuizCard.astro';
 import { getChapterContent } from '../../../../lib/student';
 import { renderMarkdown } from '../../../../lib/latex';
+import { getCourseQuizzes, getChapterQuizzes } from '../../../../lib/quizzes';
 
 const { slug, order } = Astro.params;
 
@@ -21,12 +23,11 @@ if (!courseData || !courseData.chapter) {
 const { course, chapter, prevChapter, nextChapter } = courseData;
 const renderedContent = chapter.content ? renderMarkdown(chapter.content) : '';
 
-// Get quizzes for this course
-const { getCourseQuizzes } = await import('../../../../lib/quizzes');
-const courseQuizzes = await getCourseQuizzes(course.id);
+// Get quizzes for this chapter
+const chapterQuizzes = await getChapterQuizzes(chapter.id);
 
 // Parse quiz data
-const quizzes = courseQuizzes.map(quiz => {
+const quizzes = chapterQuizzes.map(quiz => {
   const settings = quiz.settings ? JSON.parse(quiz.settings) : {};
   const questions = quiz.questions ? JSON.parse(quiz.questions) : [];
   
@@ -40,145 +41,110 @@ const quizzes = courseQuizzes.map(quiz => {
 });
 ---
 
-<Layout title={`${chapter.title} - ${course.title}`}>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Chapter Header -->
-    <div class="bg-white shadow mb-8">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-          <div class="flex items-center">
-            <a href={`/courses/${course.slug}`} class="text-gray-700 hover:text-blue-600 mr-4" data-i18n="courses.backToCourse">← Back to Course</a>
-            <h1 class="text-2xl font-bold text-gray-900">{chapter.title}</h1>
+<CourseLayout title={`${chapter.title} - ${course.title}`} course={course} currentChapterOrder={chapterOrder}>
+  <div class="bg-white rounded-lg border border-gray-200 p-8 lg:p-12">
+    <div class="prose prose-lg max-w-none">
+      <span class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2 block">Chapter {chapter.order}</span>
+      <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-8">{chapter.title}</h1>
+      
+      {renderedContent ? (
+        <div class="chapter-content" set:html={renderedContent} />
+      ) : (
+        <div class="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+          <div class="text-gray-400 mb-4">
+            <svg class="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
           </div>
-          <div class="flex items-center space-x-4">
-            <span class="text-sm text-gray-500"><span data-i18n="courses.chapter">Chapter</span> {chapter.order}</span>
-          </div>
+          <h3 class="text-lg font-medium text-gray-900 mb-2" data-i18n="courses.contentComingSoon">Content Coming Soon</h3>
+          <p class="text-gray-500" data-i18n="courses.contentBeingPrepared">This chapter is being prepared by your instructor.</p>
         </div>
-      </div>
+      )}
     </div>
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        <!-- Chapter Navigation -->
-        <div class="lg:col-span-1">
-          <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4" data-i18n="courses.courseContents">Course Contents</h3>
-            <nav class="space-y-2">
-              {course.chapters.map((ch) => (
-                <a
-                  href={`/courses/${course.slug}/chapter/${ch.order}`}
-                  class={`block px-3 py-2 text-sm rounded-md transition-colors ${
-                    ch.order === chapterOrder
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'
-                  }`}
-                >
-                  <div class="flex items-center">
-                    <span class={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium mr-3 ${
-                      ch.order === chapterOrder
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-200 text-gray-600'
-                    }`}>
-                      {ch.order}
-                    </span>
-                    <span class="truncate">{ch.title}</span>
-                  </div>
-                </a>
-              ))}
-            </nav>
+    <!-- Chapter Quizzes Section -->
+    {quizzes.length > 0 ? (
+      <div class="mt-12 pt-8 border-t border-gray-200">
+        <div class="flex items-center mb-6">
+          <div class="h-8 w-8 bg-green-100 text-green-600 rounded-full flex items-center justify-center mr-3">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
           </div>
+          <h3 class="text-xl font-bold text-gray-900">Practice Quizzes</h3>
         </div>
-
-        <!-- Chapter Content -->
-        <div class="lg:col-span-3">
-          <div class="bg-white rounded-lg shadow p-8">
-            <div class="prose prose-lg max-w-none">
-              <h2 class="text-3xl font-bold text-gray-900 mb-6">{chapter.title}</h2>
-              
-              {renderedContent ? (
-                <div class="chapter-content" set:html={renderedContent} />
-              ) : (
-                <div class="text-center py-12">
-                  <div class="text-gray-400 mb-4">
-                    <svg class="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                  <h3 class="text-lg font-medium text-gray-900 mb-2" data-i18n="courses.contentComingSoon">Content Coming Soon</h3>
-                  <p class="text-gray-500" data-i18n="courses.contentBeingPrepared">This chapter is being prepared by your instructor.</p>
-                </div>
-              )}
-            </div>
-
-            <!-- Course Quizzes Section -->
-            {quizzes.length > 0 && (
-              <div class="mt-8 pt-6 border-t">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">📝 Kuis untuk Kursus Ini</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {quizzes.map((quiz) => (
-                    <a
-                      href={`/quizzes/${quiz.id}`}
-                      class="block p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:shadow-md transition-all"
-                    >
-                      <div class="flex items-start justify-between">
-                        <div class="flex-1">
-                          <h4 class="font-semibold text-gray-900">{quiz.title}</h4>
-                          <p class="text-sm text-gray-500 mt-1">
-                            {quiz.questionCount} {quiz.isEssay ? 'soal' : 'pertanyaan'}
-                          </p>
-                        </div>
-                        {quiz.isEssay && (
-                          <span class="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
-                            Essay
-                          </span>
-                        )}
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            <!-- Navigation -->
-            <div class="mt-8 flex justify-between items-center pt-6 border-t">
-              <div>
-                {prevChapter ? (
-                  <a
-                    href={`/courses/${course.slug}/chapter/${prevChapter.order}`}
-                    class="inline-flex items-center text-blue-600 hover:text-blue-700"
-                  >
-                    <svg class="mr-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                    </svg>
-                    <span data-i18n="courses.previous">Previous</span>: {prevChapter.title}
-                  </a>
-                ) : (
-                  <span class="text-gray-400" data-i18n="courses.noPreviousChapter">No previous chapter</span>
-                )}
-              </div>
-              
-              <div>
-                {nextChapter ? (
-                  <a
-                    href={`/courses/${course.slug}/chapter/${nextChapter.order}`}
-                    class="inline-flex items-center text-blue-600 hover:text-blue-700"
-                  >
-                    <span data-i18n="courses.next">Next</span>: {nextChapter.title}
-                    <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </a>
-                ) : (
-                  <span class="text-gray-400" data-i18n="courses.noNextChapter">No next chapter</span>
-                )}
-              </div>
-            </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {quizzes.map((quiz) => (
+            <QuizCard
+              id={quiz.id}
+              title={quiz.title}
+              questionCount={quiz.questionCount}
+              isEssay={quiz.isEssay}
+              href={`/quizzes/${quiz.id}`}
+            />
+          ))}
+        </div>
+      </div>
+    ) : (
+      <div class="mt-12 pt-8 border-t border-gray-200">
+        <div class="flex items-center mb-6">
+          <div class="h-8 w-8 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center mr-3">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
           </div>
+          <h3 class="text-xl font-bold text-gray-400">Practice Quizzes</h3>
         </div>
+        <p class="text-gray-500 italic">No quizzes available for this chapter yet.</p>
+      </div>
+    )}
+    
+    <!-- Navigation -->
+    <div class="mt-12 flex justify-between items-center pt-8 border-t border-gray-200">
+      <div>
+        {prevChapter ? (
+          <a
+            href={`/courses/${course.slug}/chapter/${prevChapter.order}`}
+            class="group inline-flex items-center text-gray-500 hover:text-blue-600 transition-colors"
+          >
+            <div class="mr-3 h-10 w-10 rounded-full border border-gray-200 flex items-center justify-center group-hover:border-blue-200 group-hover:bg-blue-50">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </div>
+            <div class="text-left">
+              <p class="text-xs text-gray-400 uppercase tracking-wider font-medium">Previous</p>
+              <p class="text-sm font-medium">{prevChapter.title}</p>
+            </div>
+          </a>
+        ) : (
+          <div class="invisible">Placeholder</div>
+        )}
+      </div>
+      
+      <div>
+        {nextChapter ? (
+          <a
+            href={`/courses/${course.slug}/chapter/${nextChapter.order}`}
+            class="group inline-flex items-center text-gray-500 hover:text-blue-600 transition-colors text-right"
+          >
+            <div class="text-right">
+              <p class="text-xs text-gray-400 uppercase tracking-wider font-medium">Next</p>
+              <p class="text-sm font-medium">{nextChapter.title}</p>
+            </div>
+            <div class="ml-3 h-10 w-10 rounded-full border border-gray-200 flex items-center justify-center group-hover:border-blue-200 group-hover:bg-blue-50">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </a>
+        ) : (
+          <div class="invisible">Placeholder</div>
+        )}
       </div>
     </div>
   </div>
-</Layout>
+</CourseLayout>
 
 <style>
   .chapter-content {

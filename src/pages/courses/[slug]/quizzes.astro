@@ -1,0 +1,81 @@
+---
+export const prerender = false;
+
+import CourseLayout from '../../../layouts/CourseLayout.astro';
+import QuizCard from '../../../components/QuizCard.astro';
+import { getCourseContent } from '../../../lib/student';
+import { getCourseQuizzes } from '../../../lib/quizzes';
+
+const { slug } = Astro.params;
+
+if (!slug) {
+  return Astro.redirect('/courses');
+}
+
+const course = await getCourseContent(slug);
+
+if (!course) {
+  return Astro.redirect('/courses');
+}
+
+// Get all quizzes for this course (including chapter quizzes)
+const courseQuizzesRaw = await getCourseQuizzes(course.id);
+
+// Parse quiz data
+const quizzes = courseQuizzesRaw.map(quiz => {
+  const settings = quiz.settings ? JSON.parse(quiz.settings) : {};
+  const questions = quiz.questions ? JSON.parse(quiz.questions) : [];
+  
+  return {
+    id: quiz.id,
+    title: quiz.title,
+    type: settings.type || 'multiple-choice',
+    questionCount: settings.type === 'essay' ? (settings.problemCount || 0) : (Array.isArray(questions) ? questions.length : 0),
+    isEssay: settings.type === 'essay',
+    chapter: quiz.chapter
+  };
+});
+---
+
+<CourseLayout title={`Quizzes - ${course.title}`} course={course}>
+  <div class="bg-white rounded-lg border border-gray-200 p-8 lg:p-12">
+    <div class="mb-8">
+      <span class="text-sm font-semibold text-green-600 uppercase tracking-wide mb-2 block" data-i18n="courses.assessments">Assessments</span>
+      <h1 class="text-3xl md:text-4xl font-bold text-gray-900" data-i18n="courses.courseQuizzes">Course Quizzes</h1>
+      <p class="mt-4 text-lg text-gray-600">
+        Practice your knowledge with these quizzes.
+      </p>
+    </div>
+
+    {quizzes.length > 0 ? (
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {quizzes.map((quiz) => (
+          <div class="flex flex-col">
+            {quiz.chapter && (
+              <span class="text-xs font-medium text-gray-500 mb-1 ml-1">
+                Chapter {quiz.chapter.order}: {quiz.chapter.title}
+              </span>
+            )}
+            <QuizCard
+              id={quiz.id}
+              title={quiz.title}
+              questionCount={quiz.questionCount}
+              isEssay={quiz.isEssay}
+              href={`/quizzes/${quiz.id}`}
+            />
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div class="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+        <div class="text-gray-400 mb-4">
+          <svg class="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+        </div>
+        <h3 class="text-lg font-medium text-gray-900 mb-2" data-i18n="courses.noQuizzes">No Quizzes Available</h3>
+        <p class="text-gray-500" data-i18n="courses.noQuizzesDesc">There are no quizzes available for this course yet.</p>
+      </div>
+    )}
+  </div>
+</CourseLayout>

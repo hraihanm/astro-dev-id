@@ -26,6 +26,7 @@ function getCurrentLocale(): 'en' | 'id' {
 function setLocale(locale: 'en' | 'id'): void {
   currentLocale = locale;
   localStorage.setItem('locale', locale);
+  document.cookie = `locale=${locale}; path=/; max-age=31536000`; // 1 year
 }
 
 function t(key: string, locale?: 'en' | 'id'): string {
@@ -48,7 +49,7 @@ function t(key: string, locale?: 'en' | 'id'): string {
 
 function translatePage(locale: 'en' | 'id') {
   console.log(`Translating page to: ${locale}`);
-  
+
   // Translate text content
   const elements = document.querySelectorAll('[data-i18n]');
   console.log(`Found ${elements.length} elements with data-i18n`);
@@ -75,7 +76,7 @@ function translatePage(locale: 'en' | 'id') {
       }
     }
   });
-  
+
   console.log(`Translation complete: ${translatedCount} succeeded, ${failedCount} failed`);
 
   // Translate placeholders
@@ -100,11 +101,11 @@ function translatePage(locale: 'en' | 'id') {
 
 function initI18n() {
   console.log('=== INIT I18N ===');
-  
+
   // Get saved locale or default
   const savedLocale = localStorage.getItem('locale') as 'en' | 'id' | null;
   const currentLoc = savedLocale || 'id';
-  
+
   console.log('Initializing with locale:', currentLoc);
   console.log('Translations available:', Object.keys(translations));
 
@@ -138,7 +139,7 @@ function initI18n() {
   if (htmlRoot) {
     htmlRoot.setAttribute('lang', currentLoc === 'id' ? 'id' : 'en');
   }
-  
+
   console.log('Init complete');
 }
 
@@ -151,7 +152,7 @@ if (document.readyState === 'loading') {
 
 // Re-translate on navigation (for SPA-like behavior)
 const originalPushState = history.pushState;
-history.pushState = function(...args) {
+history.pushState = function (...args) {
   originalPushState.apply(history, args);
   setTimeout(() => {
     translatePage(getCurrentLocale());
