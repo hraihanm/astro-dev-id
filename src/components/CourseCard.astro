@@ -1,4 +1,6 @@
 ---
+import { siteContent } from '../data/siteContent';
+
 export interface Props {
   title: string;
   description: string;
@@ -18,7 +20,7 @@ const { title, description, slug, chaptersCount, quizzesCount } = Astro.props;
       </div>
       <div class="ml-4">
         <h3 class="text-lg font-semibold text-gray-900">{title}</h3>
-        <p class="text-sm text-gray-500">{chaptersCount} chapters</p>
+        <p class="text-sm text-gray-500">{chaptersCount} {siteContent.courses.chapters}</p>
       </div>
     </div>
     
@@ -26,15 +28,14 @@ const { title, description, slug, chaptersCount, quizzesCount } = Astro.props;
     
     <div class="flex items-center justify-between">
       <div class="flex items-center space-x-4 text-sm text-gray-500">
-        <span>{chaptersCount} <span data-i18n="courses.chapters">chapters</span></span>
-        <span>{quizzesCount} <span data-i18n="courses.quizzes">quizzes</span></span>
+        <span>{chaptersCount} <span>{siteContent.courses.chapters}</span></span>
+        <span>{quizzesCount} <span>{siteContent.courses.quizzes}</span></span>
       </div>
       <a 
         href={`/courses/${slug}`}
         class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-        data-i18n="courses.startCourse"
       >
-        Start Course
+        {siteContent.courses.startCourse}
       </a>
     </div>
   </div>

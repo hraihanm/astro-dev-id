@@ -1,5 +1,6 @@
 ---
-import { getTranslations } from '../lib/i18n';
+import { siteContent } from '../data/siteContent';
+import { getSessionUser } from '../lib/auth-guard';
 
 export interface Props {
   title: string;
@@ -7,17 +8,18 @@ export interface Props {
 }
 
 const { title, description } = Astro.props;
+const user = await getSessionUser(Astro.cookies);
 
-// Server-side locale detection from cookie
-const cookieLocale = Astro.cookies.get('locale')?.value;
-const currentLocale = (cookieLocale === 'en' || cookieLocale === 'id') ? cookieLocale : 'id';
-
-// Get translations for server-side rendering (if we were to use them directly)
-// For now, we just ensure the client knows the correct initial locale
+// Khan Academy style colors
+const colors = {
+  primary: 'bg-[#1865f2]', // Khan Blue
+  hover: 'hover:bg-[#1453c6]',
+  text: 'text-[#0a2540]'
+};
 ---
 
 <!DOCTYPE html>
-<html lang={currentLocale} id="html-root">
+<html lang="id">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -25,75 +27,113 @@ const currentLocale = (cookieLocale === 'en' || cookieLocale === 'id') ? cookieL
   {description && <meta name="description" content={description}>}
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <link rel="stylesheet" href="/src/styles/global.css">
-  <script is:inline define:vars={{ initialLocale: currentLocale }}>
-    // Inline critical translation script
-    console.log('=== INLINE I18N SCRIPT LOADING ===');
-    
-    // Use server-provided locale as source of truth
-    let currentLocale = initialLocale;
-    console.log('Initial locale from server:', currentLocale);
-    
-    // Sync to localStorage for client-side logic compatibility
-    localStorage.setItem('locale', currentLocale);
-    
-    // Listen for DOM content loaded
-    document.addEventListener('DOMContentLoaded', function() {
-      console.log('DOM loaded, setting up language switcher');
-      
-      const switcher = document.getElementById('locale-switcher');
-      console.log('Language switcher element:', switcher);
-      
-      if (switcher) {
-        // Set current value
-        switcher.value = currentLocale;
-        console.log('Set switcher value to:', currentLocale);
-        
-        // Add change listener
-        switcher.addEventListener('change', function(e) {
-          const newLocale = e.target.value;
-          console.log('Language switched to:', newLocale);
-          
-          // Save to localStorage AND Cookie
-          localStorage.setItem('locale', newLocale);
-          document.cookie = `locale=${newLocale}; path=/; max-age=31536000`; // 1 year
-          
-          // Reload the page to apply new language via server
-          console.log('Reloading page...');
-          window.location.reload();
-        });
-        
-        console.log('Language switcher setup complete');
-      } else {
-        console.error('Language switcher not found!');
-      }
-    });
-  </script>
-  <script type="module" src="/src/lib/i18n/client.ts"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
 </head>
-<body class="bg-gray-50 min-h-screen">
-  <header class="bg-white shadow-sm border-b">
-    <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between h-16">
-        <div class="flex items-center">
-          <a href="/" class="text-xl font-bold text-blue-600" data-i18n="nav.myLearningPortal">My Learning Portal</a>
+<body class="bg-white min-h-screen font-sans text-slate-800 flex flex-col">
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16 items-center">
+        <!-- Left: Logo & Courses -->
+        <div class="flex items-center gap-6">
+          <a href="/" class="flex items-center gap-2 group">
+             <!-- Simple Logo Icon -->
+            <div class="w-8 h-8 bg-[#1865f2] rounded-full flex items-center justify-center text-white font-bold text-lg group-hover:scale-105 transition-transform">
+              A
+            </div>
+            <span class="text-xl font-bold text-[#0a2540] tracking-tight group-hover:text-[#1865f2] transition-colors">
+              {siteContent.nav.myLearningPortal}
+            </span>
+          </a>
+          
+          <div class="hidden md:block relative group">
+            <button class="flex items-center text-[#1865f2] font-bold text-sm gap-1 hover:opacity-80">
+              {siteContent.nav.courses}
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <!-- Dropdown (Simple for now) -->
+            <div class="absolute left-0 top-full pt-2 w-48 hidden group-hover:block z-50">
+              <div class="bg-white rounded-md shadow-lg py-1 border border-gray-100">
+                <a href="/courses" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-[#1865f2]">
+                  Semua Kursus
+                </a>
+                <a href="/quizzes" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-[#1865f2]">
+                  Kuis Latihan
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="flex items-center space-x-4">
-          <a href="/courses" class="text-gray-700 hover:text-blue-600" data-i18n="nav.courses">Courses</a>
-          <a href="/quizzes" class="text-gray-700 hover:text-blue-600">Kuis Latihan</a>
-          <a href="/admin" class="text-gray-700 hover:text-blue-600" data-i18n="nav.admin">Admin</a>
-          <a href="/auth/signin" class="text-gray-700 hover:text-blue-600" data-i18n="nav.signIn">Sign In</a>
-          <select id="locale-switcher" class="text-gray-700 bg-transparent border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="en" selected={currentLocale === 'en'}>English</option>
-            <option value="id" selected={currentLocale === 'id'}>Bahasa Indonesia</option>
-          </select>
+
+        <!-- Center: Search (Hidden on mobile for now) -->
+        <div class="hidden md:flex flex-1 max-w-lg mx-8">
+          <div class="relative w-full">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-full leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#1865f2] focus:border-[#1865f2] sm:text-sm transition-colors"
+              placeholder={siteContent.nav.search}
+            />
+          </div>
+        </div>
+
+        <!-- Right: User Actions -->
+        <div class="flex items-center gap-4">
+          {user ? (
+            <div class="relative group">
+              <button class="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-[#1865f2]">
+                <span class="hidden sm:inline">{user.email}</span>
+                <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 border border-gray-300">
+                  {user.email[0].toUpperCase()}
+                </div>
+              </button>
+              <div class="absolute right-0 top-full pt-2 w-48 hidden group-hover:block z-50">
+                <div class="bg-white rounded-md shadow-lg py-1 border border-gray-100">
+                {user.role === 'admin' && (
+                  <a href="/admin" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                    {siteContent.nav.admin}
+                  </a>
+                )}
+                <a href="/profile" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                  {siteContent.nav.profile}
+                </a>
+                <hr class="my-1 border-gray-100" />
+                <form action="/api/auth/signout" method="POST">
+                  <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                    {siteContent.nav.signOut}
+                  </button>
+                </form>
+              </div>
+              </div>
+            </div>
+          ) : (
+            <div class="flex items-center gap-2">
+              <a href="/auth/signin" class="text-[#1865f2] font-bold text-sm hover:underline px-3 py-2">
+                {siteContent.nav.signIn}
+              </a>
+              <a href="/auth/signup" class="bg-[#1865f2] text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-[#1453c6] transition-colors shadow-sm">
+                {siteContent.nav.signUp}
+              </a>
+            </div>
+          )}
         </div>
       </div>
-    </nav>
+    </div>
   </header>
   
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full">
     <slot />
   </main>
+
+  <footer class="bg-white border-t border-gray-200 mt-auto py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-gray-500 text-sm">
+      &copy; {new Date().getFullYear()} {siteContent.nav.myLearningPortal}. All rights reserved.
+    </div>
+  </footer>
 </body>
 </html>
-

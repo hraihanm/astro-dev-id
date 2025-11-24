@@ -10,7 +10,7 @@ export const POST: APIRoute = async ({ request, redirect, cookies }) => {
 
     // Handle both form data and JSON
     const contentType = request.headers.get('content-type') || '';
-    
+
     if (contentType.includes('application/json')) {
       const body = await request.json();
       email = body.email;
@@ -48,14 +48,14 @@ export const POST: APIRoute = async ({ request, redirect, cookies }) => {
     cookies.set('user_id', user.id.toString(), {
       path: '/',
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: import.meta.env.PROD, // Use Astro's import.meta.env.PROD instead of process.env
       maxAge: 60 * 60 * 24 * 7 // 7 days
     });
 
     // Return success response for JSON requests, redirect for form submissions
     if (contentType.includes('application/json')) {
-      return new Response(JSON.stringify({ 
-        success: true, 
+      return new Response(JSON.stringify({
+        success: true,
         message: 'Signed in successfully',
         user: { id: user.id, email: user.email, role: user.role }
       }), {

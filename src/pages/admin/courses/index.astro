@@ -3,6 +3,12 @@ export const prerender = false;
 
 import Layout from '../../../components/Layout.astro';
 import { getAllCourses } from '../../../lib/admin';
+import { requireAdmin } from '../../../lib/auth-guard';
+
+const user = await requireAdmin(Astro.cookies);
+if (!user) {
+  return Astro.redirect('/');
+}
 
 const courses = await getAllCourses();
 ---

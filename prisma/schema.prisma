@@ -72,6 +72,10 @@ model QuizAttempt {
 model Profile {
   id            Int      @id @default(autoincrement())
   userId        Int      @unique
+  fullName      String?
+  nickname      String?
+  grade         String?
+  school        String?
   firstName     String?
   lastName      String?
   bio           String?

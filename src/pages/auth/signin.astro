@@ -1,16 +1,17 @@
 ---
 import Layout from '../../components/Layout.astro';
+import { siteContent } from '../../data/siteContent';
 ---
 
 <Layout title="Sign In - My Learning Portal">
   <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full space-y-8">
       <div>
-        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900" data-i18n="auth.signInToAccount">
-          Sign in to your account
+        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          {siteContent.auth.signInToAccount}
         </h2>
-        <p class="mt-2 text-center text-sm text-gray-600" data-i18n="auth.accessCourses">
-          Access your courses and content
+        <p class="mt-2 text-center text-sm text-gray-600">
+          {siteContent.auth.accessCourses}
         </p>
       </div>
       
@@ -21,27 +22,25 @@ import Layout from '../../components/Layout.astro';
         
         <div class="rounded-md shadow-sm -space-y-px">
           <div>
-            <label for="email" class="sr-only">Email address</label>
+            <label for="email" class="sr-only">{siteContent.auth.emailAddress}</label>
             <input
               id="email"
               name="email"
               type="email"
               required
               class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-              placeholder="Email address"
-              data-i18n-placeholder="auth.emailAddress"
+              placeholder={siteContent.auth.emailAddress}
             />
           </div>
           <div>
-            <label for="password" class="sr-only">Password</label>
+            <label for="password" class="sr-only">{siteContent.auth.password}</label>
             <input
               id="password"
               name="password"
               type="password"
               required
               class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-              placeholder="Password"
-              data-i18n-placeholder="auth.password"
+              placeholder={siteContent.auth.password}
             />
           </div>
         </div>
@@ -54,8 +53,8 @@ import Layout from '../../components/Layout.astro';
               type="checkbox"
               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
-            <label for="remember-me" class="ml-2 block text-sm text-gray-900" data-i18n="auth.rememberMe">
-              Remember me
+            <label for="remember-me" class="ml-2 block text-sm text-gray-900">
+              {siteContent.auth.rememberMe}
             </label>
           </div>
         </div>
@@ -65,9 +64,8 @@ import Layout from '../../components/Layout.astro';
             type="submit"
             id="submit-btn"
             class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            data-i18n="auth.signIn"
           >
-            Sign In
+            {siteContent.auth.signIn}
           </button>
         </div>
 
@@ -75,9 +73,8 @@ import Layout from '../../components/Layout.astro';
           <a
             href="/auth/signup"
             class="font-medium text-blue-600 hover:text-blue-500"
-            data-i18n="auth.noAccount"
           >
-            Don't have an account? Sign up
+            {siteContent.auth.noAccount}
           </a>
         </div>
       </form>
@@ -85,6 +82,13 @@ import Layout from '../../components/Layout.astro';
   </div>
 
   <script>
+    // Pass translations to client-side script
+    const translations = {
+      signingIn: "Sedang masuk...",
+      signIn: "Masuk",
+      error: "Terjadi kesalahan. Silakan coba lagi."
+    };
+
     document.getElementById('signin-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();
       
@@ -93,17 +97,9 @@ import Layout from '../../components/Layout.astro';
       const errorDiv = document.getElementById('error-message');
       const errorText = errorDiv?.querySelector('p');
       
-      // Get translations
-      const signInKey = 'auth.signingIn';
-      const signInText = submitBtn.getAttribute('data-i18n');
-      const i18nText = signInText && submitBtn.textContent !== submitBtn.getAttribute('data-original-text') 
-        ? submitBtn.getAttribute('data-original-text') || 'Sign In'
-        : submitBtn.textContent;
-      
       // Disable submit button
       submitBtn.disabled = true;
-      submitBtn.setAttribute('data-original-text', i18nText);
-      submitBtn.textContent = i18nText; // Will be translated by i18n system
+      submitBtn.textContent = translations.signingIn;
       
       // Hide previous errors
       errorDiv?.classList.add('hidden');
@@ -129,14 +125,14 @@ import Layout from '../../components/Layout.astro';
           if (errorText) errorText.textContent = data.error || 'Sign in failed';
           errorDiv?.classList.remove('hidden');
           submitBtn.disabled = false;
-          submitBtn.textContent = i18nText;
+          submitBtn.textContent = translations.signIn;
         }
       } catch (error) {
         console.error('Signin error:', error);
-        if (errorText) errorText.textContent = 'An error occurred. Please try again.';
+        if (errorText) errorText.textContent = translations.error;
         errorDiv?.classList.remove('hidden');
         submitBtn.disabled = false;
-        submitBtn.textContent = i18nText;
+        submitBtn.textContent = translations.signIn;
       }
     });
   </script>

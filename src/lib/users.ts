@@ -5,14 +5,26 @@ export async function createUser(data: {
   email: string;
   password: string;
   role?: string;
+  fullName: string;
+  nickname: string;
+  grade: string;
+  school: string;
 }) {
   const hashedPassword = await bcrypt.hash(data.password, 12);
-  
+
   return await prisma.user.create({
     data: {
       email: data.email,
       password: hashedPassword,
-      role: data.role || 'student'
+      role: data.role || 'student',
+      profile: {
+        create: {
+          fullName: data.fullName,
+          nickname: data.nickname,
+          grade: data.grade,
+          school: data.school
+        }
+      }
     }
   });
 }
