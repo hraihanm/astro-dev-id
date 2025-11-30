@@ -151,7 +151,7 @@ try {
           <!-- Main Quiz Area -->
           <div class="flex-1 flex flex-col overflow-hidden">
             <!-- Question Display Area - Scroll only at this level, not inside container -->
-            <div class="flex-1 overflow-y-auto px-6 py-6">
+            <div class="flex-1 overflow-y-auto px-6 py-6 scroll-smooth">
               <div id="question-container" class="max-w-4xl mx-auto overflow-visible">
                 <!-- Questions will be rendered here by JavaScript -->
               </div>
@@ -159,39 +159,39 @@ try {
           </div>
 
           <!-- Sidebar - Question Navigator -->
-          <div class="w-80 bg-white border-l flex flex-col overflow-y-auto">
+          <div class="w-80 bg-white border-l flex flex-col overflow-y-auto scroll-smooth">
 
             <!-- Question Grid -->
             <div class="p-4 border-b">
               <h3 class="font-semibold text-gray-700 text-sm mb-3 tracking-wide">NOMOR SOAL</h3>
-              <div id="question-grid" class="grid grid-cols-5 gap-2 max-h-96 overflow-y-auto p-1">
+              <div id="question-grid" class="grid grid-cols-5 gap-2 max-h-96 overflow-y-auto scroll-smooth p-1">
                 <!-- Question numbers will be rendered here -->
               </div>
             </div>
 
             <!-- Status Legend - Compact -->
             <div class="p-4 border-b">
-              <div class="space-y-2 text-sm">
+              <div class="space-y-2.5 text-sm">
                 <div class="flex items-center justify-between">
                   <div class="flex items-center space-x-2">
-                    <div class="w-4 h-4 bg-green-100 border border-green-300 rounded"></div>
-                    <span class="text-gray-700">Sudah dijawab</span>
+                    <div class="w-4 h-4 bg-green-100 border-2 border-green-400 rounded shadow-sm"></div>
+                    <span class="text-gray-700 font-medium">Sudah dijawab</span>
                   </div>
-                  <span id="answered-count" class="font-semibold text-gray-900 min-w-[2rem] text-right">0</span>
+                  <span id="answered-count" class="font-bold text-green-700 min-w-[2rem] text-right">0</span>
                 </div>
                 <div class="flex items-center justify-between">
                   <div class="flex items-center space-x-2">
-                    <div class="w-4 h-4 bg-orange-100 border border-orange-300 rounded"></div>
-                    <span class="text-gray-700">Ragu-ragu</span>
+                    <div class="w-4 h-4 bg-yellow-100 border-2 border-yellow-400 rounded shadow-sm"></div>
+                    <span class="text-gray-700 font-medium">Ragu-ragu</span>
                   </div>
-                  <span id="flagged-count" class="font-semibold text-gray-900 min-w-[2rem] text-right">0</span>
+                  <span id="flagged-count" class="font-bold text-yellow-700 min-w-[2rem] text-right">0</span>
                 </div>
                 <div class="flex items-center justify-between">
                   <div class="flex items-center space-x-2">
-                    <div class="w-4 h-4 bg-gray-50 border border-gray-300 rounded"></div>
-                    <span class="text-gray-700">Belum dijawab</span>
+                    <div class="w-4 h-4 bg-gray-50 border-2 border-gray-300 rounded shadow-sm"></div>
+                    <span class="text-gray-700 font-medium">Belum dijawab</span>
                   </div>
-                  <span id="unanswered-count" class="font-semibold text-gray-900 min-w-[2rem] text-right">0</span>
+                  <span id="unanswered-count" class="font-bold text-gray-600 min-w-[2rem] text-right">0</span>
                 </div>
               </div>
             </div>
@@ -200,14 +200,17 @@ try {
             <div class="p-4 space-y-3">
               <button
                 id="flag-btn"
-                class="w-full px-4 py-2 border-2 border-orange-500 text-orange-600 rounded-lg hover:bg-orange-50 text-sm font-medium"
+                class="w-full px-4 py-2.5 border-2 border-yellow-400 text-yellow-700 rounded-lg hover:bg-yellow-50 active:bg-yellow-100 text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
               >
-                <span id="flag-text">🚩 Ragu-Ragu</span>
+                <span id="flag-text" class="flex items-center justify-center gap-2">
+                  <span class="text-base">🚩</span>
+                  <span>Ragu-Ragu</span>
+                </span>
               </button>
               
               <button
                 id="submit-quiz-btn"
-                class="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 font-semibold"
+                class="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-lg hover:from-green-700 hover:to-green-800 font-bold text-base shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5 active:scale-95"
               >
                 Selesaikan Ujian
               </button>
@@ -219,6 +222,33 @@ try {
   </div>
 
   <style is:global>
+    /* Custom Scrollbar Styling */
+    .scroll-smooth::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    .scroll-smooth::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 4px;
+    }
+
+    .scroll-smooth::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+
+    .scroll-smooth::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* For Firefox */
+    .scroll-smooth {
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e1 #f1f5f9;
+    }
+
     .math-display {
       margin: 1.5rem 0;
       text-align: center;
@@ -265,17 +295,21 @@ try {
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 0.375rem;
+      border-radius: 0.5rem;
       cursor: pointer;
-      font-weight: 500;
-      transition: all 0.2s;
+      font-weight: 600;
+      transition: all 0.2s ease-in-out;
       font-size: 0.875rem;
       border: 2px solid transparent;
     }
 
     .question-number:hover {
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-      transform: translateY(-2px);
+      box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.15);
+      transform: translateY(-3px) scale(1.05);
+    }
+    
+    .question-number:active {
+      transform: translateY(-1px) scale(1.02);
     }
 
     /* Answered - Light green with checkmark feel */
@@ -285,11 +319,18 @@ try {
       border-color: #86efac;
     }
 
-    /* Flagged - Warm orange for attention */
+    /* Flagged (unanswered) - Light orange/yellow for caution */
     .question-number.flagged {
+      background-color: #fef3c7;
+      color: #92400e;
+      border-color: #fcd34d;
+    }
+
+    /* Flagged + Answered - Darker orange for flagged with answer */
+    .question-number.flagged-answered {
       background-color: #ffedd5;
       color: #9a3412;
-      border-color: #fdba74;
+      border-color: #fb923c;
     }
 
     /* Unanswered - Subtle gray */
@@ -319,20 +360,24 @@ try {
       align-items: flex-start;
       padding: 1rem;
       border: 2px solid #e5e7eb;
-      border-radius: 0.5rem;
+      border-radius: 0.75rem;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.2s ease-in-out;
       margin-bottom: 0.75rem;
+      background-color: #ffffff;
     }
 
     .option-label:hover {
       background-color: #f9fafb;
       border-color: #93c5fd;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      transform: translateX(4px);
     }
 
     .option-label.selected {
       background-color: #eff6ff;
       border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
 
     .option-label input[type="radio"],
@@ -440,40 +485,132 @@ try {
     }
 
     // Quiz state
+    const PROGRESS_KEY = `quiz_progress_${id}`;
     let currentQuestionIndex = 0;
     let answers = new Array(quiz.questions.length).fill(null);
     let flaggedQuestions = new Set();
     let startTime = Date.now();
     let timerInterval = null;
 
-    // Initialize timer if time limit exists
-    if (quiz.settings?.timeLimit) {
-      const timeLimit = quiz.settings.timeLimit;
-      let remainingTime = timeLimit;
-
-      timerInterval = setInterval(() => {
-        remainingTime--;
-        
-        if (remainingTime <= 0) {
-          clearInterval(timerInterval);
-          submitQuiz();
-          return;
+    // Load saved progress
+    function loadProgress() {
+      try {
+        const saved = localStorage.getItem(PROGRESS_KEY);
+        if (saved) {
+          const progress = JSON.parse(saved);
+          answers = progress.answers || answers;
+          flaggedQuestions = new Set(progress.flaggedQuestions || []);
+          currentQuestionIndex = progress.currentQuestionIndex || 0;
+          
+          // Restore timer state
+          if (quiz.settings?.timeLimit) {
+            if (progress.remainingTime !== undefined) {
+              // Use saved remaining time
+              remainingTime = progress.remainingTime;
+            } else if (progress.startTime) {
+              // Calculate from start time (legacy support)
+              const elapsed = Math.floor((Date.now() - progress.startTime) / 1000);
+              remainingTime = Math.max(0, quiz.settings.timeLimit - elapsed);
+            }
+          }
+          
+          console.log('Progress loaded:', progress);
+          return true;
         }
+      } catch (error) {
+        console.error('Error loading progress:', error);
+      }
+      return false;
+    }
 
-        const hours = Math.floor(remainingTime / 3600);
-        const minutes = Math.floor((remainingTime % 3600) / 60);
-        const seconds = remainingTime % 60;
+    // Save progress
+    function saveProgress() {
+      try {
+        const progress = {
+          answers,
+          flaggedQuestions: Array.from(flaggedQuestions),
+          currentQuestionIndex,
+          remainingTime: quiz.settings?.timeLimit ? remainingTime : undefined,
+          startTime: startTime,
+          savedAt: Date.now()
+        };
+        localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+      } catch (error) {
+        console.error('Error saving progress:', error);
+      }
+    }
+
+    // Clear progress
+    function clearProgress() {
+      try {
+        localStorage.removeItem(PROGRESS_KEY);
+      } catch (error) {
+        console.error('Error clearing progress:', error);
+      }
+    }
+
+    // Initialize timer variables
+    let remainingTime = quiz.settings?.timeLimit || 0;
+    
+    // Load progress first
+    const hasProgress = loadProgress();
+
+    // If no saved progress, use full time limit
+    if (!hasProgress && quiz.settings?.timeLimit) {
+      remainingTime = quiz.settings.timeLimit;
+    }
+
+    // Timer initialization function (to be called after DOM is ready)
+    function initializeTimer() {
+      // Initialize timer if time limit exists
+      if (quiz.settings?.timeLimit) {
+        // Update display immediately
+        const updateTimerDisplay = () => {
+          const hours = Math.floor(remainingTime / 3600);
+          const minutes = Math.floor((remainingTime % 3600) / 60);
+          const seconds = remainingTime % 60;
+          const timerDisplay = document.getElementById('timer-display');
+          if (timerDisplay) {
+            timerDisplay.textContent = 
+              `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+          }
+        };
         
-        document.getElementById('timer-display').textContent = 
-          `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-      }, 1000);
-    } else {
-      document.getElementById('timer').style.display = 'none';
+        updateTimerDisplay();
+
+        timerInterval = setInterval(() => {
+          remainingTime--;
+          
+          if (remainingTime <= 0) {
+            clearInterval(timerInterval);
+            submitQuiz();
+            return;
+          }
+
+          updateTimerDisplay();
+          // Save progress periodically (every 10 seconds)
+          if (remainingTime % 10 === 0) {
+            saveProgress();
+          }
+        }, 1000);
+      } else {
+        const timerElement = document.getElementById('timer');
+        if (timerElement) {
+          timerElement.style.display = 'none';
+        }
+      }
     }
 
     // Render question grid
     function renderQuestionGrid() {
+      console.log('renderQuestionGrid called');
       const grid = document.getElementById('question-grid');
+      
+      if (!grid) {
+        console.error('question-grid element not found!');
+        return;
+      }
+      
       grid.innerHTML = '';
       
       quiz.questions.forEach((_, index) => {
@@ -483,14 +620,23 @@ try {
         // Build class list
         const classes = ['question-number'];
         
+        const isFlagged = flaggedQuestions.has(index);
+        const isAnswered = answers[index] !== null;
+        
         // Add status class (current takes precedence)
         if (index === currentQuestionIndex) {
           classes.push('current');
-        } else if (flaggedQuestions.has(index)) {
+        } else if (isFlagged && isAnswered) {
+          // Flagged AND answered - darker orange
+          classes.push('flagged-answered');
+        } else if (isFlagged) {
+          // Flagged but NOT answered - lighter orange/yellow
           classes.push('flagged');
-        } else if (answers[index] !== null) {
+        } else if (isAnswered) {
+          // Answered only - green
           classes.push('answered');
         } else {
+          // Not answered - gray
           classes.push('unanswered');
         }
         
@@ -504,19 +650,57 @@ try {
 
     // Update status counts
     function updateCounts() {
-      const answered = answers.filter(a => a !== null && !flaggedQuestions.has(answers.indexOf(a))).length;
-      const flagged = flaggedQuestions.size;
-      const unanswered = quiz.questions.length - answered - flagged;
+      let answered = 0;
+      let flaggedUnanswered = 0;
+      let unanswered = 0;
 
-      document.getElementById('answered-count').textContent = answered;
-      document.getElementById('flagged-count').textContent = flagged;
-      document.getElementById('unanswered-count').textContent = unanswered;
+      answers.forEach((answer, index) => {
+        const isFlagged = flaggedQuestions.has(index);
+        const isAnswered = answer !== null;
+
+        if (isAnswered) {
+          // If answered (regardless of flagged), count as answered
+          answered++;
+        } else if (isFlagged) {
+          // Only count as ragu-ragu if NOT answered
+          flaggedUnanswered++;
+        } else {
+          // Not answered and not flagged
+          unanswered++;
+        }
+      });
+
+      const answeredEl = document.getElementById('answered-count');
+      const flaggedEl = document.getElementById('flagged-count');
+      const unansweredEl = document.getElementById('unanswered-count');
+      
+      if (answeredEl) answeredEl.textContent = answered;
+      if (flaggedEl) flaggedEl.textContent = flaggedUnanswered;
+      if (unansweredEl) unansweredEl.textContent = unanswered;
     }
+    
+    // Alias for compatibility
+    const updateStats = updateCounts;
 
     // Render current question
     function renderQuestion() {
+      console.log('renderQuestion called, currentQuestionIndex:', currentQuestionIndex);
+      
       const question = quiz.questions[currentQuestionIndex];
       const container = document.getElementById('question-container');
+      const navContainer = document.getElementById('nav-container');
+      
+      if (!container) {
+        console.error('question-container not found!');
+        return;
+      }
+      
+      if (!navContainer) {
+        console.error('nav-container not found!');
+        return;
+      }
+      
+      console.log('Both containers found, rendering...');
       
       const isComplex = question.type === 'complex-multiple-choice' || question.type === 'complex';
       const inputType = isComplex ? 'checkbox' : 'radio';
@@ -547,7 +731,6 @@ try {
       const solutionHtml = question.metadata?.solution ? processLatex(question.metadata.solution) : '';
       
       // Render navigation bar directly into nav-container
-      const navContainer = document.getElementById('nav-container');
       navContainer.innerHTML = `
         <button
           id="prev-btn-main"
@@ -681,6 +864,7 @@ try {
 
       // Update UI
       renderQuestionGrid();
+      updateStats();
       
       // Update option styling
       document.querySelectorAll('.option-label').forEach(label => {
@@ -691,6 +875,9 @@ try {
           label.classList.remove('selected');
         }
       });
+
+      // Save progress
+      saveProgress();
     };
 
     // Navigation functions
@@ -703,6 +890,8 @@ try {
       if (mainArea) {
         mainArea.scrollTo({ top: 0, behavior: 'smooth' });
       }
+      // Save progress
+      saveProgress();
     }
 
     // Flag button handler
@@ -714,6 +903,9 @@ try {
       }
       renderQuestion();
       renderQuestionGrid();
+      updateStats();
+      // Save progress
+      saveProgress();
     };
 
     // Submit quiz
@@ -749,6 +941,8 @@ try {
         const result = await response.json();
         
         if (response.ok) {
+          // Clear saved progress
+          clearProgress();
           window.location.href = `/quizzes/${id}/results?score=${result.percentage || 0}`;
         } else {
           alert('Error submitting quiz: ' + result.error);
@@ -759,28 +953,67 @@ try {
       }
     }
 
-    // Initialize - wait for KaTeX to be ready before rendering first question
+    // Initialize quiz
     function initializeQuiz() {
-      if (window.katex) {
-        renderQuestionGrid();
-        renderQuestion();
-      } else {
-        // Wait for KaTeX to load
-        const checkInterval = setInterval(() => {
-          if (window.katex) {
-            clearInterval(checkInterval);
-            renderQuestionGrid();
-            renderQuestion();
-          }
-        }, 10);
+      console.log('Initializing quiz... readyState:', document.readyState);
+      
+      // Double-check that all required elements exist
+      const requiredElements = [
+        'question-container',
+        'nav-container',
+        'question-grid',
+        'answered-count',
+        'flagged-count',
+        'unanswered-count',
+        'flag-btn',
+        'submit-quiz-btn'
+      ];
+      
+      const missingElements = requiredElements.filter(id => !document.getElementById(id));
+      
+      if (missingElements.length > 0) {
+        console.error('Missing elements:', missingElements);
+        console.log('Retrying in 50ms...');
+        setTimeout(initializeQuiz, 50);
+        return;
       }
+      
+      console.log('All elements found, initializing...');
+      
+      // Initialize timer first
+      initializeTimer();
+      
+      // Render UI immediately (don't wait for KaTeX)
+      console.log('Rendering question grid...');
+      renderQuestionGrid();
+      console.log('Updating stats...');
+      updateStats();
+      console.log('Rendering question...');
+      renderQuestion();
+      
+      // LaTeX will be rendered by renderQuestion() via requestAnimationFrame
+      console.log('Quiz initialized successfully');
     }
 
-    // Wait for DOM to be ready
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initializeQuiz);
-    } else {
-      initializeQuiz();
+    // Wait for DOM to be fully ready
+    function startInitialization() {
+      console.log('startInitialization called, readyState:', document.readyState);
+      
+      if (document.readyState === 'loading') {
+        console.log('Waiting for DOMContentLoaded...');
+        document.addEventListener('DOMContentLoaded', () => {
+          console.log('DOMContentLoaded fired');
+          // Use a small delay to ensure all elements are painted
+          setTimeout(initializeQuiz, 10);
+        });
+      } else {
+        console.log('DOM already ready, initializing...');
+        // Use a small delay to ensure all elements are painted
+        setTimeout(initializeQuiz, 10);
+      }
     }
+    
+    // Start initialization
+    startInitialization();
   </script>
 </Layout>

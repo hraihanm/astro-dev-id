@@ -152,8 +152,8 @@ function evaluateComplexMultipleChoice(question: any, userAnswer: QuizAnswer): n
   if (N === 0) return 0;
   
   // Convert to sorted number arrays for comparison
-  const userSelections = userAnswer.answer.map(a => parseInt(a)).sort();
-  const correctSelections = correctAnswers.map(a => parseInt(a)).sort();
+  const userSelections = userAnswer.answer.map((a: any) => parseInt(a)).sort();
+  const correctSelections = correctAnswers.map((a: any) => parseInt(a)).sort();
   
   // Count correct and incorrect selections
   let correctCount = 0;
@@ -271,7 +271,11 @@ export async function getUserProgress(userId: number) {
     bestScore: attempts.length > 0 
       ? Math.max(...attempts.map(a => a.percentage)) 
       : 0,
-    coursesCompleted: new Set(attempts.map(a => a.quiz.course.slug)).size,
+    coursesCompleted: new Set(
+      attempts
+        .filter(a => a.quiz.course !== null)
+        .map(a => a.quiz.course!.slug)
+    ).size,
     recentActivity: attempts.slice(0, 5)
   };
 

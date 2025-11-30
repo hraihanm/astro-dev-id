@@ -3,6 +3,9 @@ export const prerender = false;
 
 import Layout from '../components/Layout.astro';
 import { siteContent } from '../data/siteContent';
+import { getSessionUser } from '../lib/auth-guard';
+
+const user = await getSessionUser(Astro.cookies);
 ---
 
 <Layout title="My Learning Portal - Home">
@@ -22,12 +25,25 @@ import { siteContent } from '../data/siteContent';
           Platform pembelajaran komprehensif untuk persiapan Olimpiade Sains Nasional (OSK, OSP, OSN) dan Internasional (IOAA) bidang Astronomi.
         </p>
         <div class="flex flex-wrap gap-4">
-          <a href="/courses" class="bg-blue-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-700 transition-all transform hover:scale-105 shadow-lg hover:shadow-blue-500/30">
-            {siteContent.home.browseCourses}
-          </a>
-          <a href="/quizzes" class="bg-gray-800 text-white border border-gray-700 px-8 py-4 rounded-lg font-semibold hover:bg-gray-700 transition-all hover:border-gray-600">
-            {siteContent.home.interactiveQuizzes}
-          </a>
+          {user ? (
+            <>
+              <a href="/dashboard" class="bg-blue-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-700 transition-all transform hover:scale-105 shadow-lg hover:shadow-blue-500/30">
+                Dashboard
+              </a>
+              <a href="/courses" class="bg-gray-800 text-white border border-gray-700 px-8 py-4 rounded-lg font-semibold hover:bg-gray-700 transition-all hover:border-gray-600">
+                {siteContent.home.browseCourses}
+              </a>
+            </>
+          ) : (
+            <>
+              <a href="/courses" class="bg-blue-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-700 transition-all transform hover:scale-105 shadow-lg hover:shadow-blue-500/30">
+                {siteContent.home.browseCourses}
+              </a>
+              <a href="/quizzes" class="bg-gray-800 text-white border border-gray-700 px-8 py-4 rounded-lg font-semibold hover:bg-gray-700 transition-all hover:border-gray-600">
+                {siteContent.home.interactiveQuizzes}
+              </a>
+            </>
+          )}
         </div>
       </div>
     </div>
