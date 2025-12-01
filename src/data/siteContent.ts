@@ -105,7 +105,10 @@ export const siteContent = {
         newCourseCreated: "Kursus baru {title} dibuat oleh {email}",
         userManagement: "Manajemen Pengguna",
         backToDashboard: "Kembali ke Dashboard",
-        noUsers: "Belum ada pengguna."
+        noUsers: "Belum ada pengguna.",
+        quizzes: "Kuis",
+        contentTutorial: "Tutorial Konten",
+        courses: "Kursus"
     },
     adminCourses: {
         title: "Kelola Kursus",

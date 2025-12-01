@@ -759,7 +759,7 @@ try {
       }
 
       // Preload KaTeX JS immediately if not already loaded
-      if (typeof window !== 'undefined' && !window.katex) {
+      if (typeof window !== 'undefined' && !(window as any).katex) {
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js';
         script.async = false; // Load synchronously for faster availability
@@ -767,12 +767,12 @@ try {
       }
 
       // Create renderLatex function that will be available when quiz script runs
-      window.renderLatex = function() {
-        if (!window.katex) {
+      (window as any).renderLatex = function() {
+        if (!(window as any).katex) {
           // KaTeX not loaded yet, wait a bit and try again
           setTimeout(() => {
-            if (window.katex) {
-              window.renderLatex();
+            if ((window as any).katex) {
+              (window as any).renderLatex();
             }
           }, 10);
           return;
@@ -793,7 +793,7 @@ try {
           try {
             // Clear element first to ensure clean render
             element.innerHTML = '';
-            window.katex.render(latex, element, {
+            (window as any).katex.render(latex, element, {
               displayMode,
               throwOnError: false,
               trust: true,
