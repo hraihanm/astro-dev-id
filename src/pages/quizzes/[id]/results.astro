@@ -452,6 +452,7 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
           const optionValue = optIndex + 1;
           const isUserSelected = userAnswers.includes(optionValue);
           const isCorrect = correctAnswers.includes(optionValue);
+          const optionLetter = String.fromCharCode(65 + optIndex); // A, B, C, D...
           
           let optionClass = '';
           if (isCorrect) optionClass = 'correct';
@@ -460,6 +461,7 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
           return `
             <label class="option-label ${optionClass}">
               <input type="${inputType}" value="${optionValue}" ${isUserSelected ? 'checked' : ''} disabled />
+              <span class="option-letter">${optionLetter}</span>
               <div class="option-content">${optionHtml}</div>
             </label>
           `;

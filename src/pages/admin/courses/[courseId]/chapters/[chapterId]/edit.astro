@@ -40,6 +40,11 @@ const allChapters = await prisma.chapter.findMany({
             </a>
             <h1 class="text-2xl font-bold text-gray-900">Edit Chapter</h1>
           </div>
+          <div class="flex items-center space-x-4">
+            <a href="/admin/tutorial" target="_blank" class="text-blue-600 hover:text-blue-800 text-sm font-medium underline">
+              📚 Content Formatting Tutorial
+            </a>
+          </div>
         </div>
       </div>
     </div>
@@ -137,10 +142,116 @@ const allChapters = await prisma.chapter.findMany({
           </div>
         </div>
 
-        <!-- Quick Reference -->
+        <!-- Block Insertion Tools -->
+        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-sm font-semibold text-green-900">Interactive Block Tools</h4>
+            <a
+              href="/admin/tutorial"
+              target="_blank"
+              class="text-green-700 hover:text-green-800 text-xs font-medium underline"
+            >
+              View Full Tutorial →
+            </a>
+          </div>
+          <p class="text-xs text-green-700 mb-3">
+            Insert interactive elements (quizzes, simulations, etc.) at the cursor position
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            <button
+              type="button"
+              id="insert-quiz"
+              class="flex items-center p-2 bg-green-100 hover:bg-green-200 rounded-lg transition-colors"
+              title="Insert Quiz Block"
+            >
+              <svg class="w-4 h-4 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <span class="text-xs font-medium text-green-800">Quiz</span>
+            </button>
+
+            <button
+              type="button"
+              id="insert-simulation"
+              class="flex items-center p-2 bg-purple-100 hover:bg-purple-200 rounded-lg transition-colors"
+              title="Insert Simulation Block"
+            >
+              <svg class="w-4 h-4 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span class="text-xs font-medium text-purple-800">Simulation</span>
+            </button>
+
+            <button
+              type="button"
+              id="insert-code-editor"
+              class="flex items-center p-2 bg-indigo-100 hover:bg-indigo-200 rounded-lg transition-colors"
+              title="Insert Code Editor Block"
+            >
+              <svg class="w-4 h-4 text-indigo-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+              </svg>
+              <span class="text-xs font-medium text-indigo-800">Code Editor</span>
+            </button>
+
+            <button
+              type="button"
+              id="insert-diagram"
+              class="flex items-center p-2 bg-cyan-100 hover:bg-cyan-200 rounded-lg transition-colors"
+              title="Insert Interactive Diagram Block"
+            >
+              <svg class="w-4 h-4 text-cyan-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+              </svg>
+              <span class="text-xs font-medium text-cyan-800">Diagram</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Content Template Helpers -->
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h4 class="text-sm font-semibold text-blue-900 mb-2">Quick Markdown & LaTeX Reference</h4>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-blue-800">
+          <h4 class="text-sm font-semibold text-blue-900 mb-2">Content Templates</h4>
+          <p class="text-xs text-blue-700 mb-3">
+            Insert styled content blocks at cursor position
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <button
+              type="button"
+              id="insert-definition"
+              class="flex items-center p-2 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
+              title="Insert Definition Block"
+            >
+              <span class="text-blue-600 mr-2">📘</span>
+              <span class="text-xs font-medium text-blue-800">Definition</span>
+            </button>
+
+            <button
+              type="button"
+              id="insert-theorem"
+              class="flex items-center p-2 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition-colors"
+              title="Insert Theorem Block"
+            >
+              <span class="text-emerald-600 mr-2">⚡</span>
+              <span class="text-xs font-medium text-emerald-800">Theorem</span>
+            </button>
+
+            <button
+              type="button"
+              id="insert-example"
+              class="flex items-center p-2 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors"
+              title="Insert Example Block"
+            >
+              <span class="text-amber-600 mr-2">📝</span>
+              <span class="text-xs font-medium text-amber-800">Example</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Reference -->
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <h4 class="text-sm font-semibold text-gray-900 mb-2">Quick Markdown & LaTeX Reference</h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-700">
             <div>
               <p class="font-medium mb-1">Markdown:</p>
               <ul class="space-y-1 ml-4">
@@ -150,6 +261,7 @@ const allChapters = await prisma.chapter.findMany({
                 <li>• ## Heading 2</li>
                 <li>• [link](url)</li>
                 <li>• ![image](url)</li>
+                <li>• `code` or ```code block```</li>
               </ul>
             </div>
             <div>
@@ -200,9 +312,9 @@ const allChapters = await prisma.chapter.findMany({
     const content = document.getElementById('content')?.value || '';
     const size = new Blob([content]).size;
     const sizeDisplay = document.getElementById('content-size');
-    
+
     if (!sizeDisplay) return;
-    
+
     if (size < 1024) {
       sizeDisplay.textContent = `Size: ${size} bytes`;
       sizeDisplay.className = 'text-xs text-gray-400';
@@ -216,6 +328,125 @@ const allChapters = await prisma.chapter.findMany({
       sizeDisplay.textContent = `Size: ${(size / 1024 / 1024).toFixed(2)} MB (Large!)`;
       sizeDisplay.className = 'text-xs text-red-600 font-bold';
     }
+  }
+
+  // Generate unique block ID
+  function generateBlockId() {
+    return 'block-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+  }
+
+  // Insert text at cursor position in textarea
+  function insertAtCursor(textarea, text) {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const before = textarea.value.substring(0, start);
+    const after = textarea.value.substring(end);
+
+    textarea.value = before + text + after;
+    textarea.selectionStart = textarea.selectionEnd = start + text.length;
+    textarea.focus();
+
+    // Trigger content size update
+    updateContentSize();
+  }
+
+  // Block insertion handlers
+  function setupBlockInsertion() {
+    // Interactive blocks
+    document.getElementById('insert-quiz')?.addEventListener('click', () => {
+      const textarea = document.getElementById('content');
+      if (textarea) {
+        const blockId = generateBlockId();
+        const marker = `\n\n<!-- BLOCK:quiz:${blockId} -->\n\n`;
+        insertAtCursor(textarea, marker);
+        updatePreview();
+      }
+    });
+
+    document.getElementById('insert-simulation')?.addEventListener('click', () => {
+      const textarea = document.getElementById('content');
+      if (textarea) {
+        const blockId = generateBlockId();
+        const marker = `\n\n<!-- BLOCK:simulation:${blockId} -->\n\n`;
+        insertAtCursor(textarea, marker);
+        updatePreview();
+      }
+    });
+
+    document.getElementById('insert-code-editor')?.addEventListener('click', () => {
+      const textarea = document.getElementById('content');
+      if (textarea) {
+        const blockId = generateBlockId();
+        const marker = `\n\n<!-- BLOCK:code-editor:${blockId} -->\n\n`;
+        insertAtCursor(textarea, marker);
+        updatePreview();
+      }
+    });
+
+    document.getElementById('insert-diagram')?.addEventListener('click', () => {
+      const textarea = document.getElementById('content');
+      if (textarea) {
+        const blockId = generateBlockId();
+        const marker = `\n\n<!-- BLOCK:interactive-diagram:${blockId} -->\n\n`;
+        insertAtCursor(textarea, marker);
+        updatePreview();
+      }
+    });
+
+    // Content templates
+    document.getElementById('insert-definition')?.addEventListener('click', () => {
+      const textarea = document.getElementById('content');
+      if (textarea) {
+        const template = `<div class="definition-block">
+  <div class="definition-header">📘 Definisi: [Judul Definisi]</div>
+  <div class="definition-content">
+    [Konten definisi di sini]
+  </div>
+</div>
+
+`;
+        insertAtCursor(textarea, template);
+        updatePreview();
+      }
+    });
+
+    document.getElementById('insert-theorem')?.addEventListener('click', () => {
+      const textarea = document.getElementById('content');
+      if (textarea) {
+        const template = `<div class="theorem-block">
+  <div class="theorem-header">⚡ Teorema: [Nama Teorema]</div>
+  <div class="theorem-content">
+    $$[persamaan matematika]$$
+  </div>
+</div>
+
+`;
+        insertAtCursor(textarea, template);
+        updatePreview();
+      }
+    });
+
+    document.getElementById('insert-example')?.addEventListener('click', () => {
+      const textarea = document.getElementById('content');
+      if (textarea) {
+        const template = `<div class="example-block">
+  <div class="example-header">📝 Contoh [nomor]</div>
+  <div class="example-problem">
+    [Permasalahan atau soal]
+  </div>
+  <details>
+    <summary>Lihat Solusi</summary>
+    <div class="example-solution">
+      [Solusi lengkap di sini]
+    </div>
+  </details>
+</div>
+
+`;
+        insertAtCursor(textarea, template);
+        updatePreview();
+      }
+    });
   }
   
   // Load Marked (Markdown) from CDN once
@@ -506,8 +737,8 @@ const allChapters = await prisma.chapter.findMany({
                 
                 if (mathElements.length > 0 || attempts === 1) {
                   // Render LaTeX
-                  if (mathElements.length > 0) {
-                    renderLatexPreview();
+                if (mathElements.length > 0) {
+                  renderLatexPreview();
                   }
                   
                   // Highlight code blocks
@@ -642,6 +873,11 @@ const allChapters = await prisma.chapter.findMany({
         }
       });
     }
+  });
+
+  // Initialize block insertion on page load
+  document.addEventListener('DOMContentLoaded', () => {
+    setupBlockInsertion();
   });
 </script>
 

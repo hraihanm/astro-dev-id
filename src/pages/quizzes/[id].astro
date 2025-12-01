@@ -74,6 +74,7 @@ try {
 ---
 
 <Layout title={quiz?.title || 'Quiz Not Found'}>
+  <link rel="stylesheet" href="/src/styles/quiz-shared.css">
   <div class="min-h-screen bg-gray-50">
     {error ? (
       <div class="max-w-2xl mx-auto px-4 py-8">
@@ -515,15 +516,41 @@ try {
       background: linear-gradient(to bottom, #3b82f6, #2563eb);
     }
 
+    /* Radio/Checkbox Input - Hidden, using option letters instead */
     .option-label input[type="radio"],
     .option-label input[type="checkbox"] {
+      display: none;
+    }
+
+    /* Option Letter */
+    .option-letter {
       flex-shrink: 0;
-      width: 1.25rem;
-      height: 1.25rem;
-      margin-right: 1rem;
-      margin-top: 0.125rem;
-      cursor: pointer;
-      accent-color: #3b82f6;
+      width: 1.75rem;
+      height: 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.375rem;
+      background: #f1f5f9;
+      color: #64748b;
+      font-weight: 600;
+      font-size: 0.8125rem;
+      margin-right: 0.875rem;
+      transition: all 0.2s ease;
+    }
+
+    @media (min-width: 640px) {
+      .option-letter {
+        width: 2rem;
+        height: 2rem;
+        margin-right: 1rem;
+        font-size: 0.875rem;
+      }
+    }
+
+    .option-label.selected .option-letter {
+      background: #3b82f6;
+      color: white;
     }
 
     .option-content {
@@ -661,8 +688,8 @@ try {
     
     /* Solution styling */
     .solution-panel {
-      background: linear-gradient(to right, #fefce8, #fffbeb);
-      border: 2px solid #fcd34d;
+      background: #f1f5f9;
+      border: 2px solid #cbd5e1;
       border-radius: 1rem;
       margin-top: 1.5rem;
       overflow: hidden;
@@ -671,7 +698,7 @@ try {
     .solution-panel summary {
       padding: 1rem 1.5rem;
       font-weight: 600;
-      color: #92400e;
+      color: #475569;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -680,16 +707,16 @@ try {
     }
     
     .solution-panel summary:hover {
-      background: rgba(251, 191, 36, 0.1);
+      background: rgba(203, 213, 225, 0.1);
     }
     
     .solution-panel[open] summary {
-      border-bottom: 1px solid #fcd34d;
+      border-bottom: 1px solid #cbd5e1;
     }
     
     .solution-content {
       padding: 1.5rem;
-      color: #78350f;
+      color: #334155;
       line-height: 1.7;
     }
     
@@ -1063,6 +1090,7 @@ try {
       const optionsHtml = question.options.map((option, optIndex) => {
         const optionHtml = processLatex(option || '');
         const isSelected = isAnswerSelected(currentQuestionIndex, optIndex + 1);
+        const optionLetter = String.fromCharCode(65 + optIndex); // A, B, C, D...
         
         return `
           <label class="option-label ${isSelected ? 'selected' : ''}" data-option="${optIndex + 1}">
@@ -1073,6 +1101,7 @@ try {
               ${isSelected ? 'checked' : ''}
               onchange="handleAnswerChange(${currentQuestionIndex}, ${optIndex + 1}, this.type)"
             />
+            <span class="option-letter">${optionLetter}</span>
             <div class="option-content">${optionHtml}</div>
           </label>
         `;

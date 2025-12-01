@@ -3,9 +3,11 @@ export const prerender = false;
 
 import CourseLayout from '../../../../layouts/CourseLayout.astro';
 import QuizCard from '../../../../components/QuizCard.astro';
+import InteractiveBlockComponent from '../../../../components/InteractiveBlock.astro';
 import { getChapterContent } from '../../../../lib/student';
 import { renderMarkdown } from '../../../../lib/latex';
 import { getCourseQuizzes, getChapterQuizzes } from '../../../../lib/quizzes';
+import { parseBlocks, splitContentAtMarkers, type InteractiveBlock } from '../../../../lib/blocks';
 
 const { slug, order } = Astro.params;
 
@@ -14,14 +16,27 @@ if (!slug || !order) {
 }
 
 const chapterOrder = parseInt(order);
-const courseData = await getChapterContent(slug, chapterOrder);
+
+// Get userId from cookies for progress tracking
+const userIdCookie = Astro.cookies.get('user_id');
+const userId = userIdCookie ? parseInt(userIdCookie.value) : undefined;
+
+const courseData = await getChapterContent(slug, chapterOrder, userId);
 
 if (!courseData || !courseData.chapter) {
   return Astro.redirect(`/courses/${slug}`);
 }
 
 const { course, chapter, prevChapter, nextChapter } = courseData;
+
+// Parse blocks from chapter
+const blocks = parseBlocks(chapter.blocks || null);
+
+// Render markdown content
 const renderedContent = chapter.content ? renderMarkdown(chapter.content) : '';
+
+// Split content at block markers for proper interleaved rendering
+const contentSegments = splitContentAtMarkers(renderedContent, blocks);
 
 // Get quizzes for this chapter
 const chapterQuizzes = await getChapterQuizzes(chapter.id);
@@ -47,8 +62,36 @@ const quizzes = chapterQuizzes.map(quiz => {
       <span class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2 block">Chapter {chapter.order}</span>
       <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-8">{chapter.title}</h1>
       
-      {renderedContent ? (
-        <div class="chapter-content" set:html={renderedContent} />
+      {contentSegments.length > 0 ? (
+        <div class="chapter-content-wrapper">
+          {/* Render content and blocks in order (interleaved) */}
+          {contentSegments.map((segment) => {
+            if (segment.type === 'content') {
+              return (
+                <div class="chapter-content" set:html={segment.html} />
+              );
+            } else {
+              // Find progress for this block
+              const blockProgress = chapter.blockProgress?.find(
+                (bp: any) => bp.blockId === segment.block.id
+              );
+              
+              const progress = blockProgress ? {
+                completed: blockProgress.completed,
+                score: blockProgress.score || undefined,
+                attempts: blockProgress.attempts
+              } : undefined;
+              
+              return (
+                <InteractiveBlockComponent
+                  block={segment.block}
+                  userId={userId}
+                  progress={progress}
+                />
+              );
+            }
+          })}
+        </div>
       ) : (
         <div class="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
           <div class="text-gray-400 mb-4">

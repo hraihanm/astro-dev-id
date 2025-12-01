@@ -146,7 +146,7 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
 
         <!-- Navigation Row -->
         <div class="flex flex-col lg:flex-row border-b border-slate-200 bg-white">
-          <div id="nav-container" class="flex-1 px-4 sm:px-6 py-2 sm:py-3 flex items-center justify-center gap-2 sm:gap-4">
+          <div id="nav-container" class="flex-1 px-6 py-4 flex items-center justify-between">
             <!-- Navigation bar will be rendered here by JavaScript -->
           </div>
           
@@ -390,17 +390,16 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
         const isCorrect = question.correctAnswer === idx + 1 || (question.correctAnswers && question.correctAnswers.includes(idx + 1));
         const isSelected = userAnswer === idx + 1 || (Array.isArray(userAnswer) && userAnswer.includes(idx + 1));
         
-        let optionClass = 'option-label review';
-        if (isCorrect) optionClass += ' correct-answer';
-        if (isSelected && !isCorrect) optionClass += ' wrong-answer';
+        let optionClass = 'option-label';
+        if (isCorrect) optionClass += ' correct';
+        if (isSelected && !isCorrect) optionClass += ' incorrect';
         if (isSelected) optionClass += ' selected';
         
         return `
           <label class="${optionClass}">
             <input type="radio" disabled ${isSelected ? 'checked' : ''}>
             <span class="option-letter">${String.fromCharCode(65 + idx)}</span>
-            <span class="option-content">${processMarkdownAndLatex(opt)}</span>
-            ${isCorrect ? '<span class="correct-indicator">✓</span>' : ''}
+            <div class="option-content">${processMarkdownAndLatex(opt)}</div>
           </label>
         `;
       }).join('');
@@ -423,17 +422,12 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
       </div>
       
       ${question.metadata?.solution ? `
-        <div class="mt-4 bg-amber-50 border border-amber-200 rounded-xl overflow-hidden">
-          <div class="px-6 py-4 border-b border-amber-200 bg-amber-100/50">
-            <span class="font-semibold text-amber-800 flex items-center gap-2">
-              <span>💡</span>
-              <span>Pembahasan</span>
-            </span>
-          </div>
-          <div class="p-6 prose prose-slate max-w-none">
+        <details class="solution-panel">
+          <summary><span>💡</span><span>Pembahasan</span></summary>
+          <div class="solution-content prose max-w-none">
             ${processMarkdownAndLatex(question.metadata.solution)}
           </div>
-        </div>
+        </details>
       ` : ''}
     `;
     
@@ -449,19 +443,21 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
     const current = currentQuestionIndex + 1;
     
     navContainer.innerHTML = `
-      <button 
-        id="prev-btn" 
-        class="nav-btn"
+      <button
+        type="button"
+        id="prev-btn"
+        class="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
         ${currentQuestionIndex === 0 ? 'disabled' : ''}
       >
         ← Sebelumnya
       </button>
-      <span class="px-6 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-medium">
+      <span class="text-gray-700 font-medium">
         Soal ${current} dari ${total}
       </span>
-      <button 
-        id="next-btn" 
-        class="nav-btn"
+      <button
+        type="button"
+        id="next-btn"
+        class="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
         ${currentQuestionIndex >= total - 1 ? 'disabled' : ''}
       >
         Selanjutnya →
@@ -547,74 +543,6 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
     color: #64748b;
   }
   
-  .nav-btn {
-    padding: 0.5rem 1rem;
-    background: #3b82f6;
-    color: white;
-    border-radius: 0.75rem;
-    font-weight: 500;
-    transition: all 0.15s;
-  }
-  
-  .nav-btn:hover:not(:disabled) {
-    background: #2563eb;
-  }
-  
-  .nav-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-  
-  .option-label.review {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem 1.25rem;
-    border-radius: 0.75rem;
-    border: 2px solid #e2e8f0;
-    background: white;
-    position: relative;
-  }
-  
-  .option-label.review.correct-answer {
-    border-color: #10b981;
-    background: #ecfdf5;
-  }
-  
-  .option-label.review.wrong-answer {
-    border-color: #ef4444;
-    background: #fef2f2;
-  }
-  
-  .option-letter {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    background: #f1f5f9;
-    color: #64748b;
-    font-weight: 600;
-    flex-shrink: 0;
-  }
-  
-  .option-label.review.correct-answer .option-letter {
-    background: #10b981;
-    color: white;
-  }
-  
-  .option-label.review.wrong-answer .option-letter {
-    background: #ef4444;
-    color: white;
-  }
-  
-  .correct-indicator {
-    position: absolute;
-    right: 1rem;
-    color: #10b981;
-    font-weight: bold;
-  }
   
   .math-display {
     margin: 0.75rem 0;

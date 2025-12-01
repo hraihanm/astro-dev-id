@@ -135,3 +135,150 @@ body {
   margin: 1.5rem 0;
 }
 
+/* Content Block Styles - For definition, theorem, example blocks in markdown */
+.chapter-content .definition-block,
+.prose .definition-block {
+  border-left: 4px solid #3b82f6;
+  background: #eff6ff;
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.chapter-content .definition-header,
+.prose .definition-header {
+  font-weight: 600;
+  color: #1e40af;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chapter-content .definition-content,
+.prose .definition-content {
+  color: #1e3a8a;
+  line-height: 1.7;
+}
+
+.chapter-content .theorem-block,
+.prose .theorem-block {
+  border-left: 4px solid #10b981;
+  background: #ecfdf5;
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.chapter-content .theorem-header,
+.prose .theorem-header {
+  font-weight: 600;
+  color: #065f46;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chapter-content .theorem-content,
+.prose .theorem-content {
+  color: #047857;
+  line-height: 1.7;
+}
+
+.chapter-content .example-block,
+.prose .example-block {
+  border-left: 4px solid #f59e0b;
+  background: #fffbeb;
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.chapter-content .example-header,
+.prose .example-header {
+  font-weight: 600;
+  color: #92400e;
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chapter-content .example-problem,
+.prose .example-problem {
+  color: #78350f;
+  line-height: 1.7;
+  margin-bottom: 0.75rem;
+}
+
+.chapter-content .example-solution,
+.prose .example-solution {
+  color: #78350f;
+  line-height: 1.7;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(146, 64, 14, 0.2);
+}
+
+.chapter-content .example-block details,
+.prose .example-block details {
+  margin-top: 0.75rem;
+}
+
+.chapter-content .example-block summary,
+.prose .example-block summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: #92400e;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.2s;
+}
+
+.chapter-content .example-block summary:hover,
+.prose .example-block summary:hover {
+  background-color: rgba(146, 64, 14, 0.1);
+}
+
+/* Note/Callout blocks */
+.chapter-content .note-block,
+.prose .note-block {
+  border-left: 4px solid #6b7280;
+  background: #f9fafb;
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+  border-radius: 0.5rem;
+}
+
+.chapter-content .note-block.note-info,
+.prose .note-block.note-info {
+  border-left-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.chapter-content .note-block.note-warning,
+.prose .note-block.note-warning {
+  border-left-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.chapter-content .note-block.note-tip,
+.prose .note-block.note-tip {
+  border-left-color: #10b981;
+  background: #ecfdf5;
+}
+
+.chapter-content .note-header,
+.prose .note-header {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+

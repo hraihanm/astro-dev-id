@@ -1,0 +1,581 @@
+---
+import Layout from '../../components/Layout.astro';
+
+const title = "Content Formatting Tutorial";
+
+// LaTeX expressions as constants to avoid template parsing issues
+const latexFrac = "\\frac{a}{b}";
+const latexIntegral = "\\int_0^1 x^2 dx = \\frac{1}{3}";
+const latexGreek = "\\alpha + \\beta = \\gamma";
+const latexSqrt = "\\sqrt{x^2 + y^2}";
+const latexLuminosity = "L = 4\\pi R^2 \\sigma T^4";
+
+// Code examples as constants to avoid template parsing
+const latexCodeExample = `Inline math: $E = mc^2$
+
+Display math:
+$$\\int_0^1 x^2 dx = \\frac{1}{3}$$
+
+Fractions: $\\frac{a}{b}$
+Greek letters: $\\alpha + \\beta = \\gamma$
+Square roots: $\\sqrt{x^2 + y^2}$`;
+---
+
+<Layout title={title}>
+  <div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white shadow">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+          <div class="flex items-center">
+            <a href="/admin" class="text-gray-700 hover:text-blue-600 mr-4">
+              ← Back to Admin
+            </a>
+            <h1 class="text-2xl font-bold text-gray-900">Content Formatting Tutorial</h1>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tutorial Content -->
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="space-y-8">
+
+        <!-- Introduction -->
+        <div class="bg-white shadow px-6 py-8 sm:rounded-lg">
+          <div class="mb-6">
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">Introduction</h2>
+            <p class="text-gray-600">
+              Learn how to create engaging course content using our hybrid formatting system.
+              Combine static content with interactive blocks for a Khan Academy-style learning experience.
+            </p>
+          </div>
+
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                </svg>
+              </div>
+              <div class="ml-3">
+                <h3 class="text-sm font-medium text-blue-800">Two Content Types</h3>
+                <div class="mt-2 text-sm text-blue-700">
+                  <p class="mb-2"><strong>Static Content:</strong> Definitions, theorems, examples, and regular text (Markdown + HTML)</p>
+                  <p><strong>Interactive Blocks:</strong> Quizzes, simulations, code editors, and diagrams</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Static Content Section -->
+        <div class="bg-white shadow px-6 py-8 sm:rounded-lg">
+          <h2 class="text-2xl font-bold text-gray-900 mb-6">1. Static Content (Markdown + HTML)</h2>
+
+          <!-- Basic Markdown -->
+          <div class="mb-8">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Basic Markdown</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="bg-gray-50 p-4 rounded-lg">
+                <h4 class="font-medium text-gray-900 mb-2">Markdown Input</h4>
+                <pre class="text-sm text-gray-700 bg-white p-3 rounded border overflow-x-auto"><code># Heading 1
+## Heading 2
+**Bold text** and *italic text*
+
+- Bullet point 1
+- Bullet point 2
+
+1. Numbered item
+2. Another item
+
+[Link text](https://example.com)
+
+![Alt text](image.jpg)</code></pre>
+              </div>
+              <div class="bg-gray-50 p-4 rounded-lg">
+                <h4 class="font-medium text-gray-900 mb-2">Rendered Output</h4>
+                <div class="text-sm">
+                  <h1 class="text-xl font-bold">Heading 1</h1>
+                  <h2 class="text-lg font-semibold">Heading 2</h2>
+                  <p><strong>Bold text</strong> and <em>italic text</em></p>
+                  <ul class="list-disc list-inside">
+                    <li>Bullet point 1</li>
+                    <li>Bullet point 2</li>
+                  </ul>
+                  <ol class="list-decimal list-inside">
+                    <li>Numbered item</li>
+                    <li>Another item</li>
+                  </ol>
+                  <p><a href="#" class="text-blue-600 underline">Link text</a></p>
+                  <p><em>[Image would appear here]</em></p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- LaTeX Mathematics -->
+          <div class="mb-8">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">LaTeX Mathematics</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="bg-gray-50 p-4 rounded-lg">
+                <h4 class="font-medium text-gray-900 mb-2">LaTeX Input</h4>
+                <pre class="text-sm text-gray-700 bg-white p-3 rounded border overflow-x-auto"><code set:html={latexCodeExample}></code></pre>
+              </div>
+              <div class="bg-gray-50 p-4 rounded-lg">
+                <h4 class="font-medium text-gray-900 mb-2">Rendered Output</h4>
+                <div class="text-sm">
+                  <p>Inline math: <span class="math-inline" data-latex="E = mc^2">E = mc²</span></p>
+                  <div class="math-display" data-latex={latexIntegral}>[Integral display]</div>
+                  <p>Fractions: <span class="math-inline" data-latex={latexFrac}>a/b</span></p>
+                  <p>Greek letters: <span class="math-inline" data-latex={latexGreek}>α + β = γ</span></p>
+                  <p>Square roots: <span class="math-inline" data-latex={latexSqrt}>√(x² + y²)</span></p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Styled Content Blocks -->
+          <div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Styled Content Blocks</h3>
+            <div class="space-y-4">
+
+              <!-- Definition Block -->
+              <div>
+                <h4 class="font-medium text-gray-900 mb-2">Definition Block</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div class="bg-gray-50 p-4 rounded-lg">
+                    <pre class="text-sm text-gray-700 bg-white p-3 rounded border overflow-x-auto"><code>&lt;div class="definition-block"&gt;
+  &lt;div class="definition-header"&gt;
+    📘 Definisi 2.1: Luminositas
+  &lt;/div&gt;
+  &lt;div class="definition-content"&gt;
+    Luminositas adalah total energi yang
+    dipancarkan oleh bintang per satuan waktu.
+
+    Secara matematis: $L = 4\pi R^2 \sigma T^4$
+  &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+                  </div>
+                  <div class="bg-gray-50 p-4 rounded-lg">
+                    <div class="definition-block">
+                      <div class="definition-header">
+                        📘 Definisi 2.1: Luminositas
+                      </div>
+                      <div class="definition-content">
+                        Luminositas adalah total energi yang dipancarkan oleh bintang per satuan waktu.
+                        Secara matematis: <span class="math-inline" data-latex={latexLuminosity}>L = 4πR²σT⁴</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Theorem Block -->
+              <div>
+                <h4 class="font-medium text-gray-900 mb-2">Theorem Block</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div class="bg-gray-50 p-4 rounded-lg">
+                    <pre class="text-sm text-gray-700 bg-white p-3 rounded border overflow-x-auto"><code>&lt;div class="theorem-block"&gt;
+  &lt;div class="theorem-header"&gt;
+    ⚡ Teorema: Persamaan Stefan-Boltzmann
+  &lt;/div&gt;
+  &lt;div class="theorem-content"&gt;
+    $$L = 4\pi R^2 \sigma T^4$$
+  &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+                  </div>
+                  <div class="bg-gray-50 p-4 rounded-lg">
+                    <div class="theorem-block">
+                      <div class="theorem-header">
+                        ⚡ Teorema: Persamaan Stefan-Boltzmann
+                      </div>
+                      <div class="theorem-content">
+                        <div class="math-display" data-latex={latexLuminosity}>[L = 4πR²σT⁴]</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Example Block -->
+              <div>
+                <h4 class="font-medium text-gray-900 mb-2">Example Block</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div class="bg-gray-50 p-4 rounded-lg">
+                    <pre class="text-sm text-gray-700 bg-white p-3 rounded border overflow-x-auto"><code>&lt;div class="example-block"&gt;
+  &lt;div class="example-header"&gt;
+    📝 Contoh 2.3
+  &lt;/div&gt;
+  &lt;div class="example-problem"&gt;
+    Hitung luminositas bintang dengan
+    radius $R = 7 \times 10^8$ m dan
+    suhu $T = 6000$ K.
+  &lt;/div&gt;
+  &lt;details&gt;
+    &lt;summary&gt;Lihat Solusi&lt;/summary&gt;
+    &lt;div class="example-solution"&gt;
+      Menggunakan persamaan Stefan-Boltzmann...
+    &lt;/div&gt;
+  &lt;/details&gt;
+&lt;/div&gt;</code></pre>
+                  </div>
+                  <div class="bg-gray-50 p-4 rounded-lg">
+                    <div class="example-block">
+                      <div class="example-header">
+                        📝 Contoh 2.3
+                      </div>
+                      <div class="example-problem">
+                        Hitung luminositas bintang dengan radius <span class="math-inline" data-latex="R = 7 \times 10^8">R = 7 × 10⁸</span> m dan suhu <span class="math-inline" data-latex="T = 6000">T = 6000</span> K.
+                      </div>
+                      <details>
+                        <summary>Lihat Solusi</summary>
+                        <div class="example-solution">
+                          Menggunakan persamaan Stefan-Boltzmann...
+                        </div>
+                      </details>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Blocks Section -->
+        <div class="bg-white shadow px-6 py-8 sm:rounded-lg">
+          <h2 class="text-2xl font-bold text-gray-900 mb-6">2. Interactive Blocks</h2>
+
+          <div class="mb-6">
+            <p class="text-gray-600">
+              Interactive blocks are inserted using special markers in your content.
+              These will be rendered as interactive components that students can engage with.
+            </p>
+          </div>
+
+          <div class="space-y-6">
+            <!-- Quiz Block -->
+            <div>
+              <h3 class="text-lg font-semibold text-gray-800 mb-4">Quiz Block</h3>
+              <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div class="flex items-start">
+                  <div class="flex-shrink-0">
+                    <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                  </div>
+                  <div class="ml-3 flex-1">
+                    <p class="text-sm text-green-800 mb-2">
+                      <strong>Marker:</strong> <code class="bg-green-100 px-1 rounded"><!-- BLOCK:quiz:quiz-id --></code>
+                    </p>
+                    <p class="text-sm text-green-800">
+                      Insert this marker where you want the quiz to appear. The quiz will be rendered as an interactive component
+                      that links to an existing quiz. Students can track their progress and scores.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Simulation Block -->
+            <div>
+              <h3 class="text-lg font-semibold text-gray-800 mb-4">Simulation Block</h3>
+              <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <div class="flex items-start">
+                  <div class="flex-shrink-0">
+                    <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div class="ml-3 flex-1">
+                    <p class="text-sm text-purple-800 mb-2">
+                      <strong>Marker:</strong> <code class="bg-purple-100 px-1 rounded"><!-- BLOCK:simulation:sim-id --></code>
+                    </p>
+                    <p class="text-sm text-purple-800">
+                      Embed interactive simulations (PhET, custom HTML5, or external iframes).
+                      Students can interact with physics, math, or other simulations directly in the lesson.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Code Editor Block -->
+            <div>
+              <h3 class="text-lg font-semibold text-gray-800 mb-4">Code Editor Block</h3>
+              <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                <div class="flex items-start">
+                  <div class="flex-shrink-0">
+                    <svg class="h-6 w-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                    </svg>
+                  </div>
+                  <div class="ml-3 flex-1">
+                    <p class="text-sm text-indigo-800 mb-2">
+                      <strong>Marker:</strong> <code class="bg-indigo-100 px-1 rounded"><!-- BLOCK:code-editor:block-id --></code>
+                    </p>
+                    <p class="text-sm text-indigo-800">
+                      Interactive code editors for programming exercises. Students can write, run, and test code
+                      directly in the lesson. Coming soon in future updates.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Diagram Block -->
+            <div>
+              <h3 class="text-lg font-semibold text-gray-800 mb-4">Interactive Diagram Block</h3>
+              <div class="bg-cyan-50 border border-cyan-200 rounded-lg p-4">
+                <div class="flex items-start">
+                  <div class="flex-shrink-0">
+                    <svg class="h-6 w-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                    </svg>
+                  </div>
+                  <div class="ml-3 flex-1">
+                    <p class="text-sm text-cyan-800 mb-2">
+                      <strong>Marker:</strong> <code class="bg-cyan-100 px-1 rounded"><!-- BLOCK:interactive-diagram:block-id --></code>
+                    </p>
+                    <p class="text-sm text-cyan-800">
+                      Interactive diagrams and visualizations. Students can manipulate variables,
+                      explore relationships, and see real-time updates. Coming soon in future updates.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Best Practices -->
+        <div class="bg-white shadow px-6 py-8 sm:rounded-lg">
+          <h2 class="text-2xl font-bold text-gray-900 mb-6">3. Best Practices</h2>
+
+          <div class="space-y-6">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-800 mb-3">Content Structure</h3>
+              <ul class="space-y-2 text-gray-600">
+                <li class="flex items-start">
+                  <span class="text-green-500 mr-2">✓</span>
+                  Use definition blocks for introducing new concepts
+                </li>
+                <li class="flex items-start">
+                  <span class="text-green-500 mr-2">✓</span>
+                  Use theorem blocks for important formulas and laws
+                </li>
+                <li class="flex items-start">
+                  <span class="text-green-500 mr-2">✓</span>
+                  Use example blocks for worked problems (with collapsible solutions)
+                </li>
+                <li class="flex items-start">
+                  <span class="text-green-500 mr-2">✓</span>
+                  Insert quiz blocks after introducing key concepts
+                </li>
+                <li class="flex items-start">
+                  <span class="text-green-500 mr-2">✓</span>
+                  Use simulations to demonstrate difficult concepts
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 class="text-lg font-semibold text-gray-800 mb-3">Writing Tips</h3>
+              <ul class="space-y-2 text-gray-600">
+                <li class="flex items-start">
+                  <span class="text-blue-500 mr-2">💡</span>
+                  Keep static content focused and concise
+                </li>
+                <li class="flex items-start">
+                  <span class="text-blue-500 mr-2">💡</span>
+                  Use interactive blocks to reinforce learning
+                </li>
+                <li class="flex items-start">
+                  <span class="text-blue-500 mr-2">💡</span>
+                  Test your LaTeX equations in the preview
+                </li>
+                <li class="flex items-start">
+                  <span class="text-blue-500 mr-2">💡</span>
+                  Use collapsible solutions to encourage problem-solving
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Start Guide -->
+        <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-8 sm:rounded-lg">
+          <h2 class="text-2xl font-bold mb-4">Quick Start Guide</h2>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="text-center">
+              <div class="text-4xl mb-2">1️⃣</div>
+              <h3 class="font-semibold mb-2">Write Content</h3>
+              <p class="text-sm text-blue-100">
+                Create your lesson using Markdown and LaTeX for static content
+              </p>
+            </div>
+            <div class="text-center">
+              <div class="text-4xl mb-2">2️⃣</div>
+              <h3 class="font-semibold mb-2">Add Style</h3>
+              <p class="text-sm text-blue-100">
+                Use HTML divs with classes for definitions, theorems, and examples
+              </p>
+            </div>
+            <div class="text-center">
+              <div class="text-4xl mb-2">3️⃣</div>
+              <h3 class="font-semibold mb-2">Insert Blocks</h3>
+              <p class="text-sm text-blue-100">
+                Add interactive blocks using special markers where needed
+              </p>
+            </div>
+          </div>
+
+          <div class="mt-6 text-center">
+            <a
+              href="/admin"
+              class="inline-flex items-center px-6 py-3 bg-white text-blue-600 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+            >
+              Start Creating Content
+              <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .definition-block,
+  .theorem-block,
+  .example-block {
+    margin: 1.5rem 0;
+    padding: 1rem 1.25rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  .definition-block {
+    border-left: 4px solid #3b82f6;
+    background: #eff6ff;
+  }
+
+  .definition-header {
+    font-weight: 600;
+    color: #1e40af;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .definition-content {
+    color: #1e3a8a;
+    line-height: 1.7;
+  }
+
+  .theorem-block {
+    border-left: 4px solid #10b981;
+    background: #ecfdf5;
+  }
+
+  .theorem-header {
+    font-weight: 600;
+    color: #065f46;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .theorem-content {
+    color: #047857;
+    line-height: 1.7;
+  }
+
+  .example-block {
+    border-left: 4px solid #f59e0b;
+    background: #fffbeb;
+  }
+
+  .example-header {
+    font-weight: 600;
+    color: #92400e;
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .example-problem {
+    color: #78350f;
+    line-height: 1.7;
+    margin-bottom: 0.75rem;
+  }
+
+  .example-solution {
+    color: #78350f;
+    line-height: 1.7;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(146, 64, 14, 0.2);
+  }
+
+  .example-block details summary {
+    cursor: pointer;
+    font-weight: 500;
+    color: #92400e;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    transition: background-color 0.2s;
+  }
+
+  .example-block details summary:hover {
+    background-color: rgba(146, 64, 14, 0.1);
+  }
+</style>
+
+<script>
+  // Load KaTeX for math rendering
+  if (typeof window !== 'undefined') {
+    // Load KaTeX CSS
+    const katexLink = document.createElement('link');
+    katexLink.rel = 'stylesheet';
+    katexLink.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css';
+    document.head.appendChild(katexLink);
+
+    // Load KaTeX JS and render math
+    const katexScript = document.createElement('script');
+    katexScript.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js';
+    katexScript.onload = () => {
+      // Render all math elements
+      const mathElements = document.querySelectorAll('.math-display, .math-inline');
+      mathElements.forEach((element) => {
+        const latex = element.getAttribute('data-latex');
+        if (latex && window.katex) {
+          try {
+            const displayMode = element.classList.contains('math-display');
+            window.katex.render(latex, element, {
+              displayMode,
+              throwOnError: false,
+              trust: true,
+              macros: {
+                '\\degree': '^{\\circ}'
+              }
+            });
+          } catch (err) {
+            console.warn('KaTeX render error:', err);
+          }
+        }
+      });
+    };
+    document.head.appendChild(katexScript);
+  }
+</script>

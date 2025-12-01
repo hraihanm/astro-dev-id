@@ -1,6 +1,6 @@
 ---
 import { siteContent } from '../data/siteContent';
-import { getSessionUser } from '../lib/auth-guard';
+import { getSessionUser, getDisplayName, getUserInitials } from '../lib/auth-guard';
 
 export interface Props {
   title: string;
@@ -9,6 +9,8 @@ export interface Props {
 
 const { title, description } = Astro.props;
 const user = await getSessionUser(Astro.cookies);
+const displayName = user ? getDisplayName(user) : '';
+const userInitials = user ? getUserInitials(user) : '';
 
 // Khan Academy style colors
 const colors = {
@@ -76,9 +78,9 @@ const colors = {
             <div class="relative group">
               <button class="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-blue-600 p-1.5 rounded-lg hover:bg-slate-50 transition-colors">
                 <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-semibold text-sm shadow-sm">
-                  {user.email[0].toUpperCase()}
+                  {userInitials}
                 </div>
-                <span class="hidden sm:inline max-w-32 truncate">{user.email.split('@')[0]}</span>
+                <span class="hidden sm:inline max-w-32 truncate">Hai, {displayName}</span>
                 <svg class="hidden sm:block w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                 </svg>
@@ -87,7 +89,8 @@ const colors = {
                 <div class="bg-white rounded-xl shadow-lg py-2 border border-slate-100 overflow-hidden">
                   <div class="px-4 py-2 border-b border-slate-100">
                     <p class="text-xs text-slate-500">Masuk sebagai</p>
-                    <p class="text-sm font-medium text-slate-800 truncate">{user.email}</p>
+                    <p class="text-sm font-medium text-slate-800 truncate">{displayName}</p>
+                    <p class="text-xs text-slate-400 truncate">{user.email}</p>
                   </div>
                   <a href="/dashboard" class="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
                     <span class="text-base">📊</span>

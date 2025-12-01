@@ -1,6 +1,8 @@
 import type { APIRoute } from 'astro';
 import { prisma } from '../../../../../lib/db';
 
+export const prerender = false;
+
 export const DELETE: APIRoute = async ({ params, cookies }) => {
   const userId = cookies.get('user_id')?.value;
   

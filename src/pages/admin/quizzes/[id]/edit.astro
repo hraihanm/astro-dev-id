@@ -649,48 +649,9 @@ const normalizedQuestions = Array.isArray(questions)
       background: linear-gradient(to bottom, #10b981, #059669);
     }
 
-    .preview-option-bullet {
-      width: 1.75rem;
-      height: 1.75rem;
-      border: 2.5px solid #d1d5db;
-      border-radius: 50%;
-      margin-right: 1rem;
-      margin-top: 0.125rem;
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s ease;
-      background: white;
-    }
-
-    .preview-option.correct .preview-option-bullet {
-      border-color: #10b981;
-      background: linear-gradient(135deg, #10b981, #059669);
-      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
-      transform: scale(1.1);
-    }
-
-    .preview-option.correct .preview-option-bullet::after {
-      content: '✓';
-      color: white;
-      font-size: 1rem;
-      font-weight: bold;
-      animation: checkmark 0.3s ease;
-    }
-    
-    @keyframes checkmark {
-      0% {
-        transform: scale(0);
-        opacity: 0;
-      }
-      50% {
-        transform: scale(1.2);
-      }
-      100% {
-        transform: scale(1);
-        opacity: 1;
-      }
+    /* Preview uses option-letter from shared CSS */
+    .preview-option .option-letter {
+      margin-top: 0;
     }
 
     .preview-option-content {
@@ -1735,9 +1696,10 @@ const normalizedQuestions = Array.isArray(questions)
         const optionsHtml = options.map((opt, idx) => {
           const isCorrect = correctAnswers.includes(idx + 1);
           const optionHtml = renderMarkdown(opt);
+          const optionLetter = String.fromCharCode(65 + idx); // A, B, C, D...
           return `
             <div class="preview-option ${isCorrect ? 'correct' : ''}">
-              <div class="preview-option-bullet"></div>
+              <span class="option-letter">${optionLetter}</span>
               <div class="preview-option-content">${optionHtml}</div>
             </div>
           `;

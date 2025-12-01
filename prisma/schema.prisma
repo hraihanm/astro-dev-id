@@ -8,14 +8,15 @@ datasource db {
 }
 
 model User {
-  id        Int           @id @default(autoincrement())
-  email     String        @unique
-  password  String
-  role      String        @default("student")
-  createdAt DateTime      @default(now())
-  courses   Course[]
-  attempts  QuizAttempt[]
-  profile   Profile?
+  id            Int            @id @default(autoincrement())
+  email         String         @unique
+  password      String
+  role          String         @default("student")
+  createdAt     DateTime       @default(now())
+  courses       Course[]
+  attempts      QuizAttempt[]
+  profile       Profile?
+  blockProgress BlockProgress[]
 }
 
 model Course {
@@ -31,13 +32,15 @@ model Course {
 }
 
 model Chapter {
-  id       Int     @id @default(autoincrement())
-  courseId Int
-  title    String
-  order    Int
-  content  String?
-  course   Course  @relation(fields: [courseId], references: [id])
-  quizzes  Quiz[]
+  id           Int            @id @default(autoincrement())
+  courseId     Int
+  title        String
+  order        Int
+  content      String?        // Markdown content
+  blocks       String?        // JSON array of interactive blocks
+  course       Course         @relation(fields: [courseId], references: [id])
+  quizzes      Quiz[]
+  blockProgress BlockProgress[]
 }
 
 model Quiz {
@@ -87,4 +90,23 @@ model Profile {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   user          User     @relation(fields: [userId], references: [id])
+}
+
+model BlockProgress {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  chapterId   Int
+  blockId     String  // Unique identifier for the block (e.g., "block-0", "block-1")
+  blockType   String  // "quiz", "simulation", "code-editor", etc.
+  completed   Boolean @default(false)
+  score       Float?
+  attempts    Int     @default(0)
+  data        String? // JSON for additional state (quiz answers, simulation state, etc.)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chapter     Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, chapterId, blockId])
+  @@index([userId, chapterId])
 }

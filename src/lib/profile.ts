@@ -108,7 +108,12 @@ export async function getUserLearningStats(userId: number) {
     })
   ]);
 
-  const uniqueCourses = new Set(coursesData.map(d => d.quiz.course.slug));
+  // Filter out quizzes without courses (standalone quizzes)
+  const uniqueCourses = new Set(
+    coursesData
+      .filter(d => d.quiz.course !== null)
+      .map(d => d.quiz.course!.slug)
+  );
 
   return {
     totalAttempts,

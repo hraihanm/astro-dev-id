@@ -48,12 +48,17 @@ export async function getCourseContent(courseSlug: string) {
   });
 }
 
-export async function getChapterContent(courseSlug: string, chapterOrder: number) {
+export async function getChapterContent(courseSlug: string, chapterOrder: number, userId?: number) {
   const course = await prisma.course.findUnique({
     where: { slug: courseSlug },
     include: {
       chapters: {
-        orderBy: { order: 'asc' }
+        orderBy: { order: 'asc' },
+        include: {
+          blockProgress: userId ? {
+            where: { userId }
+          } : false
+        }
       }
     }
   });
