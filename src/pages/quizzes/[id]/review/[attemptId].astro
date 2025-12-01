@@ -1,0 +1,629 @@
+---
+import Layout from '../../../../components/Layout.astro';
+import { getQuiz } from '../../../../lib/quizzes';
+import { prisma } from '../../../../lib/db';
+
+export const prerender = false;
+
+const { id, attemptId } = Astro.params;
+
+// Get user ID from cookies
+const userId = Astro.cookies.get('user_id')?.value;
+
+let quiz: any = null;
+let attempt: any = null;
+let error = '';
+
+try {
+  const quizId = parseInt(id || '0');
+  const attemptIdNum = parseInt(attemptId || '0');
+  
+  // Get quiz
+  const rawQuiz = await getQuiz(quizId);
+  
+  if (!rawQuiz) {
+    error = 'Quiz not found';
+  } else {
+    // Parse quiz data
+    quiz = {
+      ...rawQuiz,
+      questions: typeof rawQuiz.questions === 'string' 
+        ? JSON.parse(rawQuiz.questions) 
+        : rawQuiz.questions,
+      settings: typeof rawQuiz.settings === 'string'
+        ? JSON.parse(rawQuiz.settings)
+        : rawQuiz.settings
+    };
+    
+    // Get the specific attempt
+    if (userId) {
+      const foundAttempt = await prisma.quizAttempt.findFirst({
+        where: { 
+          id: attemptIdNum,
+          userId: parseInt(userId),
+          quizId 
+        }
+      });
+      
+      if (foundAttempt) {
+        attempt = {
+          ...foundAttempt,
+          answers: JSON.parse(foundAttempt.answers),
+          detailedResults: JSON.parse(foundAttempt.detailedResults)
+        };
+      }
+    }
+    
+    if (!attempt) {
+      error = 'Attempt not found or you do not have permission to view it';
+    }
+  }
+} catch (err) {
+  error = 'Error loading quiz review';
+  console.error(err);
+}
+
+// Format time spent
+function formatTime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+function formatDate(date: Date): string {
+  return new Date(date).toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+// Calculate score color
+function getScoreColor(percentage: number): string {
+  if (percentage >= 80) return 'emerald';
+  if (percentage >= 60) return 'blue';
+  if (percentage >= 40) return 'amber';
+  return 'red';
+}
+
+const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
+---
+
+<Layout title={`Tinjau - ${quiz?.title || 'Quiz'}`}>
+  <link rel="stylesheet" href="/src/styles/quiz-shared.css">
+  
+  <div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    {error ? (
+      <div class="flex items-center justify-center min-h-screen">
+        <div class="text-center">
+          <h1 class="text-2xl font-bold text-red-600 mb-4">Kesalahan</h1>
+          <p class="text-slate-600 mb-4">{error}</p>
+          <a href="/quizzes/history" class="text-blue-600 hover:underline">Kembali ke Riwayat</a>
+        </div>
+      </div>
+    ) : (
+      <div class="flex flex-col h-screen">
+        <!-- Header with Quiz Info and Score -->
+        <div class="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 flex-shrink-0">
+          <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+              <a href="/quizzes/history" class="p-2 rounded-lg hover:bg-slate-100 transition-colors">
+                <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+              </a>
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                  <span class="text-2xl">📊</span>
+                </div>
+                <div>
+                  <h1 class="text-xl font-bold text-slate-900">{quiz.title}</h1>
+                  <p class="text-sm text-slate-500">Tinjauan Percobaan • {formatDate(attempt.completedAt)}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="flex items-center gap-4">
+              <div class={`px-4 py-2 rounded-xl bg-${scoreColor}-50 border border-${scoreColor}-200`}>
+                <div class="flex items-center gap-4">
+                  <div class="text-center">
+                    <div class={`text-2xl font-bold text-${scoreColor}-600`}>{attempt.percentage}%</div>
+                    <div class="text-xs text-slate-500 uppercase tracking-wider">Skor</div>
+                  </div>
+                  <div class="w-px h-8 bg-slate-200"></div>
+                  <div class="text-center">
+                    <div class="text-lg font-bold text-slate-900">{attempt.correctAnswers}/{attempt.totalQuestions}</div>
+                    <div class="text-xs text-slate-500 uppercase tracking-wider">Benar</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Navigation Row -->
+        <div class="flex flex-col lg:flex-row border-b border-slate-200 bg-white">
+          <div id="nav-container" class="flex-1 px-4 sm:px-6 py-2 sm:py-3 flex items-center justify-center gap-2 sm:gap-4">
+            <!-- Navigation bar will be rendered here by JavaScript -->
+          </div>
+          
+          <!-- Time column - Fixed width to match sidebar -->
+          <div class="hidden lg:flex w-80 border-l border-slate-200 px-4 py-3 items-center justify-center">
+            <div class="flex items-center gap-3 text-slate-600 text-sm">
+              <span>⏱️</span>
+              <span class="font-medium">Waktu: {formatTime(attempt.timeSpent)}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Content Area with Sidebar -->
+        <div class="flex flex-1 overflow-hidden relative">
+          <!-- Main Content -->
+          <div class="flex-1 flex flex-col overflow-hidden">
+            <div class="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 scroll-smooth">
+              <div id="question-container" class="max-w-4xl mx-auto">
+                <!-- Question will be rendered here -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Sidebar -->
+          <div id="sidebar" class="fixed lg:relative inset-y-0 right-0 w-80 bg-white border-l border-slate-200 flex flex-col transform translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out z-40 overflow-y-auto">
+            
+            <!-- Mobile close -->
+            <div class="lg:hidden flex items-center justify-between p-4 border-b border-slate-200">
+              <span class="font-bold text-slate-700">Tinjauan</span>
+              <button id="close-sidebar" class="p-2 rounded-lg hover:bg-slate-100">
+                <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Question Grid -->
+            <div class="p-4">
+              <h3 class="font-semibold text-slate-700 text-sm tracking-wide mb-3 flex items-center gap-2">
+                <span>📋</span>
+                <span>NOMOR SOAL</span>
+              </h3>
+              <div id="question-grid" class="grid grid-cols-5 gap-2 max-h-[360px] overflow-y-auto pr-1">
+                <!-- Question numbers will be rendered here -->
+              </div>
+            </div>
+            
+            <!-- Status Legend -->
+            <div class="p-4 border-t border-slate-100">
+              <div class="space-y-2 text-sm">
+                <div class="flex items-center gap-2">
+                  <div class="w-6 h-6 rounded-lg bg-emerald-500"></div>
+                  <span class="text-slate-600">Benar</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="w-6 h-6 rounded-lg bg-red-500"></div>
+                  <span class="text-slate-600">Salah</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="w-6 h-6 rounded-lg bg-slate-300"></div>
+                  <span class="text-slate-600">Tidak Dijawab</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="p-4 border-t border-slate-100">
+              <a 
+                href={`/quizzes/${quiz.id}`}
+                class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-center flex items-center justify-center gap-2 transition-colors"
+              >
+                <span>🔄</span>
+                <span>Coba Lagi</span>
+              </a>
+            </div>
+          </div>
+          
+          <!-- Mobile sidebar overlay -->
+          <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-30 hidden lg:hidden"></div>
+        </div>
+
+        <!-- Mobile Bottom Navigation -->
+        <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 flex items-center justify-between z-20">
+          <button id="mobile-prev-btn" class="p-3 rounded-xl bg-slate-100 text-slate-600 disabled:opacity-50">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          
+          <button id="sidebar-toggle" class="px-4 py-2 bg-slate-100 rounded-xl font-medium text-slate-700">
+            Soal <span id="mobile-current">1</span>/<span id="mobile-total">{quiz.questions.length}</span>
+          </button>
+          
+          <button id="mobile-next-btn" class="p-3 rounded-xl bg-slate-100 text-slate-600 disabled:opacity-50">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+</Layout>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+<script define:vars={{ quiz, attempt }}>
+  const questions = quiz.questions;
+  const detailedResults = attempt.detailedResults;
+  const userAnswers = attempt.answers;
+  
+  let currentQuestionIndex = 0;
+  
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(text));
+    return div.innerHTML;
+  }
+  
+  function processMarkdownAndLatex(text) {
+    if (!text) return '';
+    
+    // First, process LaTeX
+    let processed = text.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
+      const cleanLatex = (latex || '').trim();
+      return `<div class="math-display" data-latex="${escapeHtml(cleanLatex)}"></div>`;
+    });
+    
+    processed = processed.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (match, latex) => {
+      const cleanLatex = (latex || '').trim();
+      return `<span class="math-inline" data-latex="${escapeHtml(cleanLatex)}"></span>`;
+    });
+    
+    // Then render markdown
+    if (window.marked) {
+      try {
+        const markdownHtml = window.marked.parse(processed);
+        return DOMPurify.sanitize(markdownHtml);
+      } catch (e) {
+        console.error('Markdown parsing error:', e);
+        return DOMPurify.sanitize(processed);
+      }
+    }
+    return DOMPurify.sanitize(processed);
+  }
+  
+  function renderLatex(container) {
+    if (!window.katex || !container) return;
+    
+    container.querySelectorAll('.math-display:not(.katex-rendered), .math-inline:not(.katex-rendered)').forEach(el => {
+      try {
+        const latex = el.dataset.latex || el.textContent || '';
+        const isDisplay = el.classList.contains('math-display');
+        
+        el.innerHTML = window.katex.renderToString(latex, {
+          displayMode: isDisplay,
+          throwOnError: false,
+          output: 'html'
+        });
+        el.classList.add('katex-rendered');
+      } catch (e) {
+        console.error('KaTeX error:', e);
+        el.textContent = el.dataset.latex || '';
+      }
+    });
+  }
+  
+  function renderQuestionGrid() {
+    const grid = document.getElementById('question-grid');
+    if (!grid) return;
+    
+    grid.innerHTML = questions.map((q, index) => {
+      const result = detailedResults[index];
+      let classes = ['question-number'];
+      
+      if (index === currentQuestionIndex) {
+        classes.push('current');
+      }
+      
+      if (result?.isCorrect) {
+        classes.push('correct');
+      } else if (userAnswers[index] !== undefined && userAnswers[index] !== null) {
+        classes.push('incorrect');
+      } else {
+        classes.push('unanswered');
+      }
+      
+      return `<button class="${classes.join(' ')}" data-index="${index}">${index + 1}</button>`;
+    }).join('');
+    
+    grid.querySelectorAll('.question-number').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentQuestionIndex = parseInt(btn.dataset.index);
+        renderQuestion();
+        renderQuestionGrid();
+        closeSidebar();
+      });
+    });
+  }
+  
+  function goToQuestion(index) {
+    if (index >= 0 && index < questions.length) {
+      currentQuestionIndex = index;
+      renderQuestion();
+      renderQuestionGrid();
+      updateMobileNav();
+    }
+  }
+  
+  function updateMobileNav() {
+    const current = document.getElementById('mobile-current');
+    if (current) current.textContent = currentQuestionIndex + 1;
+    
+    document.getElementById('mobile-prev-btn')?.toggleAttribute('disabled', currentQuestionIndex === 0);
+    document.getElementById('mobile-next-btn')?.toggleAttribute('disabled', currentQuestionIndex >= questions.length - 1);
+  }
+  
+  function renderQuestion() {
+    const container = document.getElementById('question-container');
+    if (!container) return;
+    
+    const question = questions[currentQuestionIndex];
+    const result = detailedResults[currentQuestionIndex];
+    const userAnswer = userAnswers[currentQuestionIndex];
+    
+    let statusBadge = '';
+    if (result?.isCorrect) {
+      statusBadge = '<span class="px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-medium rounded-lg">✓ Benar</span>';
+    } else if (userAnswer !== undefined && userAnswer !== null) {
+      statusBadge = '<span class="px-3 py-1 bg-red-100 text-red-700 text-sm font-medium rounded-lg">✗ Salah</span>';
+    } else {
+      statusBadge = '<span class="px-3 py-1 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg">− Tidak Dijawab</span>';
+    }
+    
+    let optionsHtml = '';
+    if (question.options) {
+      optionsHtml = question.options.map((opt, idx) => {
+        const isCorrect = question.correctAnswer === idx + 1 || (question.correctAnswers && question.correctAnswers.includes(idx + 1));
+        const isSelected = userAnswer === idx + 1 || (Array.isArray(userAnswer) && userAnswer.includes(idx + 1));
+        
+        let optionClass = 'option-label review';
+        if (isCorrect) optionClass += ' correct-answer';
+        if (isSelected && !isCorrect) optionClass += ' wrong-answer';
+        if (isSelected) optionClass += ' selected';
+        
+        return `
+          <label class="${optionClass}">
+            <input type="radio" disabled ${isSelected ? 'checked' : ''}>
+            <span class="option-letter">${String.fromCharCode(65 + idx)}</span>
+            <span class="option-content">${processMarkdownAndLatex(opt)}</span>
+            ${isCorrect ? '<span class="correct-indicator">✓</span>' : ''}
+          </label>
+        `;
+      }).join('');
+    }
+    
+    container.innerHTML = `
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+          <span class="text-sm font-semibold text-slate-600 uppercase tracking-wider">Pertanyaan</span>
+          ${statusBadge}
+        </div>
+        <div class="p-6">
+          <div class="prose prose-slate max-w-none mb-6 text-lg leading-relaxed">
+            ${processMarkdownAndLatex(question.question)}
+          </div>
+          <div class="space-y-3">
+            ${optionsHtml}
+          </div>
+        </div>
+      </div>
+      
+      ${question.metadata?.solution ? `
+        <div class="mt-4 bg-amber-50 border border-amber-200 rounded-xl overflow-hidden">
+          <div class="px-6 py-4 border-b border-amber-200 bg-amber-100/50">
+            <span class="font-semibold text-amber-800 flex items-center gap-2">
+              <span>💡</span>
+              <span>Pembahasan</span>
+            </span>
+          </div>
+          <div class="p-6 prose prose-slate max-w-none">
+            ${processMarkdownAndLatex(question.metadata.solution)}
+          </div>
+        </div>
+      ` : ''}
+    `;
+    
+    requestAnimationFrame(() => renderLatex(container));
+    updateMobileNav();
+  }
+  
+  function renderNavBar() {
+    const navContainer = document.getElementById('nav-container');
+    if (!navContainer) return;
+    
+    const total = questions.length;
+    const current = currentQuestionIndex + 1;
+    
+    navContainer.innerHTML = `
+      <button 
+        id="prev-btn" 
+        class="nav-btn"
+        ${currentQuestionIndex === 0 ? 'disabled' : ''}
+      >
+        ← Sebelumnya
+      </button>
+      <span class="px-6 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-medium">
+        Soal ${current} dari ${total}
+      </span>
+      <button 
+        id="next-btn" 
+        class="nav-btn"
+        ${currentQuestionIndex >= total - 1 ? 'disabled' : ''}
+      >
+        Selanjutnya →
+      </button>
+    `;
+    
+    document.getElementById('prev-btn')?.addEventListener('click', () => goToQuestion(currentQuestionIndex - 1));
+    document.getElementById('next-btn')?.addEventListener('click', () => goToQuestion(currentQuestionIndex + 1));
+  }
+  
+  // Sidebar controls
+  function openSidebar() {
+    document.getElementById('sidebar')?.classList.remove('translate-x-full');
+    document.getElementById('sidebar-overlay')?.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+  
+  function closeSidebar() {
+    document.getElementById('sidebar')?.classList.add('translate-x-full');
+    document.getElementById('sidebar-overlay')?.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+  
+  // Initialize
+  function initReview() {
+    renderQuestionGrid();
+    renderNavBar();
+    renderQuestion();
+    
+    document.getElementById('sidebar-toggle')?.addEventListener('click', openSidebar);
+    document.getElementById('close-sidebar')?.addEventListener('click', closeSidebar);
+    document.getElementById('sidebar-overlay')?.addEventListener('click', closeSidebar);
+    document.getElementById('mobile-prev-btn')?.addEventListener('click', () => goToQuestion(currentQuestionIndex - 1));
+    document.getElementById('mobile-next-btn')?.addEventListener('click', () => goToQuestion(currentQuestionIndex + 1));
+  }
+  
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initReview);
+  } else {
+    initReview();
+  }
+</script>
+
+<style is:global>
+  .question-number {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: #f1f5f9;
+    color: #64748b;
+    border: 2px solid transparent;
+  }
+  
+  .question-number:hover {
+    transform: scale(1.05);
+    z-index: 10;
+  }
+  
+  .question-number.current {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  }
+  
+  .question-number.correct {
+    background: #10b981;
+    color: white;
+  }
+  
+  .question-number.incorrect {
+    background: #ef4444;
+    color: white;
+  }
+  
+  .question-number.unanswered {
+    background: #cbd5e1;
+    color: #64748b;
+  }
+  
+  .nav-btn {
+    padding: 0.5rem 1rem;
+    background: #3b82f6;
+    color: white;
+    border-radius: 0.75rem;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  
+  .nav-btn:hover:not(:disabled) {
+    background: #2563eb;
+  }
+  
+  .nav-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .option-label.review {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: 0.75rem;
+    border: 2px solid #e2e8f0;
+    background: white;
+    position: relative;
+  }
+  
+  .option-label.review.correct-answer {
+    border-color: #10b981;
+    background: #ecfdf5;
+  }
+  
+  .option-label.review.wrong-answer {
+    border-color: #ef4444;
+    background: #fef2f2;
+  }
+  
+  .option-letter {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #f1f5f9;
+    color: #64748b;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  
+  .option-label.review.correct-answer .option-letter {
+    background: #10b981;
+    color: white;
+  }
+  
+  .option-label.review.wrong-answer .option-letter {
+    background: #ef4444;
+    color: white;
+  }
+  
+  .correct-indicator {
+    position: absolute;
+    right: 1rem;
+    color: #10b981;
+    font-weight: bold;
+  }
+  
+  .math-display {
+    margin: 0.75rem 0;
+    text-align: center;
+  }
+  
+  .math-inline {
+    display: inline;
+    vertical-align: baseline;
+  }
+</style>
+

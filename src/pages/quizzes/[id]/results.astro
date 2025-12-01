@@ -15,6 +15,7 @@ const userId = Astro.cookies.get('user_id')?.value;
 
 let quiz: any = null;
 let attempt: any = null;
+let allAttempts: any[] = [];
 let error = '';
 
 try {
@@ -37,25 +38,30 @@ try {
         : rawQuiz.settings
     };
     
-    // Get latest attempt for this user
+    // Get all attempts for this user (for history)
     if (userId) {
-      // Try getQuizResults first
-      const results = await getQuizResults(parseInt(userId), quizId);
-      if (results && results.length > 0) {
-        attempt = results[0]; // Latest attempt
-      } else {
-        // Fallback: query directly
-        const latestAttempt = await prisma.quizAttempt.findFirst({
-          where: { userId: parseInt(userId), quizId },
-          orderBy: { completedAt: 'desc' }
-        });
-        if (latestAttempt) {
-          attempt = {
-            ...latestAttempt,
-            answers: JSON.parse(latestAttempt.answers),
-            detailedResults: JSON.parse(latestAttempt.detailedResults)
-          };
-        }
+      const attempts = await prisma.quizAttempt.findMany({
+        where: { userId: parseInt(userId), quizId },
+        orderBy: { completedAt: 'desc' }
+      });
+      
+      allAttempts = attempts.map(a => ({
+        id: a.id,
+        score: a.score,
+        percentage: a.percentage,
+        correctAnswers: a.correctAnswers,
+        totalQuestions: a.totalQuestions,
+        timeSpent: a.timeSpent,
+        completedAt: a.completedAt.toISOString()
+      }));
+      
+      if (attempts.length > 0) {
+        const latestAttempt = attempts[0];
+        attempt = {
+          ...latestAttempt,
+          answers: JSON.parse(latestAttempt.answers),
+          detailedResults: JSON.parse(latestAttempt.detailedResults)
+        };
       }
     }
     
@@ -75,271 +81,215 @@ function formatTime(seconds: number): string {
   const secs = seconds % 60;
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
+
+// Calculate score color
+function getScoreColor(percentage: number): string {
+  if (percentage >= 80) return 'emerald';
+  if (percentage >= 60) return 'blue';
+  if (percentage >= 40) return 'amber';
+  return 'red';
+}
+
+const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
 ---
 
-<Layout title={`Results - ${quiz?.title || 'Quiz'}`}>
-  <div class="min-h-screen bg-gray-50">
+<Layout title={`Hasil - ${quiz?.title || 'Quiz'}`}>
+  <link rel="stylesheet" href="/src/styles/quiz-shared.css">
+  
+  <div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
     {error ? (
-      <div class="max-w-2xl mx-auto px-4 py-8">
-        <div class="bg-white rounded-lg shadow p-8 text-center">
+      <div class="max-w-2xl mx-auto px-4 py-12">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center">
           <div class="text-red-500 text-6xl mb-4">❌</div>
-          <h2 class="text-2xl font-bold text-gray-900 mb-2">{error}</h2>
-          <p class="text-gray-600 mb-4">The quiz results you're looking for don't exist.</p>
-          <a href="/quizzes" class="text-blue-600 hover:text-blue-700">
-            ← Back to Practice Quizzes
+          <h2 class="text-2xl font-bold text-slate-900 mb-2">{error}</h2>
+          <p class="text-slate-600 mb-6">Hasil quiz yang Anda cari tidak ditemukan.</p>
+          <a href="/quizzes" class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium">
+            ← Kembali ke Daftar Kuis
           </a>
         </div>
       </div>
     ) : (
       <!-- Quiz Results Display -->
-      <div class="flex flex-col h-screen bg-gray-100">
-        <!-- Quiz Title Header -->
-        <div class="bg-white shadow-sm px-6 py-4 border-b">
-          <h1 class="text-xl font-bold text-gray-900">{quiz.title}</h1>
+      <div class="flex flex-col min-h-screen">
+        <!-- Header with Score Summary -->
+        <div class="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 sm:py-6">
+          <div class="max-w-7xl mx-auto">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <span class="text-blue-600 text-xl">📊</span>
+                </div>
+                <div>
+                  <h1 class="text-lg sm:text-xl font-bold text-slate-900">{quiz.title}</h1>
+                  <p class="text-sm text-slate-500">Hasil Ujian</p>
+                </div>
+              </div>
+              
+              <!-- Score Badge -->
+              <div class={`flex items-center gap-4 px-5 py-3 rounded-xl bg-${scoreColor}-50 border border-${scoreColor}-200`}>
+                <div class="text-center">
+                  <div class={`text-3xl sm:text-4xl font-bold text-${scoreColor}-600`}>
+                    {attempt?.percentage || 0}%
+                  </div>
+                  <div class={`text-xs font-medium text-${scoreColor}-600 uppercase tracking-wider`}>Skor</div>
+                </div>
+                <div class="h-12 w-px bg-slate-200"></div>
+                <div class="text-center">
+                  <div class="text-xl sm:text-2xl font-bold text-slate-700">
+                    {attempt?.correctAnswers || 0}/{attempt?.totalQuestions || 0}
+                  </div>
+                  <div class="text-xs font-medium text-slate-500 uppercase tracking-wider">Benar</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- Navigation Row - Nav and Score aligned -->
-        <div class="flex border-b bg-white">
-          <!-- Navigation Bar Column -->
-          <div id="nav-container" class="flex-1 px-6 py-4 flex items-center justify-between">
+        <!-- Navigation Row -->
+        <div class="flex flex-col lg:flex-row border-b border-slate-200 bg-white">
+          <div id="nav-container" class="flex-1 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
             <!-- Navigation bar will be rendered here by JavaScript -->
           </div>
           
-          <!-- Score Column (replaces timer) -->
-          <div class="w-80 border-l px-4 py-4">
-            <div class="flex items-center justify-center space-x-2 bg-green-100 px-4 py-3 rounded-lg">
-              <span class="text-sm font-medium text-green-900">SKOR</span>
-              <span id="score-display" class="text-lg font-mono font-bold text-green-900">
-                {attempt?.percentage || 0}%
-              </span>
+          <!-- Time column - Fixed width to match sidebar -->
+          <div class="hidden lg:flex w-80 border-l border-slate-200 px-4 py-3 items-center justify-center">
+            <div class="flex items-center gap-3 text-slate-600 text-sm">
+              <span>⏱️</span>
+              <span class="font-medium">Waktu: {formatTime(attempt?.timeSpent || 0)}</span>
             </div>
           </div>
         </div>
 
         <!-- Main Content Area with Sidebar -->
-        <div class="flex flex-1 overflow-hidden">
-          <!-- Main Quiz Area -->
+        <div class="flex flex-1 overflow-hidden relative">
+          <!-- Main Content -->
           <div class="flex-1 flex flex-col overflow-hidden">
-            <!-- Question Display Area -->
-            <div class="flex-1 overflow-y-auto px-6 py-6">
-              <div id="question-container" class="max-w-4xl mx-auto overflow-visible">
+            <div class="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 scroll-smooth">
+              <div id="question-container" class="max-w-4xl mx-auto">
                 <!-- Questions will be rendered here by JavaScript -->
               </div>
+              <div class="h-24 lg:hidden"></div>
             </div>
           </div>
 
-          <!-- Sidebar - Question Navigator -->
-          <div class="w-80 bg-white border-l flex flex-col overflow-y-auto">
+          <!-- Sidebar -->
+          <div id="sidebar" class="fixed lg:relative inset-y-0 right-0 w-80 bg-white border-l border-slate-200 flex flex-col transform translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out z-40 overflow-y-auto">
+            
+            <!-- Mobile close -->
+            <div class="lg:hidden flex items-center justify-between p-4 border-b border-slate-200">
+              <span class="font-bold text-slate-700">Hasil Quiz</span>
+              <button id="close-sidebar" class="p-2 rounded-lg hover:bg-slate-100">
+                <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+
             <!-- Question Grid -->
-            <div class="p-4 border-b">
-              <h3 class="font-semibold text-gray-700 text-sm mb-3 tracking-wide">NOMOR SOAL</h3>
-              <div id="question-grid" class="grid grid-cols-5 gap-2 max-h-96 overflow-y-auto p-1">
+            <div class="p-4 sm:p-5">
+              <h3 class="font-bold text-slate-700 text-xs mb-4 uppercase tracking-wider flex items-center gap-2">
+                <span>📋</span>
+                <span>Nomor Soal</span>
+              </h3>
+              <div id="question-grid" class="grid grid-cols-5 gap-2 sm:gap-2.5 overflow-y-auto scroll-smooth p-1 max-h-[360px]">
                 <!-- Question numbers will be rendered here -->
               </div>
-            </div>
-
-            <!-- Status Legend -->
-            <div class="p-4 border-b">
-              <div class="space-y-2 text-sm">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center space-x-2">
-                    <div class="w-4 h-4 bg-green-100 border border-green-300 rounded"></div>
-                    <span class="text-gray-700">Benar</span>
+              
+              <!-- Status Legend -->
+              <div class="status-legend">
+                <div class="status-legend-item">
+                  <div class="status-legend-label">
+                    <div class="status-legend-icon bg-emerald-100 border-emerald-400 text-emerald-600">✓</div>
+                    <span class="status-legend-text">Benar</span>
                   </div>
-                  <span id="correct-count" class="font-semibold text-gray-900 min-w-[2rem] text-right">0</span>
+                  <span id="correct-count" class="status-legend-count text-emerald-600">0</span>
                 </div>
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center space-x-2">
-                    <div class="w-4 h-4 bg-red-100 border border-red-300 rounded"></div>
-                    <span class="text-gray-700">Salah</span>
+                <div class="status-legend-item">
+                  <div class="status-legend-label">
+                    <div class="status-legend-icon bg-red-100 border-red-400 text-red-600">✗</div>
+                    <span class="status-legend-text">Salah</span>
                   </div>
-                  <span id="incorrect-count" class="font-semibold text-gray-900 min-w-[2rem] text-right">0</span>
+                  <span id="incorrect-count" class="status-legend-count text-red-600">0</span>
                 </div>
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center space-x-2">
-                    <div class="w-4 h-4 bg-gray-100 border border-gray-300 rounded"></div>
-                    <span class="text-gray-700">Kosong</span>
+                <div class="status-legend-item">
+                  <div class="status-legend-label">
+                    <div class="status-legend-icon bg-slate-100 border-slate-300">−</div>
+                    <span class="status-legend-text">Kosong</span>
                   </div>
-                  <span id="blank-count" class="font-semibold text-gray-900 min-w-[2rem] text-right">0</span>
+                  <span id="blank-count" class="status-legend-count text-slate-500">0</span>
                 </div>
               </div>
             </div>
-
-            <!-- Time Spent -->
-            <div class="p-4 border-b">
-              <div class="text-sm">
-                <div class="flex items-center justify-between">
-                  <span class="text-gray-700 font-medium">Waktu yang Digunakan</span>
-                </div>
-                <div class="mt-2 text-lg font-mono font-bold text-gray-900">
-                  {formatTime(attempt?.timeSpent || 0)}
+            
+            <!-- Attempt History -->
+            {allAttempts.length > 1 && (
+              <div class="p-4 sm:p-5 border-t border-slate-100">
+                <h3 class="font-bold text-slate-700 text-xs mb-3 uppercase tracking-wider flex items-center gap-2">
+                  <span>📜</span>
+                  <span>Riwayat Percobaan</span>
+                </h3>
+                <div class="space-y-2 max-h-40 overflow-y-auto">
+                  {allAttempts.map((a, idx) => (
+                    <div class={`flex items-center justify-between p-2 rounded-lg text-sm ${idx === 0 ? 'bg-blue-50 border border-blue-200' : 'bg-slate-50'}`}>
+                      <div class="flex items-center gap-2">
+                        <span class={`font-semibold ${idx === 0 ? 'text-blue-600' : 'text-slate-600'}`}>#{allAttempts.length - idx}</span>
+                        <span class="text-slate-400 text-xs">{new Date(a.completedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <span class={`font-bold ${a.percentage >= 70 ? 'text-emerald-600' : a.percentage >= 50 ? 'text-amber-600' : 'text-red-600'}`}>{a.percentage}%</span>
+                        <span class="text-slate-400 text-xs">{a.correctAnswers}/{a.totalQuestions}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </div>
+            )}
 
-            <!-- Action Buttons -->
-            <div class="p-4 space-y-3">
+            <!-- Time & Actions -->
+            <div class="p-4 sm:p-5 border-t border-slate-100 mt-auto">
+              <div class="sm:hidden mb-4 p-3 bg-slate-50 rounded-lg">
+                <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Waktu Pengerjaan</div>
+                <div class="text-lg font-mono font-bold text-slate-800">{formatTime(attempt?.timeSpent || 0)}</div>
+              </div>
+              
               <a
                 href="/quizzes"
-                class="block w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-semibold text-center"
+                class="block w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold text-center text-sm transition-colors"
               >
                 Kembali ke Daftar Kuis
               </a>
+              
+              <a
+                href={`/quizzes/${id}`}
+                class="block w-full mt-2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-semibold text-center text-sm transition-colors"
+              >
+                Coba Lagi
+              </a>
             </div>
           </div>
+          
+          <!-- Overlay -->
+          <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-30 hidden lg:hidden"></div>
+        </div>
+        
+        <!-- Mobile Bottom Nav -->
+        <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 flex items-center justify-between gap-2 z-20">
+          <button id="mobile-prev-btn" class="flex-1 py-2.5 px-3 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm font-semibold text-slate-700 disabled:opacity-50">
+            ← Prev
+          </button>
+          <button id="mobile-sidebar-toggle" class="py-2.5 px-4 bg-slate-100 rounded-lg text-slate-700">
+            📊
+          </button>
+          <button id="mobile-next-btn" class="flex-1 py-2.5 px-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold text-white">
+            Next →
+          </button>
         </div>
       </div>
     )}
   </div>
 
-  <style is:global>
-    .math-display {
-      margin: 1.5rem 0;
-      text-align: center;
-    }
-
-    .math-inline {
-      display: inline-block;
-      vertical-align: baseline;
-      line-height: inherit;
-    }
-
-    .math-inline .katex {
-      vertical-align: baseline;
-      display: inline-block;
-      line-height: inherit;
-    }
-
-    .math-inline .katex-html {
-      line-height: inherit;
-    }
-
-    .prose .math-inline,
-    .prose p .math-inline,
-    .option-content .math-inline {
-      vertical-align: baseline;
-    }
-
-    .math-inline .katex-display {
-      margin: 0;
-    }
-
-    .latex-error {
-      background-color: #fee;
-      border: 1px solid #fcc;
-      padding: 0.5rem;
-      border-radius: 0.25rem;
-      color: #c33;
-    }
-
-    .question-number {
-      width: 2.5rem;
-      height: 2.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 0.375rem;
-      cursor: pointer;
-      font-weight: 500;
-      transition: all 0.2s;
-      font-size: 0.875rem;
-      border: 2px solid transparent;
-    }
-
-    .question-number:hover {
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-      transform: translateY(-2px);
-    }
-
-    /* Correct answer - Green */
-    .question-number.correct {
-      background-color: #dcfce7;
-      color: #166534;
-      border-color: #86efac;
-    }
-
-    /* Wrong answer - Red */
-    .question-number.incorrect {
-      background-color: #fee2e2;
-      color: #991b1b;
-      border-color: #fca5a5;
-    }
-
-    /* Blank/Unanswered - More greyed out */
-    .question-number.blank {
-      background-color: #f3f4f6;
-      color: #9ca3af;
-      border-color: #d1d5db;
-      opacity: 0.6;
-    }
-
-    /* Current question - Bold blue */
-    .question-number.current {
-      background-color: #2563eb !important;
-      color: white !important;
-      font-weight: 700 !important;
-      border-color: #2563eb !important;
-      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15) !important;
-      transform: scale(1.15) !important;
-    }
-
-    .question-number.current:hover {
-      transform: scale(1.15) !important;
-    }
-
-    .option-label {
-      display: flex;
-      flex-direction: row;
-      align-items: flex-start;
-      padding: 1rem;
-      border: 2px solid #e5e7eb;
-      border-radius: 0.5rem;
-      transition: all 0.2s;
-      margin-bottom: 0.75rem;
-    }
-
-    .option-label:hover {
-      background-color: #f9fafb;
-    }
-
-    .option-label.selected {
-      background-color: #eff6ff;
-      border-color: #3b82f6;
-    }
-
-    .option-label.correct {
-      background-color: #f0fdf4;
-      border-color: #10b981;
-    }
-
-    .option-label.incorrect {
-      background-color: #fef2f2;
-      border-color: #ef4444;
-    }
-
-    .option-label input[type="radio"],
-    .option-label input[type="checkbox"] {
-      flex-shrink: 0;
-      width: 1.25rem;
-      height: 1.25rem;
-      margin-right: 1rem;
-      margin-top: 0.125rem;
-      cursor: default;
-    }
-
-    .option-content {
-      flex: 1;
-      text-align: left;
-      line-height: 1.6;
-    }
-
-    .option-content p {
-      margin: 0;
-    }
-  </style>
-
   <script>
-    // Preload KaTeX CSS/JS
+    // Preload KaTeX
     (function() {
       if (typeof window !== 'undefined' && !document.querySelector('link[href*="katex"]')) {
         const link = document.createElement('link');
@@ -357,37 +307,24 @@ function formatTime(seconds: number): string {
 
       window.renderLatex = function() {
         if (!window.katex) {
-          setTimeout(() => {
-            if (window.katex) {
-              window.renderLatex();
-            }
-          }, 10);
+          setTimeout(() => window.katex && window.renderLatex(), 10);
           return;
         }
 
-        const mathElements = document.querySelectorAll('.math-display, .math-inline');
-        mathElements.forEach((element) => {
-          if (element.querySelector('.katex')) {
-            return;
-          }
-
+        document.querySelectorAll('.math-display, .math-inline').forEach((element) => {
+          if (element.querySelector('.katex')) return;
           const latex = element.getAttribute('data-latex') || '';
           if (!latex) return;
 
-          const displayMode = element.classList.contains('math-display');
-          
           try {
             element.innerHTML = '';
             window.katex.render(latex, element, {
-              displayMode,
+              displayMode: element.classList.contains('math-display'),
               throwOnError: false,
               trust: true,
-              macros: {
-                '\\degree': '^{\\circ}'
-              }
+              macros: { '\\degree': '^{\\circ}' }
             });
           } catch (err) {
-            console.warn('KaTeX render error:', err);
             element.innerHTML = `<span class="latex-error">LaTeX Error</span>`;
           }
         });
@@ -395,50 +332,70 @@ function formatTime(seconds: number): string {
     })();
   </script>
 
+  <!-- Load marked.js for markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  
   <script define:vars={{ quiz, attempt }}>
     if (!quiz || !attempt) {
-      document.body.innerHTML = '<div class="text-center py-20"><p class="text-xl text-gray-600">Loading...</p></div>';
+      document.body.innerHTML = '<div class="text-center py-20"><p class="text-xl text-slate-600">Loading...</p></div>';
     } else {
-      // Client-side markdown renderer for LaTeX
+      // Escape HTML for safe attribute embedding
+      function escapeHtml(text) {
+        if (!text) return '';
+        return text
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+      
+      // Full markdown renderer with LaTeX support
       function processLatex(text) {
         if (!text) return '';
         
-        let processed = text.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
-          const cleanLatex = (latex || '').trim();
-          return `<div class="math-display" data-latex="${cleanLatex}"></div>`;
+        // Normalize newlines
+        let processed = text.replace(/\r\n?|\u2028|\u2029/g, '\n');
+        
+        // Convert display math blocks
+        processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
+          return `\n<div class="math-display" data-latex="${escapeHtml((latex || '').trim())}"></div>\n`;
         });
 
+        // Convert inline math
         processed = processed.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (match, latex) => {
-          const cleanLatex = (latex || '').trim();
-          return `<span class="math-inline" data-latex="${cleanLatex}"></span>`;
+          return `<span class="math-inline" data-latex="${escapeHtml((latex || '').trim())}"></span>`;
         });
 
+        // Use marked for full markdown parsing
+        if (window.marked) {
+          try {
+            return window.marked.parse(processed);
+          } catch (e) {
+            console.error('Markdown parsing error:', e);
+            return processed;
+          }
+        }
+        
         return processed;
       }
 
-      // Quiz state
       let currentQuestionIndex = 0;
       const detailedResults = attempt.detailedResults || [];
       const questions = quiz.questions || [];
 
-      // Render question grid
       function renderQuestionGrid() {
         const grid = document.getElementById('question-grid');
+        if (!grid) return;
         grid.innerHTML = '';
         
         detailedResults.forEach((result, index) => {
           const btn = document.createElement('button');
           btn.textContent = index + 1;
           
-          // Build class list based on result
           const classes = ['question-number'];
+          if (index === currentQuestionIndex) classes.push('current');
           
-          // Priority: current > correct/incorrect/blank
-          if (index === currentQuestionIndex) {
-            classes.push('current');
-          }
-          
-          // Apply status class (but current takes visual precedence)
           if (result.isCorrect) {
             classes.push('correct');
           } else if (result.userAnswer && result.userAnswer.length > 0) {
@@ -455,40 +412,36 @@ function formatTime(seconds: number): string {
         updateCounts();
       }
 
-      // Update status counts
       function updateCounts() {
-        let correct = 0;
-        let incorrect = 0;
-        let blank = 0;
+        let correct = 0, incorrect = 0, blank = 0;
 
         detailedResults.forEach(result => {
-          if (result.isCorrect) {
-            correct++;
-          } else if (result.userAnswer && result.userAnswer.length > 0) {
-            incorrect++;
-          } else {
-            blank++;
-          }
+          if (result.isCorrect) correct++;
+          else if (result.userAnswer && result.userAnswer.length > 0) incorrect++;
+          else blank++;
         });
 
-        document.getElementById('correct-count').textContent = correct;
-        document.getElementById('incorrect-count').textContent = incorrect;
-        document.getElementById('blank-count').textContent = blank;
+        const correctEl = document.getElementById('correct-count');
+        const incorrectEl = document.getElementById('incorrect-count');
+        const blankEl = document.getElementById('blank-count');
+        
+        if (correctEl) correctEl.textContent = correct;
+        if (incorrectEl) incorrectEl.textContent = incorrect;
+        if (blankEl) blankEl.textContent = blank;
       }
 
-      // Render current question
       function renderQuestion() {
         const result = detailedResults[currentQuestionIndex];
         const question = result.question;
         const container = document.getElementById('question-container');
+        const navContainer = document.getElementById('nav-container');
+        
+        if (!container || !navContainer) return;
         
         const isComplex = question.type === 'complex-multiple-choice' || question.type === 'complex';
         const inputType = isComplex ? 'checkbox' : 'radio';
         
-        // Process question text with LaTeX
         const questionHtml = processLatex(question.question || '');
-        
-        // Process options with LaTeX
         const userAnswers = result.userAnswer || [];
         const correctAnswers = isComplex 
           ? (Array.isArray(question.correctAnswers) ? question.correctAnswers : [question.correctAnswers])
@@ -500,156 +453,210 @@ function formatTime(seconds: number): string {
           const isUserSelected = userAnswers.includes(optionValue);
           const isCorrect = correctAnswers.includes(optionValue);
           
-          // Determine option styling
           let optionClass = '';
-          if (isCorrect) {
-            optionClass = 'correct';
-          } else if (isUserSelected && !isCorrect) {
-            optionClass = 'incorrect';
-          } else if (isUserSelected) {
-            optionClass = 'selected';
-          }
+          if (isCorrect) optionClass = 'correct';
+          else if (isUserSelected && !isCorrect) optionClass = 'incorrect';
           
           return `
             <label class="option-label ${optionClass}">
-              <input
-                type="${inputType}"
-                name="question-${currentQuestionIndex}"
-                value="${optionValue}"
-                ${isUserSelected ? 'checked' : ''}
-                disabled
-              />
+              <input type="${inputType}" value="${optionValue}" ${isUserSelected ? 'checked' : ''} disabled />
               <div class="option-content">${optionHtml}</div>
             </label>
           `;
         }).join('');
         
-        // Process solution with LaTeX
         const solutionHtml = question.metadata?.solution ? processLatex(question.metadata.solution) : '';
         
-        // Render navigation bar
-        const navContainer = document.getElementById('nav-container');
+        // Nav
         navContainer.innerHTML = `
-          <button
-            id="prev-btn-main"
-            class="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium"
-            ${currentQuestionIndex === 0 ? 'disabled' : ''}
-          >
-            <span>← Soal Sebelumnya</span>
+          <button type="button" id="prev-btn-main" class="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" ${currentQuestionIndex === 0 ? 'disabled' : ''}>
+            ← Sebelumnya
           </button>
-          
-          <div class="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg font-bold">
-            SOAL NO. ${currentQuestionIndex + 1}
-          </div>
-          
-          <button
-            id="next-btn-main"
-            class="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
-            ${currentQuestionIndex === questions.length - 1 ? 'disabled' : ''}
-          >
-            <span>${currentQuestionIndex === questions.length - 1 ? 'Selesai' : 'Soal Selanjutnya →'}</span>
+          <span class="text-gray-700 font-medium">Soal ${currentQuestionIndex + 1} dari ${questions.length}</span>
+          <button type="button" id="next-btn-main" class="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" ${currentQuestionIndex === questions.length - 1 ? 'disabled' : ''}>
+            Selanjutnya →
           </button>
         `;
 
-        // Render question content
+        // Status badge
+        const statusBadge = result.isCorrect 
+          ? '<span class="inline-flex items-center px-3 py-1 rounded-lg text-sm font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">✓ Benar</span>'
+          : (userAnswers.length > 0 
+              ? '<span class="inline-flex items-center px-3 py-1 rounded-lg text-sm font-semibold bg-red-100 text-red-700 border border-red-200">✗ Salah</span>'
+              : '<span class="inline-flex items-center px-3 py-1 rounded-lg text-sm font-semibold bg-slate-100 text-slate-600 border border-slate-200">− Tidak Dijawab</span>');
+
         container.innerHTML = `
-          <div class="bg-white rounded-lg shadow-lg p-8">
-            <div class="prose max-w-none mb-8">
-              <div class="text-lg text-gray-800">${questionHtml}</div>
-            </div>
-
-            ${question.images && question.images.length > 0 ? `
-              <div class="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                ${question.images.map(img => `
-                  <img src="${img}" alt="Question illustration" class="rounded-lg border shadow-sm" />
-                `).join('')}
+          <div class="question-card">
+            <div class="question-header">
+              <div class="flex items-center justify-between flex-wrap gap-2">
+                <span class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Pertanyaan</span>
+                ${statusBadge}
               </div>
-            ` : ''}
-
-            <div class="space-y-3">
-              ${optionsHtml}
             </div>
+            
+            <div class="question-body">
+              <div class="question-text prose max-w-none mb-6">${questionHtml}</div>
 
-            ${isComplex ? `
-              <p class="mt-4 text-sm text-purple-600 font-medium">
-                🔣 Pilihan ganda kompleks - Beberapa jawaban mungkin benar
-              </p>
-            ` : ''}
-
-            ${solutionHtml ? `
-              <details class="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4" open>
-                <summary class="font-semibold text-gray-800 cursor-pointer hover:text-blue-600">
-                  💡 Lihat Pembahasan
-                </summary>
-                <div class="prose max-w-none text-gray-700 mt-4">
-                  ${solutionHtml}
+              ${question.images?.length > 0 ? `
+                <div class="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  ${question.images.map(img => `<img src="${img}" alt="Question" class="rounded-xl border border-slate-200 shadow-sm" />`).join('')}
                 </div>
-                ${question.metadata?.solutionImages && question.metadata.solutionImages.length > 0 ? `
-                  <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    ${question.metadata.solutionImages.map(img => `
-                      <img src="${img}" alt="Solution" class="rounded-lg border" />
-                    `).join('')}
+              ` : ''}
+
+              <div class="space-y-1">${optionsHtml}</div>
+
+              ${solutionHtml ? `
+                <details class="solution-panel" open>
+                  <summary><span class="text-lg">💡</span><span>Pembahasan</span></summary>
+                  <div class="solution-content prose max-w-none">
+                    ${solutionHtml}
+                    ${question.metadata?.solutionImages?.length > 0 ? `
+                      <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        ${question.metadata.solutionImages.map(img => `<img src="${img}" alt="Solution" class="rounded-xl border border-amber-300" />`).join('')}
+                      </div>
+                    ` : ''}
                   </div>
-                ` : ''}
-              </details>
-            ` : ''}
+                </details>
+              ` : ''}
+            </div>
           </div>
         `;
 
-        // Add event handlers for navigation buttons
-        document.getElementById('prev-btn-main').onclick = () => {
-          if (currentQuestionIndex > 0) {
-            goToQuestion(currentQuestionIndex - 1);
-          }
-        };
-
-        document.getElementById('next-btn-main').onclick = () => {
-          if (currentQuestionIndex < questions.length - 1) {
-            goToQuestion(currentQuestionIndex + 1);
-          }
-        };
-
-        // Render LaTeX immediately after content is set
-        requestAnimationFrame(() => {
-          renderLatex();
+        // Event handlers
+        document.getElementById('prev-btn-main')?.addEventListener('click', () => {
+          if (currentQuestionIndex > 0) goToQuestion(currentQuestionIndex - 1);
         });
+        document.getElementById('next-btn-main')?.addEventListener('click', () => {
+          if (currentQuestionIndex < questions.length - 1) goToQuestion(currentQuestionIndex + 1);
+        });
+
+        requestAnimationFrame(() => renderLatex());
       }
 
-      // Navigation functions
       function goToQuestion(index) {
         currentQuestionIndex = index;
         renderQuestion();
         renderQuestionGrid();
-        // Scroll main area to top
-        const mainArea = document.querySelector('.flex-1.overflow-y-auto');
-        if (mainArea) {
-          mainArea.scrollTo({ top: 0, behavior: 'smooth' });
-        }
+        updateMobileNav();
+        document.querySelector('.flex-1.overflow-y-auto')?.scrollTo({ top: 0, behavior: 'smooth' });
       }
 
-      // Initialize - wait for KaTeX to be ready before rendering first question
-      function initializeResults() {
-        if (window.katex) {
-          renderQuestionGrid();
-          renderQuestion();
-        } else {
-          const checkInterval = setInterval(() => {
-            if (window.katex) {
-              clearInterval(checkInterval);
-              renderQuestionGrid();
-              renderQuestion();
-            }
-          }, 10);
-        }
+      function updateMobileNav() {
+        const prevBtn = document.getElementById('mobile-prev-btn');
+        const nextBtn = document.getElementById('mobile-next-btn');
+        if (prevBtn) prevBtn.disabled = currentQuestionIndex === 0;
+        if (nextBtn) nextBtn.textContent = currentQuestionIndex === questions.length - 1 ? 'Selesai ✓' : 'Next →';
       }
 
-      // Wait for DOM to be ready
+      // Initialize
+      function init() {
+        renderQuestionGrid();
+        renderQuestion();
+        
+        // Mobile sidebar
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        const toggle = document.getElementById('mobile-sidebar-toggle');
+        const close = document.getElementById('close-sidebar');
+        
+        function openSidebar() {
+          sidebar?.classList.remove('translate-x-full');
+          overlay?.classList.remove('hidden');
+          document.body.style.overflow = 'hidden';
+        }
+        
+        function closeSidebar() {
+          sidebar?.classList.add('translate-x-full');
+          overlay?.classList.add('hidden');
+          document.body.style.overflow = '';
+        }
+        
+        toggle?.addEventListener('click', openSidebar);
+        close?.addEventListener('click', closeSidebar);
+        overlay?.addEventListener('click', closeSidebar);
+        
+        // Mobile nav
+        document.getElementById('mobile-prev-btn')?.addEventListener('click', () => {
+          if (currentQuestionIndex > 0) goToQuestion(currentQuestionIndex - 1);
+        });
+        document.getElementById('mobile-next-btn')?.addEventListener('click', () => {
+          if (currentQuestionIndex < questions.length - 1) goToQuestion(currentQuestionIndex + 1);
+        });
+      }
+
       if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initializeResults);
+        document.addEventListener('DOMContentLoaded', init);
       } else {
-        initializeResults();
+        init();
       }
     }
   </script>
+  
+  <style is:global>
+    /* Markdown rendering styles for results page */
+    .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+      font-weight: 700;
+      margin-top: 1.5rem;
+      margin-bottom: 0.75rem;
+      color: #1e293b;
+    }
+    
+    .prose h3 { font-size: 1.25rem; }
+    .prose h4 { font-size: 1.125rem; }
+    
+    .prose ul, .prose ol {
+      margin: 1rem 0;
+      padding-left: 1.5rem;
+    }
+    
+    .prose ul { list-style-type: disc; }
+    .prose ol { list-style-type: decimal; }
+    
+    .prose ul ul, .prose ol ol, .prose ul ol, .prose ol ul {
+      margin: 0.5rem 0;
+    }
+    
+    .prose ul ul { list-style-type: circle; }
+    .prose ul ul ul { list-style-type: square; }
+    
+    .prose li {
+      margin: 0.375rem 0;
+      line-height: 1.6;
+    }
+    
+    .prose strong { font-weight: 700; }
+    .prose em { font-style: italic; }
+    
+    .prose code {
+      background: #f1f5f9;
+      padding: 0.125rem 0.375rem;
+      border-radius: 0.25rem;
+      font-size: 0.875em;
+    }
+    
+    .prose blockquote {
+      border-left: 4px solid #3b82f6;
+      padding-left: 1rem;
+      margin: 1rem 0;
+      color: #64748b;
+    }
+    
+    .prose hr {
+      border: none;
+      border-top: 2px solid #e2e8f0;
+      margin: 1.5rem 0;
+    }
+    
+    .option-content {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      min-height: 1.5rem;
+    }
+    
+    .option-content p {
+      margin: 0;
+    }
+  </style>
 </Layout>
 

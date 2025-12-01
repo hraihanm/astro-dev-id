@@ -1,140 +1,217 @@
 ---
 import Layout from '../../components/Layout.astro';
-import { siteContent } from '../../data/siteContent';
 ---
 
-<Layout title="Sign In - My Learning Portal">
-  <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-    <div class="max-w-md w-full space-y-8">
-      <div>
-        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          {siteContent.auth.signInToAccount}
-        </h2>
-        <p class="mt-2 text-center text-sm text-gray-600">
-          {siteContent.auth.accessCourses}
-        </p>
-      </div>
-      
-      <form id="signin-form" class="mt-8 space-y-6">
-        <div id="error-message" class="hidden rounded-md bg-red-50 p-4">
-          <p class="text-sm text-red-800"></p>
+<Layout title="Masuk - Astro Learning">
+  <div class="min-h-screen flex">
+    <!-- Left Side - Form -->
+    <div class="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12 bg-white">
+      <div class="w-full max-w-md">
+        <!-- Logo -->
+        <div class="text-center mb-8">
+          <a href="/" class="inline-flex items-center justify-center w-14 h-14 bg-blue-600 rounded-2xl text-white font-bold text-2xl mb-4 hover:scale-105 transition-transform shadow-lg">
+            A
+          </a>
+          <h1 class="text-2xl font-bold text-slate-900">Selamat Datang Kembali</h1>
+          <p class="text-slate-500 mt-2">Masuk untuk melanjutkan pembelajaran</p>
         </div>
         
-        <div class="rounded-md shadow-sm -space-y-px">
+        <!-- Form -->
+        <form id="signin-form" class="space-y-6">
+          <!-- Error Message -->
+          <div id="error-message" class="hidden rounded-xl bg-red-50 border border-red-200 p-4">
+            <div class="flex items-center gap-3">
+              <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                </svg>
+              </div>
+              <p class="text-sm text-red-700 font-medium"></p>
+            </div>
+          </div>
+          
+          <!-- Email -->
           <div>
-            <label for="email" class="sr-only">{siteContent.auth.emailAddress}</label>
+            <label for="email" class="block text-sm font-medium text-slate-700 mb-2">
+              Alamat Email
+            </label>
             <input
               id="email"
               name="email"
               type="email"
               required
-              class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-              placeholder={siteContent.auth.emailAddress}
+              autocomplete="email"
+              class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-slate-900 placeholder-slate-400"
+              placeholder="nama@email.com"
             />
           </div>
+          
+          <!-- Password -->
           <div>
-            <label for="password" class="sr-only">{siteContent.auth.password}</label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-              placeholder={siteContent.auth.password}
-            />
-          </div>
-        </div>
-
-        <div class="flex items-center justify-between">
-          <div class="flex items-center">
-            <input
-              id="remember-me"
-              name="remember-me"
-              type="checkbox"
-              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label for="remember-me" class="ml-2 block text-sm text-gray-900">
-              {siteContent.auth.rememberMe}
+            <label for="password" class="block text-sm font-medium text-slate-700 mb-2">
+              Kata Sandi
             </label>
+            <div class="relative">
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                autocomplete="current-password"
+                class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-slate-900 placeholder-slate-400 pr-12"
+                placeholder="••••••••"
+              />
+              <button 
+                type="button" 
+                id="toggle-password"
+                class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <svg id="eye-open" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                <svg id="eye-closed" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                </svg>
+              </button>
+            </div>
           </div>
-        </div>
 
-        <div>
+          <!-- Remember Me -->
+          <div class="flex items-center justify-between">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input
+                id="remember-me"
+                name="remember-me"
+                type="checkbox"
+                class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+              />
+              <span class="text-sm text-slate-600">Ingat saya</span>
+            </label>
+            <a href="#" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
+              Lupa kata sandi?
+            </a>
+          </div>
+
+          <!-- Submit Button -->
           <button
             type="submit"
             id="submit-btn"
-            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all transform hover:scale-[1.02] focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-lg shadow-blue-500/25"
           >
-            {siteContent.auth.signIn}
+            Masuk
           </button>
+        </form>
+
+        <!-- Divider -->
+        <div class="my-8 flex items-center">
+          <div class="flex-1 border-t border-slate-200"></div>
+          <span class="px-4 text-sm text-slate-400">atau</span>
+          <div class="flex-1 border-t border-slate-200"></div>
         </div>
 
-        <div class="text-center">
-          <a
-            href="/auth/signup"
-            class="font-medium text-blue-600 hover:text-blue-500"
-          >
-            {siteContent.auth.noAccount}
+        <!-- Sign Up Link -->
+        <p class="text-center text-slate-600">
+          Belum punya akun?
+          <a href="/auth/signup" class="text-blue-600 hover:text-blue-700 font-semibold ml-1">
+            Daftar sekarang
           </a>
+        </p>
+      </div>
+    </div>
+
+    <!-- Right Side - Decorative -->
+    <div class="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-blue-700 relative overflow-hidden">
+      <div class="absolute inset-0 opacity-10">
+        <div class="absolute top-20 right-20 w-64 h-64 border-4 border-white rounded-full"></div>
+        <div class="absolute bottom-20 left-20 w-48 h-48 border-4 border-white rounded-full"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 border-4 border-white rounded-full"></div>
+      </div>
+      
+      <div class="relative z-10 flex flex-col items-center justify-center w-full p-12 text-white text-center">
+        <div class="w-24 h-24 bg-white/20 backdrop-blur rounded-3xl flex items-center justify-center mb-8">
+          <span class="text-5xl">🚀</span>
         </div>
-      </form>
+        <h2 class="text-3xl font-bold mb-4">Mulai Perjalanan Belajar</h2>
+        <p class="text-blue-100 text-lg max-w-md">
+          Akses materi pembelajaran dan latihan soal untuk persiapan Olimpiade Astronomi
+        </p>
+        
+        <div class="mt-12 grid grid-cols-3 gap-6 text-center">
+          <div>
+            <div class="text-3xl font-bold">100+</div>
+            <div class="text-blue-200 text-sm">Materi</div>
+          </div>
+          <div>
+            <div class="text-3xl font-bold">500+</div>
+            <div class="text-blue-200 text-sm">Soal Latihan</div>
+          </div>
+          <div>
+            <div class="text-3xl font-bold">1K+</div>
+            <div class="text-blue-200 text-sm">Pengguna</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
-
-  <script>
-    // Pass translations to client-side script
-    const translations = {
-      signingIn: "Sedang masuk...",
-      signIn: "Masuk",
-      error: "Terjadi kesalahan. Silakan coba lagi."
-    };
-
-    document.getElementById('signin-form')?.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      const form = e.target as HTMLFormElement;
-      const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
-      const errorDiv = document.getElementById('error-message');
-      const errorText = errorDiv?.querySelector('p');
-      
-      // Disable submit button
-      submitBtn.disabled = true;
-      submitBtn.textContent = translations.signingIn;
-      
-      // Hide previous errors
-      errorDiv?.classList.add('hidden');
-      
-      const formData = new FormData(form);
-      const email = formData.get('email') as string;
-      const password = formData.get('password') as string;
-      
-      try {
-        const response = await fetch('/api/auth/signin', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ email, password }),
-        });
-        
-        if (response.ok) {
-          // Redirect to home page
-          window.location.href = '/';
-        } else {
-          const data = await response.json();
-          if (errorText) errorText.textContent = data.error || 'Sign in failed';
-          errorDiv?.classList.remove('hidden');
-          submitBtn.disabled = false;
-          submitBtn.textContent = translations.signIn;
-        }
-      } catch (error) {
-        console.error('Signin error:', error);
-        if (errorText) errorText.textContent = translations.error;
-        errorDiv?.classList.remove('hidden');
-        submitBtn.disabled = false;
-        submitBtn.textContent = translations.signIn;
-      }
-    });
-  </script>
 </Layout>
 
+<script>
+  // Toggle password visibility
+  document.getElementById('toggle-password')?.addEventListener('click', () => {
+    const password = document.getElementById('password') as HTMLInputElement;
+    const eyeOpen = document.getElementById('eye-open');
+    const eyeClosed = document.getElementById('eye-closed');
+    
+    if (password.type === 'password') {
+      password.type = 'text';
+      eyeOpen?.classList.remove('hidden');
+      eyeClosed?.classList.add('hidden');
+    } else {
+      password.type = 'password';
+      eyeOpen?.classList.add('hidden');
+      eyeClosed?.classList.remove('hidden');
+    }
+  });
+
+  // Form submission
+  document.getElementById('signin-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const form = e.target as HTMLFormElement;
+    const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+    const errorDiv = document.getElementById('error-message');
+    const errorText = errorDiv?.querySelector('p');
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="inline-block animate-spin mr-2">⏳</span> Sedang masuk...';
+    errorDiv?.classList.add('hidden');
+    
+    const formData = new FormData(form);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    
+    try {
+      const response = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      
+      if (response.ok) {
+        window.location.href = '/dashboard';
+      } else {
+        const data = await response.json();
+        if (errorText) errorText.textContent = data.error || 'Email atau kata sandi salah';
+        errorDiv?.classList.remove('hidden');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Masuk';
+      }
+    } catch (error) {
+      if (errorText) errorText.textContent = 'Terjadi kesalahan. Silakan coba lagi.';
+      errorDiv?.classList.remove('hidden');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Masuk';
+    }
+  });
+</script>

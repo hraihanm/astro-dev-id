@@ -18,81 +18,136 @@ if (!course) {
 ---
 
 <CourseLayout title={course.title} course={course}>
-  <div class="bg-white rounded-lg border border-gray-200 p-8 mb-8">
-    <h1 class="text-4xl font-bold text-gray-900 mb-4">{course.title}</h1>
-    <p class="text-xl text-gray-600 mb-8 leading-relaxed">{course.description}</p>
-    
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-      <div class="flex items-center p-4 bg-blue-50 rounded-lg">
-        <div class="h-10 w-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mr-4">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-          </svg>
-        </div>
-        <div>
-          <p class="text-sm font-medium text-gray-900" data-i18n="courses.chapters">Chapters</p>
-          <p class="text-lg font-bold text-blue-700">{course.chapters.length} <span class="text-sm font-normal text-gray-500" data-i18n="courses.lessons">lessons</span></p>
-        </div>
-      </div>
-      <div class="flex items-center p-4 bg-green-50 rounded-lg">
-        <div class="h-10 w-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center mr-4">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <div>
-          <p class="text-sm font-medium text-gray-900" data-i18n="courses.quizzes">Quizzes</p>
-          <p class="text-lg font-bold text-green-700">{course.quizzes.length} <span class="text-sm font-normal text-gray-500" data-i18n="courses.assessments">assessments</span></p>
-        </div>
+  <!-- Course Hero -->
+  <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm mb-8">
+    <!-- Banner -->
+    <div class="h-32 bg-gradient-to-r from-blue-600 to-blue-700 relative overflow-hidden">
+      <div class="absolute inset-0 opacity-10">
+        <div class="absolute top-4 right-8 w-32 h-32 border-4 border-white rounded-full"></div>
+        <div class="absolute bottom-4 left-8 w-20 h-20 border-4 border-white rounded-full"></div>
       </div>
     </div>
+    
+    <div class="p-6 sm:p-8">
+      <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-3">{course.title}</h1>
+      <p class="text-slate-600 text-base sm:text-lg leading-relaxed mb-6">
+        {course.description || 'Materi pembelajaran komprehensif untuk persiapan olimpiade astronomi.'}
+      </p>
+      
+      <!-- Stats -->
+      <div class="flex flex-wrap gap-4 mb-6">
+        <div class="flex items-center gap-3 px-4 py-3 bg-blue-50 rounded-lg">
+          <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+            <span class="text-lg">📖</span>
+          </div>
+          <div>
+            <p class="text-2xl font-bold text-blue-700">{course.chapters.length}</p>
+            <p class="text-sm text-blue-600">Bab Materi</p>
+          </div>
+        </div>
+        
+        <div class="flex items-center gap-3 px-4 py-3 bg-emerald-50 rounded-lg">
+          <div class="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+            <span class="text-lg">📝</span>
+          </div>
+          <div>
+            <p class="text-2xl font-bold text-emerald-700">{course.quizzes.length}</p>
+            <p class="text-sm text-emerald-600">Kuis Latihan</p>
+          </div>
+        </div>
+      </div>
 
-    <div class="flex justify-start">
       <a
         href={`/courses/${course.slug}/chapter/1`}
-        class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-        data-i18n="courses.startLearning"
+        class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-sm transition-colors"
       >
-        Start Learning
-        <svg class="ml-2 -mr-1 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <span>Mulai Belajar</span>
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
         </svg>
       </a>
     </div>
   </div>
 
-  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-      <h3 class="text-lg font-semibold text-gray-900" data-i18n="courses.courseContents">Course Curriculum</h3>
+  <!-- Course Curriculum -->
+  <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50">
+      <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+        <span>📚</span>
+        <span>Daftar Materi</span>
+      </h2>
     </div>
-    <ul class="divide-y divide-gray-200">
-      {course.chapters.map((chapter) => (
-        <li>
-          <a href={`/courses/${course.slug}/chapter/${chapter.order}`} class="block hover:bg-gray-50 transition-colors">
-            <div class="px-6 py-4 flex items-center">
-              <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold border border-gray-200">
-                {chapter.order}
-              </div>
-              <div class="ml-4 flex-1">
-                <div class="flex items-center justify-between">
-                  <p class="text-sm font-medium text-blue-600 truncate">{chapter.title}</p>
-                  <div class="ml-2 flex-shrink-0 flex">
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                      Start
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div class="ml-5 flex-shrink-0">
-                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
+    
+    <div class="divide-y divide-slate-100">
+      {course.chapters.map((chapter, index) => (
+        <a 
+          href={`/courses/${course.slug}/chapter/${chapter.order}`} 
+          class="group flex items-center gap-4 px-6 py-4 hover:bg-slate-50 transition-colors"
+        >
+          <!-- Chapter Number -->
+          <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-sm group-hover:scale-105 transition-transform">
+            {chapter.order}
+          </div>
+          
+          <!-- Chapter Info -->
+          <div class="flex-1 min-w-0">
+            <h3 class="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+              {chapter.title}
+            </h3>
+            <p class="text-sm text-slate-500 mt-0.5">Bab {chapter.order}</p>
+          </div>
+          
+          <!-- Arrow -->
+          <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-slate-100 group-hover:bg-blue-100 flex items-center justify-center transition-colors">
+            <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </a>
+      ))}
+    </div>
+  </div>
+  
+  <!-- Course Quizzes -->
+  {course.quizzes.length > 0 && (
+    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm mt-8">
+      <div class="px-6 py-4 border-b border-slate-100 bg-slate-50">
+        <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+          <span>📝</span>
+          <span>Kuis Latihan</span>
+        </h2>
+      </div>
+      
+      <div class="divide-y divide-slate-100">
+        {course.quizzes.map((quiz, index) => (
+          <a 
+            href={`/quizzes/${quiz.id}`} 
+            class="group flex items-center gap-4 px-6 py-4 hover:bg-slate-50 transition-colors"
+          >
+            <!-- Quiz Icon -->
+            <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+            
+            <!-- Quiz Info -->
+            <div class="flex-1 min-w-0">
+              <h3 class="font-semibold text-slate-900 group-hover:text-emerald-600 transition-colors truncate">
+                {quiz.title}
+              </h3>
+              <p class="text-sm text-slate-500 mt-0.5">Kuis {index + 1}</p>
+            </div>
+            
+            <!-- Arrow -->
+            <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-slate-100 group-hover:bg-emerald-100 flex items-center justify-center transition-colors">
+              <svg class="w-4 h-4 text-slate-400 group-hover:text-emerald-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
             </div>
           </a>
-        </li>
-      ))}
-    </ul>
-  </div>
+        ))}
+      </div>
+    </div>
+  )}
 </CourseLayout>
-

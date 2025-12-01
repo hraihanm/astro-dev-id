@@ -123,99 +123,151 @@ try {
         </div>
       </div>
     ) : (
-      <!-- Multiple Choice Quiz with Pagination -->
-      <div class="flex flex-col h-screen bg-gray-100">
-        <!-- Quiz Title Header - Spans entire width -->
-        <div class="bg-white shadow-sm px-6 py-4 border-b">
-          <h1 class="text-xl font-bold text-gray-900">{quiz.title}</h1>
+      <!-- Multiple Choice Quiz with Pagination - Mobile Friendly -->
+      <div class="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+        <!-- Quiz Title Header - Clean and elegant -->
+        <div class="bg-white shadow-sm px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200">
+          <div class="flex items-center justify-between max-w-7xl mx-auto">
+            <div class="flex items-center space-x-2 sm:space-x-3 min-w-0">
+              <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <span class="text-blue-600 text-lg sm:text-xl">📝</span>
+              </div>
+              <div class="min-w-0">
+                <h1 class="text-base sm:text-xl font-bold text-slate-900 truncate">{quiz.title}</h1>
+                <p class="text-xs sm:text-sm text-slate-500">{quiz.questions?.length || 0} soal</p>
+              </div>
+            </div>
+            <!-- Mobile sidebar toggle -->
+            <button id="mobile-sidebar-toggle" class="lg:hidden p-2 rounded-lg hover:bg-slate-100 transition-colors">
+              <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+              </svg>
+            </button>
+          </div>
         </div>
 
-        <!-- Navigation Row - Nav and Timer aligned -->
-        <div class="flex border-b bg-white">
+        <!-- Navigation Row - Responsive -->
+        <div class="flex flex-col lg:flex-row border-b border-slate-200 bg-white">
           <!-- Navigation Bar Column -->
-          <div id="nav-container" class="flex-1 px-6 py-4 flex items-center justify-between">
+          <div id="nav-container" class="flex-1 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between order-last lg:order-first">
             <!-- Navigation bar will be rendered here by JavaScript -->
           </div>
           
-          <!-- Timer Column -->
-          <div class="w-80 border-l px-4 py-4">
-            <div id="timer" class="flex items-center justify-center space-x-2 bg-blue-100 px-4 py-3 rounded-lg">
-              <span class="text-sm font-medium text-blue-900">SISA WAKTU</span>
-              <span id="timer-display" class="text-lg font-mono font-bold text-blue-900">--:--:--</span>
+          <!-- Timer - Fixed width to match sidebar -->
+          <div class="lg:w-80 lg:border-l border-b lg:border-b-0 border-slate-200 px-4 py-2 sm:py-3 flex items-center justify-center">
+            <div id="timer" class="flex items-center space-x-2 sm:space-x-3 bg-slate-50 border border-slate-200 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl">
+              <span class="text-slate-400 text-sm sm:text-base">⏱️</span>
+              <span class="hidden sm:inline text-xs font-semibold text-slate-500 uppercase tracking-wider">Sisa Waktu</span>
+              <span id="timer-display" class="text-lg sm:text-xl font-mono font-bold text-slate-800 tabular-nums">--:--:--</span>
             </div>
           </div>
         </div>
 
         <!-- Main Content Area with Sidebar -->
-        <div class="flex flex-1 overflow-hidden">
+        <div class="flex flex-1 overflow-hidden relative">
           <!-- Main Quiz Area -->
           <div class="flex-1 flex flex-col overflow-hidden">
-            <!-- Question Display Area - Scroll only at this level, not inside container -->
-            <div class="flex-1 overflow-y-auto px-6 py-6 scroll-smooth">
+            <!-- Question Display Area -->
+            <div class="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 scroll-smooth">
               <div id="question-container" class="max-w-4xl mx-auto overflow-visible">
                 <!-- Questions will be rendered here by JavaScript -->
               </div>
+              
+              <!-- Mobile bottom padding for fixed footer -->
+              <div class="h-24 lg:hidden"></div>
             </div>
           </div>
 
-          <!-- Sidebar - Question Navigator -->
-          <div class="w-80 bg-white border-l flex flex-col overflow-y-auto scroll-smooth">
-
-            <!-- Question Grid -->
-            <div class="p-4 border-b">
-              <h3 class="font-semibold text-gray-700 text-sm mb-3 tracking-wide">NOMOR SOAL</h3>
-              <div id="question-grid" class="grid grid-cols-5 gap-2 max-h-96 overflow-y-auto scroll-smooth p-1">
-                <!-- Question numbers will be rendered here -->
-              </div>
+          <!-- Sidebar - Question Navigator (Desktop) / Slide-over (Mobile) -->
+          <div id="sidebar" class="fixed lg:relative inset-y-0 right-0 w-80 bg-white border-l border-slate-200 flex flex-col transform translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out z-40 overflow-y-auto">
+            
+            <!-- Mobile sidebar close button -->
+            <div class="lg:hidden flex items-center justify-between p-4 border-b border-slate-200">
+              <span class="font-bold text-slate-700">Menu Quiz</span>
+              <button id="close-sidebar" class="p-2 rounded-lg hover:bg-slate-100 transition-colors">
+                <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
             </div>
 
-            <!-- Status Legend - Compact -->
-            <div class="p-4 border-b">
-              <div class="space-y-2.5 text-sm">
+            <!-- Question Grid & Legend Container -->
+            <div class="p-4 sm:p-5">
+              <h3 class="font-bold text-slate-700 text-xs mb-4 uppercase tracking-wider flex items-center gap-2">
+                <span>📋</span>
+                <span>Nomor Soal</span>
+              </h3>
+              <div id="question-grid" class="grid grid-cols-5 gap-2 sm:gap-2.5 overflow-y-auto overflow-x-visible p-1 mb-4 max-h-[360px]">
+                <!-- Question numbers will be rendered here - max 50 visible (10 rows), rest scrollable -->
+              </div>
+              
+              <!-- Status Legend - Inline below grid -->
+              <div class="bg-slate-50 rounded-lg p-3 sm:p-4 space-y-2">
                 <div class="flex items-center justify-between">
-                  <div class="flex items-center space-x-2">
-                    <div class="w-4 h-4 bg-green-100 border-2 border-green-400 rounded shadow-sm"></div>
-                    <span class="text-gray-700 font-medium">Sudah dijawab</span>
+                  <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 rounded bg-emerald-100 border-2 border-emerald-400 flex items-center justify-center">
+                      <span class="text-emerald-600 text-[8px]">✓</span>
+                    </div>
+                    <span class="text-slate-600 text-xs font-medium">Sudah dijawab</span>
                   </div>
-                  <span id="answered-count" class="font-bold text-green-700 min-w-[2rem] text-right">0</span>
+                  <span id="answered-count" class="font-bold text-emerald-600 text-xs">0</span>
                 </div>
                 <div class="flex items-center justify-between">
-                  <div class="flex items-center space-x-2">
-                    <div class="w-4 h-4 bg-yellow-100 border-2 border-yellow-400 rounded shadow-sm"></div>
-                    <span class="text-gray-700 font-medium">Ragu-ragu</span>
+                  <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 rounded bg-amber-100 border-2 border-amber-400 flex items-center justify-center">
+                      <span class="text-amber-600 text-[8px]">?</span>
+                    </div>
+                    <span class="text-slate-600 text-xs font-medium">Ragu-ragu</span>
                   </div>
-                  <span id="flagged-count" class="font-bold text-yellow-700 min-w-[2rem] text-right">0</span>
+                  <span id="flagged-count" class="font-bold text-amber-600 text-xs">0</span>
                 </div>
                 <div class="flex items-center justify-between">
-                  <div class="flex items-center space-x-2">
-                    <div class="w-4 h-4 bg-gray-50 border-2 border-gray-300 rounded shadow-sm"></div>
-                    <span class="text-gray-700 font-medium">Belum dijawab</span>
+                  <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 rounded bg-slate-100 border-2 border-slate-300"></div>
+                    <span class="text-slate-600 text-xs font-medium">Belum dijawab</span>
                   </div>
-                  <span id="unanswered-count" class="font-bold text-gray-600 min-w-[2rem] text-right">0</span>
+                  <span id="unanswered-count" class="font-bold text-slate-500 text-xs">0</span>
                 </div>
               </div>
             </div>
 
             <!-- Action Buttons -->
-            <div class="p-4 space-y-3">
+            <div class="p-4 sm:p-5 border-t border-slate-100 space-y-3">
               <button
                 id="flag-btn"
-                class="w-full px-4 py-2.5 border-2 border-yellow-400 text-yellow-700 rounded-lg hover:bg-yellow-50 active:bg-yellow-100 text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
+                class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border-2 border-amber-300 text-amber-700 rounded-lg hover:bg-amber-50 hover:border-amber-400 text-sm font-medium transition-all"
               >
-                <span id="flag-text" class="flex items-center justify-center gap-2">
-                  <span class="text-base">🚩</span>
-                  <span>Ragu-Ragu</span>
-                </span>
+                <span>🚩</span>
+                <span id="flag-text">Ragu-Ragu</span>
               </button>
               
               <button
                 id="submit-quiz-btn"
-                class="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-lg hover:from-green-700 hover:to-green-800 font-bold text-base shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5 active:scale-95"
+                class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-sm transition-all"
               >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
                 Selesaikan Ujian
               </button>
             </div>
           </div>
+          
+          <!-- Mobile sidebar overlay -->
+          <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-30 hidden lg:hidden"></div>
+        </div>
+        
+        <!-- Mobile Bottom Navigation -->
+        <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 flex items-center justify-between gap-2 z-20">
+          <button id="mobile-prev-btn" class="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+            ← Sebelumnya
+          </button>
+          <button id="mobile-flag-btn" class="px-4 py-2 bg-white border border-amber-300 rounded-md text-amber-700 hover:bg-amber-50">
+            🚩
+          </button>
+          <button id="mobile-next-btn" class="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
+            Selanjutnya →
+          </button>
         </div>
       </div>
     )}
@@ -224,61 +276,71 @@ try {
   <style is:global>
     /* Custom Scrollbar Styling */
     .scroll-smooth::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
+      width: 6px;
+      height: 6px;
     }
 
     .scroll-smooth::-webkit-scrollbar-track {
-      background: #f1f5f9;
-      border-radius: 4px;
+      background: transparent;
     }
 
     .scroll-smooth::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 4px;
+      background: #e2e8f0;
+      border-radius: 3px;
       transition: background 0.2s;
     }
 
     .scroll-smooth::-webkit-scrollbar-thumb:hover {
-      background: #94a3b8;
+      background: #cbd5e1;
     }
 
     /* For Firefox */
     .scroll-smooth {
       scrollbar-width: thin;
-      scrollbar-color: #cbd5e1 #f1f5f9;
+      scrollbar-color: #e2e8f0 transparent;
+    }
+    
+    /* Hide scrollbar until hover */
+    .scroll-smooth::-webkit-scrollbar-thumb {
+      background: transparent;
+    }
+    
+    .scroll-smooth:hover::-webkit-scrollbar-thumb {
+      background: #e2e8f0;
     }
 
     .math-display {
-      margin: 1.5rem 0;
+      margin: 0.75rem 0;
       text-align: center;
+      overflow-x: auto;
     }
 
     .math-inline {
-      display: inline-block;
+      display: inline;
       vertical-align: baseline;
-      line-height: inherit;
     }
 
     .math-inline .katex {
+      display: inline;
       vertical-align: baseline;
-      display: inline-block;
-      line-height: inherit;
+      font-size: 1em;
     }
 
     .math-inline .katex-html {
-      line-height: inherit;
+      display: inline;
     }
 
     /* Ensure KaTeX elements align properly with text */
     .prose .math-inline,
     .prose p .math-inline,
+    .option-text .math-inline,
     .option-content .math-inline {
       vertical-align: baseline;
     }
 
     .math-inline .katex-display {
       margin: 0;
+      display: inline;
     }
 
     .latex-error {
@@ -290,94 +352,127 @@ try {
     }
 
     .question-number {
-      width: 2.5rem;
-      height: 2.5rem;
+      width: 2.25rem;
+      height: 2.25rem;
       display: flex;
       align-items: center;
       justify-content: center;
       border-radius: 0.5rem;
       cursor: pointer;
       font-weight: 600;
-      transition: all 0.2s ease-in-out;
-      font-size: 0.875rem;
+      transition: all 0.15s ease-in-out;
+      font-size: 0.8125rem;
       border: 2px solid transparent;
+      position: relative;
+      flex-shrink: 0;
+    }
+    
+    @media (min-width: 640px) {
+      .question-number {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 0.625rem;
+        font-size: 0.875rem;
+      }
     }
 
     .question-number:hover {
-      box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.15);
-      transform: translateY(-3px) scale(1.05);
+      transform: scale(1.08);
+      z-index: 10;
     }
     
     .question-number:active {
       transform: translateY(-1px) scale(1.02);
     }
 
-    /* Answered - Light green with checkmark feel */
+    /* Answered - Emerald green */
     .question-number.answered {
-      background-color: #dcfce7;
-      color: #166534;
-      border-color: #86efac;
+      background-color: #ecfdf5;
+      color: #059669;
+      border-color: #6ee7b7;
     }
 
-    /* Flagged (unanswered) - Light orange/yellow for caution */
+    /* Flagged (unanswered) - Amber */
     .question-number.flagged {
-      background-color: #fef3c7;
-      color: #92400e;
+      background-color: #fffbeb;
+      color: #d97706;
       border-color: #fcd34d;
     }
 
-    /* Flagged + Answered - Darker orange for flagged with answer */
+    /* Flagged + Answered - Orange */
     .question-number.flagged-answered {
-      background-color: #ffedd5;
-      color: #9a3412;
+      background-color: #fff7ed;
+      color: #ea580c;
       border-color: #fb923c;
     }
 
-    /* Unanswered - Subtle gray */
+    /* Unanswered - Subtle slate */
     .question-number.unanswered {
-      background-color: #f9fafb;
-      color: #6b7280;
-      border-color: #e5e7eb;
+      background-color: #f8fafc;
+      color: #64748b;
+      border-color: #e2e8f0;
     }
 
-    /* Current question - Bold blue, highly visible */
+    /* Current question - Bold blue */
     .question-number.current {
-      background-color: #2563eb !important;
+      background-color: #3b82f6 !important;
       color: white !important;
       font-weight: 700 !important;
-      border-color: #2563eb !important;
-      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15) !important;
-      transform: scale(1.15) !important;
+      border-color: #3b82f6 !important;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2), 0 4px 6px -1px rgba(59, 130, 246, 0.3) !important;
+      transform: scale(1.1) !important;
     }
 
     .question-number.current:hover {
-      transform: scale(1.15) !important;
+      transform: scale(1.1) !important;
     }
 
     .option-label {
       display: flex;
       flex-direction: row;
-      align-items: flex-start;
-      padding: 1rem;
-      border: 2px solid #e5e7eb;
+      align-items: center;
+      padding: 0.875rem 1rem;
+      border: 2px solid #e2e8f0;
       border-radius: 0.75rem;
       cursor: pointer;
       transition: all 0.2s ease-in-out;
-      margin-bottom: 0.75rem;
+      margin-bottom: 0.625rem;
       background-color: #ffffff;
+      position: relative;
+      overflow: hidden;
+      min-height: 3rem;
+    }
+    
+    @media (min-width: 640px) {
+      .option-label {
+        padding: 1rem 1.25rem;
+        margin-bottom: 0.75rem;
+      }
+    }
+    
+    .option-label::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: transparent;
+      transition: all 0.2s ease;
     }
 
     .option-label:hover {
-      background-color: #f9fafb;
-      border-color: #93c5fd;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-      transform: translateX(4px);
+      background-color: #f8fafc;
+      border-color: #94a3b8;
     }
 
     .option-label.selected {
-      background-color: #eff6ff;
+      background: linear-gradient(to right, #eff6ff, #ffffff);
       border-color: #3b82f6;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .option-label.selected::before {
+      background: linear-gradient(to bottom, #3b82f6, #2563eb);
     }
 
     .option-label input[type="radio"],
@@ -388,16 +483,200 @@ try {
       margin-right: 1rem;
       margin-top: 0.125rem;
       cursor: pointer;
+      accent-color: #3b82f6;
     }
 
     .option-content {
       flex: 1;
       text-align: left;
-      line-height: 1.6;
+      line-height: 1.5;
+      color: #334155;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      min-height: 1.5rem;
     }
 
     .option-content p {
       margin: 0;
+    }
+    
+    .option-content .math-display {
+      margin: 0;
+      width: 100%;
+    }
+    
+    /* Markdown rendering styles */
+    .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+      font-weight: 700;
+      margin-top: 1.5rem;
+      margin-bottom: 0.75rem;
+      color: #1e293b;
+    }
+    
+    .prose h3 { font-size: 1.25rem; }
+    .prose h4 { font-size: 1.125rem; }
+    
+    .prose ul, .prose ol {
+      margin: 1rem 0;
+      padding-left: 1.5rem;
+    }
+    
+    .prose ul { list-style-type: disc; }
+    .prose ol { list-style-type: decimal; }
+    
+    .prose ul ul, .prose ol ol, .prose ul ol, .prose ol ul {
+      margin: 0.5rem 0;
+    }
+    
+    .prose ul ul { list-style-type: circle; }
+    .prose ul ul ul { list-style-type: square; }
+    
+    .prose li {
+      margin: 0.375rem 0;
+      line-height: 1.6;
+    }
+    
+    .prose strong { font-weight: 700; }
+    .prose em { font-style: italic; }
+    
+    .prose code {
+      background: #f1f5f9;
+      padding: 0.125rem 0.375rem;
+      border-radius: 0.25rem;
+      font-size: 0.875em;
+      font-family: ui-monospace, monospace;
+    }
+    
+    .prose pre {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      overflow-x: auto;
+      margin: 1rem 0;
+    }
+    
+    .prose pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+    }
+    
+    .prose blockquote {
+      border-left: 4px solid #3b82f6;
+      padding-left: 1rem;
+      margin: 1rem 0;
+      color: #64748b;
+      font-style: italic;
+    }
+    
+    .prose hr {
+      border: none;
+      border-top: 2px solid #e2e8f0;
+      margin: 1.5rem 0;
+    }
+    
+    .prose table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+    }
+    
+    .prose th, .prose td {
+      border: 1px solid #e2e8f0;
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+    }
+    
+    .prose th {
+      background: #f8fafc;
+      font-weight: 600;
+    }
+    
+    /* Question card styling */
+    .question-card {
+      background: #ffffff;
+      border-radius: 1.25rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      border: 1px solid #e2e8f0;
+      overflow: hidden;
+    }
+    
+    .question-header {
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 1rem 1.5rem;
+    }
+    
+    .question-body {
+      padding: 2rem;
+    }
+    
+    .question-text {
+      font-size: 1.125rem;
+      line-height: 1.8;
+      color: #1e293b;
+    }
+    
+    /* Solution styling */
+    .solution-panel {
+      background: linear-gradient(to right, #fefce8, #fffbeb);
+      border: 2px solid #fcd34d;
+      border-radius: 1rem;
+      margin-top: 1.5rem;
+      overflow: hidden;
+    }
+    
+    .solution-panel summary {
+      padding: 1rem 1.5rem;
+      font-weight: 600;
+      color: #92400e;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: background 0.2s;
+    }
+    
+    .solution-panel summary:hover {
+      background: rgba(251, 191, 36, 0.1);
+    }
+    
+    .solution-panel[open] summary {
+      border-bottom: 1px solid #fcd34d;
+    }
+    
+    .solution-content {
+      padding: 1.5rem;
+      color: #78350f;
+      line-height: 1.7;
+    }
+    
+    /* Navigation buttons - Exact match with editor */
+    .nav-btn {
+      padding: 0.5rem 1rem;
+      background: white;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      color: #374151;
+      font-size: 0.875rem;
+      transition: background-color 0.15s ease;
+    }
+    
+    .nav-btn:hover:not(:disabled) {
+      background: #f9fafb;
+    }
+    
+    .nav-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .question-indicator {
+      color: #374151;
+      font-weight: 500;
+      font-size: 0.875rem;
     }
   </style>
 
@@ -464,24 +743,56 @@ try {
     })();
   </script>
 
+  <!-- Load marked.js for markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  
   <script define:vars={{ quiz, id }}>
-    // Client-side markdown renderer for LaTeX
-    function processLatex(text) {
+    // Escape HTML for safe attribute embedding
+    function escapeHtml(text) {
+      if (!text) return '';
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+    
+    // Full markdown renderer with LaTeX support
+    function renderMarkdown(text) {
       if (!text) return '';
       
+      // Normalize newlines
+      let processed = text.replace(/\r\n?|\u2028|\u2029/g, '\n');
+      
       // Convert display math blocks ($$ ... $$) to placeholders
-      let processed = text.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
+      processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
         const cleanLatex = (latex || '').trim();
-        return `<div class="math-display" data-latex="${cleanLatex}"></div>`;
+        return `\n<div class="math-display" data-latex="${escapeHtml(cleanLatex)}"></div>\n`;
       });
 
       // Convert inline math $...$ to placeholders
       processed = processed.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (match, latex) => {
         const cleanLatex = (latex || '').trim();
-        return `<span class="math-inline" data-latex="${cleanLatex}"></span>`;
+        return `<span class="math-inline" data-latex="${escapeHtml(cleanLatex)}"></span>`;
       });
 
+      // Use marked for full markdown parsing
+      if (window.marked) {
+        try {
+          return window.marked.parse(processed);
+        } catch (e) {
+          console.error('Markdown parsing error:', e);
+          return processed;
+        }
+      }
+      
       return processed;
+    }
+    
+    // Simple LaTeX-only processor (legacy compatibility)
+    function processLatex(text) {
+      return renderMarkdown(text);
     }
 
     // Quiz state
@@ -733,68 +1044,60 @@ try {
       // Render navigation bar directly into nav-container
       navContainer.innerHTML = `
         <button
+          type="button"
           id="prev-btn-main"
-          class="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium"
+          class="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           ${currentQuestionIndex === 0 ? 'disabled' : ''}
         >
-          <span>← Soal Sebelumnya</span>
+          ← Sebelumnya
         </button>
         
-        <div class="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg font-bold">
-          SOAL NO. ${currentQuestionIndex + 1}
-        </div>
+        <span class="text-gray-700 font-medium">
+          Soal ${currentQuestionIndex + 1} dari ${quiz.questions.length}
+        </span>
         
         <button
+          type="button"
           id="next-btn-main"
-          class="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+          class="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <span>${currentQuestionIndex === quiz.questions.length - 1 ? 'Selesai' : 'Soal Selanjutnya →'}</span>
+          ${currentQuestionIndex === quiz.questions.length - 1 ? 'Selesai ✓' : 'Selanjutnya →'}
         </button>
       `;
 
       // Render question content (no navigation bar inside)
       container.innerHTML = `
-        <div class="bg-white rounded-lg shadow-lg p-8">
-
-          <div class="prose max-w-none mb-8">
-            <div class="text-lg text-gray-800">${questionHtml}</div>
-          </div>
-
-          ${question.images && question.images.length > 0 ? `
-            <div class="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              ${question.images.map(img => `
-                <img src="${img}" alt="Question illustration" class="rounded-lg border shadow-sm" />
-              `).join('')}
-            </div>
-          ` : ''}
-
-          <div class="space-y-3">
-            ${optionsHtml}
-          </div>
-
-          ${isComplex ? `
-            <p class="mt-4 text-sm text-purple-600 font-medium">
-              🔣 Pilihan ganda kompleks - Beberapa jawaban mungkin benar
-            </p>
-          ` : ''}
-
-          ${question.metadata?.solution ? `
-            <details class="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
-              <summary class="font-semibold text-gray-800 cursor-pointer hover:text-blue-600">
-                💡 Lihat Pembahasan
-              </summary>
-              <div class="prose max-w-none text-gray-700 mt-4">
-                ${solutionHtml}
-              </div>
-              ${question.metadata.solutionImages && question.metadata.solutionImages.length > 0 ? `
-                <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  ${question.metadata.solutionImages.map(img => `
-                    <img src="${img}" alt="Solution" class="rounded-lg border" />
-                  `).join('')}
-                </div>
+        <div class="question-card">
+          <div class="question-header">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Pertanyaan</span>
+              ${isComplex ? `
+                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-purple-100 text-purple-700 border border-purple-200">
+                  🔣 Pilihan Ganda Kompleks
+                </span>
               ` : ''}
-            </details>
-          ` : ''}
+            </div>
+          </div>
+          
+          <div class="question-body">
+            <div class="question-text prose max-w-none mb-8">
+              ${questionHtml}
+            </div>
+
+            ${question.images && question.images.length > 0 ? `
+              <div class="mb-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                ${question.images.map(img => `
+                  <img src="${img}" alt="Question illustration" class="rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow" />
+                `).join('')}
+              </div>
+            ` : ''}
+
+            <div class="space-y-1">
+              ${optionsHtml}
+            </div>
+
+            <!-- Solution is hidden during quiz session, shown on results page -->
+          </div>
         </div>
       `;
 
@@ -816,12 +1119,15 @@ try {
 
       // Update flag button
       const flagBtn = document.getElementById('flag-btn');
+      const flagText = document.getElementById('flag-text');
       if (flaggedQuestions.has(currentQuestionIndex)) {
-        flagBtn.classList.add('bg-orange-100');
-        document.getElementById('flag-text').textContent = '✓ Ragu-Ragu';
+        flagBtn.classList.add('bg-amber-100', 'border-amber-400');
+        flagBtn.classList.remove('bg-white');
+        flagText.textContent = '✓ Ditandai';
       } else {
-        flagBtn.classList.remove('bg-orange-100');
-        document.getElementById('flag-text').textContent = '🚩 Ragu-Ragu';
+        flagBtn.classList.remove('bg-amber-100', 'border-amber-400');
+        flagBtn.classList.add('bg-white');
+        flagText.textContent = 'Ragu-Ragu';
       }
 
       // Render LaTeX immediately after content is set
@@ -1015,5 +1321,73 @@ try {
     
     // Start initialization
     startInitialization();
+    
+    // Mobile sidebar toggle
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const mobileSidebarToggle = document.getElementById('mobile-sidebar-toggle');
+    const closeSidebar = document.getElementById('close-sidebar');
+    
+    function openSidebar() {
+      sidebar?.classList.remove('translate-x-full');
+      sidebarOverlay?.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+    
+    function closeSidebarFn() {
+      sidebar?.classList.add('translate-x-full');
+      sidebarOverlay?.classList.add('hidden');
+      document.body.style.overflow = '';
+    }
+    
+    mobileSidebarToggle?.addEventListener('click', openSidebar);
+    closeSidebar?.addEventListener('click', closeSidebarFn);
+    sidebarOverlay?.addEventListener('click', closeSidebarFn);
+    
+    // Mobile bottom navigation
+    const mobilePrevBtn = document.getElementById('mobile-prev-btn');
+    const mobileNextBtn = document.getElementById('mobile-next-btn');
+    const mobileFlagBtn = document.getElementById('mobile-flag-btn');
+    
+    mobilePrevBtn?.addEventListener('click', () => {
+      if (currentQuestionIndex > 0) {
+        goToQuestion(currentQuestionIndex - 1);
+      }
+    });
+    
+    mobileNextBtn?.addEventListener('click', () => {
+      if (currentQuestionIndex < quiz.questions.length - 1) {
+        goToQuestion(currentQuestionIndex + 1);
+      }
+    });
+    
+    mobileFlagBtn?.addEventListener('click', () => {
+      if (flaggedQuestions.has(currentQuestionIndex)) {
+        flaggedQuestions.delete(currentQuestionIndex);
+      } else {
+        flaggedQuestions.add(currentQuestionIndex);
+      }
+      renderQuestion();
+      renderQuestionGrid();
+      updateStats();
+      saveProgress();
+    });
+    
+    // Update mobile buttons state
+    function updateMobileNav() {
+      if (mobilePrevBtn) {
+        mobilePrevBtn.disabled = currentQuestionIndex === 0;
+      }
+      if (mobileNextBtn) {
+        mobileNextBtn.textContent = currentQuestionIndex === quiz.questions.length - 1 ? 'Selesai ✓' : 'Next →';
+      }
+    }
+    
+    // Call updateMobileNav in goToQuestion
+    const originalGoToQuestion = goToQuestion;
+    goToQuestion = function(index) {
+      originalGoToQuestion(index);
+      updateMobileNav();
+    };
   </script>
 </Layout>

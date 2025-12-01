@@ -1,0 +1,198 @@
+---
+export const prerender = false;
+
+import Layout from '../../components/Layout.astro';
+import { getSessionUser } from '../../lib/auth-guard';
+import { prisma } from '../../lib/db';
+
+const user = await getSessionUser(Astro.cookies);
+
+if (!user) {
+  return Astro.redirect('/auth/signin');
+}
+
+// Get all quiz attempts for this user
+const attempts = await prisma.quizAttempt.findMany({
+  where: { userId: user.id },
+  include: {
+    quiz: {
+      include: {
+        course: true
+      }
+    }
+  },
+  orderBy: { completedAt: 'desc' }
+});
+
+// Group attempts by quiz
+const groupedAttempts = attempts.reduce((acc, attempt) => {
+  const quizId = attempt.quizId;
+  if (!acc[quizId]) {
+    acc[quizId] = {
+      quiz: attempt.quiz,
+      attempts: []
+    };
+  }
+  acc[quizId].attempts.push(attempt);
+  return acc;
+}, {} as Record<number, { quiz: any; attempts: any[] }>);
+
+function formatDate(date: Date): string {
+  return new Date(date).toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function formatTime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  if (hours > 0) {
+    return `${hours}j ${minutes}m ${secs}d`;
+  }
+  return `${minutes}m ${secs}d`;
+}
+
+function getScoreColor(percentage: number): string {
+  if (percentage >= 80) return 'emerald';
+  if (percentage >= 60) return 'blue';
+  if (percentage >= 40) return 'amber';
+  return 'red';
+}
+---
+
+<Layout title="Riwayat Ujian">
+  <div class="min-h-screen bg-gradient-to-b from-slate-50 to-white py-8">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Header -->
+      <div class="mb-8">
+        <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Riwayat Ujian</h1>
+        <p class="text-slate-600">Lihat dan kelola semua percobaan ujian Anda</p>
+      </div>
+
+      {Object.keys(groupedAttempts).length === 0 ? (
+        <div class="bg-white rounded-xl border border-slate-200 p-12 text-center">
+          <div class="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
+            <span class="text-3xl">📝</span>
+          </div>
+          <h3 class="text-lg font-bold text-slate-900 mb-2">Belum ada riwayat</h3>
+          <p class="text-slate-500 mb-6">Anda belum menyelesaikan ujian apapun.</p>
+          <a href="/quizzes" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
+            Mulai Ujian
+          </a>
+        </div>
+      ) : (
+        <div class="space-y-6">
+          {Object.values(groupedAttempts).map(({ quiz, attempts }) => (
+            <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+              <!-- Quiz Header -->
+              <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                    <span class="text-lg">📝</span>
+                  </div>
+                  <div>
+                    <h2 class="font-bold text-slate-900">{quiz.title}</h2>
+                    {quiz.course && (
+                      <p class="text-sm text-slate-500">{quiz.course.title}</p>
+                    )}
+                  </div>
+                </div>
+                <a 
+                  href={`/quizzes/${quiz.id}`}
+                  class="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  Coba Lagi
+                </a>
+              </div>
+              
+              <!-- Attempts List -->
+              <div class="divide-y divide-slate-100">
+                {attempts.map((attempt, index) => {
+                  const scoreColor = getScoreColor(attempt.percentage);
+                  return (
+                    <div class="px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors group">
+                      <div class="flex items-center gap-4">
+                        <!-- Attempt Number -->
+                        <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-600">
+                          {attempts.length - index}
+                        </div>
+                        
+                        <!-- Attempt Info -->
+                        <div>
+                          <div class="flex items-center gap-2">
+                            <span class={`text-xl font-bold text-${scoreColor}-600`}>
+                              {attempt.percentage}%
+                            </span>
+                            <span class="text-slate-400">•</span>
+                            <span class="text-sm text-slate-600">
+                              {attempt.correctAnswers}/{attempt.totalQuestions} benar
+                            </span>
+                          </div>
+                          <div class="flex items-center gap-3 text-sm text-slate-500 mt-0.5">
+                            <span>⏱️ {formatTime(attempt.timeSpent)}</span>
+                            <span>📅 {formatDate(attempt.completedAt)}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Actions -->
+                      <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <a 
+                          href={`/quizzes/${quiz.id}/review/${attempt.id}`}
+                          class="px-3 py-1.5 text-sm font-medium text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors"
+                        >
+                          Tinjau
+                        </a>
+                        <button
+                          class="delete-attempt-btn px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+                          data-id={attempt.id}
+                          data-quiz={quiz.title}
+                        >
+                          Hapus
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+</Layout>
+
+<script>
+  document.querySelectorAll('.delete-attempt-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const attemptId = btn.dataset.id;
+      const quizName = btn.dataset.quiz;
+      
+      if (!confirm(`Hapus percobaan ini dari "${quizName}"? Tindakan ini tidak dapat dibatalkan.`)) {
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/quiz/attempt/${attemptId}/delete`, {
+          method: 'DELETE'
+        });
+        
+        if (response.ok) {
+          window.location.reload();
+        } else {
+          const result = await response.json();
+          alert('Gagal menghapus: ' + (result.error || 'Kesalahan tidak dikenal'));
+        }
+      } catch (error) {
+        alert('Gagal menghapus percobaan');
+      }
+    });
+  });
+</script>
+

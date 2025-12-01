@@ -3,187 +3,228 @@ export const prerender = false;
 
 import Layout from '../../components/Layout.astro';
 import { getUserProfile, getUserLearningStats, getUserAchievements } from '../../lib/profile';
+import { getSessionUser } from '../../lib/auth-guard';
 
-// TODO: Get user ID from session - for now using hardcoded value
-const userId = 1;
+const user = await getSessionUser(Astro.cookies);
 
+if (!user) {
+  return Astro.redirect('/auth/signin');
+}
+
+const userId = user.id;
 const profile = await getUserProfile(userId);
 const stats = await getUserLearningStats(userId);
 const achievements = await getUserAchievements(userId);
+
+function formatDate(date: Date): string {
+  return new Date(date).toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+}
+
+function getScoreColor(percentage: number): string {
+  if (percentage >= 80) return 'emerald';
+  if (percentage >= 60) return 'blue';
+  if (percentage >= 40) return 'amber';
+  return 'red';
+}
 ---
 
-<Layout title="My Profile">
-  <div class="min-h-screen bg-gray-50">
-    <!-- Header -->
-    <div class="bg-white shadow mb-8">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-          <div class="flex items-center">
-            <h1 class="text-2xl font-bold text-gray-900">My Profile</h1>
+<Layout title="Profil Saya">
+  <div class="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+    <!-- Hero Banner -->
+    <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        <div class="flex flex-col sm:flex-row items-center gap-6">
+          <!-- Avatar -->
+          <div class="relative">
+            <div class="w-24 h-24 sm:w-28 sm:h-28 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center border-4 border-white/30 shadow-xl">
+              <span class="text-4xl sm:text-5xl font-bold text-white">
+                {profile?.email?.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div class="absolute -bottom-2 -right-2 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center border-4 border-white shadow-lg">
+              <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+              </svg>
+            </div>
           </div>
-          <div class="flex items-center space-x-4">
-            <a href="/courses" class="text-gray-700 hover:text-blue-600">Courses</a>
+          
+          <!-- User Info -->
+          <div class="text-center sm:text-left">
+            <h1 class="text-2xl sm:text-3xl font-bold mb-1">
+              {profile?.profile?.firstName || 'Pengguna'} {profile?.profile?.lastName || ''}
+            </h1>
+            <p class="text-blue-100 mb-2">{profile?.email}</p>
+            <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-sm">
+              <span class="px-3 py-1 bg-white/20 rounded-full">
+                📅 Bergabung {formatDate(profile?.createdAt)}
+              </span>
+              {profile?.role === 'admin' && (
+                <span class="px-3 py-1 bg-amber-500 text-white rounded-full font-medium">
+                  ⭐ Admin
+                </span>
+              )}
+            </div>
+          </div>
+          
+          <!-- Actions -->
+          <div class="sm:ml-auto flex gap-3">
+            <a href="/profile/edit" class="px-4 py-2 bg-white text-blue-600 font-medium rounded-lg hover:bg-blue-50 transition-colors">
+              Edit Profil
+            </a>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Profile Content -->
+    <!-- Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <!-- Stats Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 -mt-12">
+        <div class="bg-white rounded-xl border border-slate-200 shadow-lg p-6">
+          <div class="flex items-center gap-4">
+            <div class="w-14 h-14 rounded-xl bg-blue-100 flex items-center justify-center">
+              <span class="text-2xl">📝</span>
+            </div>
+            <div>
+              <p class="text-sm text-slate-500 font-medium">Total Ujian</p>
+              <p class="text-3xl font-bold text-slate-900">{stats.totalAttempts}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-white rounded-xl border border-slate-200 shadow-lg p-6">
+          <div class="flex items-center gap-4">
+            <div class="w-14 h-14 rounded-xl bg-emerald-100 flex items-center justify-center">
+              <span class="text-2xl">📊</span>
+            </div>
+            <div>
+              <p class="text-sm text-slate-500 font-medium">Rata-rata Skor</p>
+              <p class="text-3xl font-bold text-slate-900">{stats.averageScore}%</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-white rounded-xl border border-slate-200 shadow-lg p-6">
+          <div class="flex items-center gap-4">
+            <div class="w-14 h-14 rounded-xl bg-purple-100 flex items-center justify-center">
+              <span class="text-2xl">📚</span>
+            </div>
+            <div>
+              <p class="text-sm text-slate-500 font-medium">Kursus</p>
+              <p class="text-3xl font-bold text-slate-900">{stats.coursesCompleted}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Profile Card -->
+        <!-- Achievements -->
         <div class="lg:col-span-1">
-          <div class="bg-white rounded-lg shadow p-6">
-            <div class="text-center">
-              <div class="w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span class="text-white text-2xl font-bold">
-                  {profile?.email?.charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <h2 class="text-xl font-semibold text-gray-900 mb-2">
-                {profile?.profile?.firstName || 'User'} {profile?.profile?.lastName || ''}
+          <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50">
+              <h2 class="font-bold text-slate-900 flex items-center gap-2">
+                <span>🏆</span>
+                <span>Pencapaian</span>
               </h2>
-              <p class="text-gray-600 mb-4">{profile?.email}</p>
-              <p class="text-sm text-gray-500 mb-6">
-                Member since {new Date(profile?.createdAt).toLocaleDateString()}
-              </p>
-              
-              <div class="space-y-2">
-                <a href="/profile/edit" class="block w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 text-center">
-                  Edit Profile
-                </a>
-                <a href="/courses" class="block w-full bg-white text-gray-700 py-2 px-4 rounded-md border border-gray-300 hover:bg-gray-50 text-center">
-                  Browse Courses
-                </a>
-              </div>
+            </div>
+            <div class="p-6">
+              {achievements.length === 0 ? (
+                <div class="text-center py-8">
+                  <div class="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
+                    <span class="text-3xl">🎯</span>
+                  </div>
+                  <p class="text-slate-500 text-sm">Selesaikan ujian untuk mendapatkan pencapaian!</p>
+                </div>
+              ) : (
+                <div class="space-y-3">
+                  {achievements.map((achievement) => (
+                    <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                      <span class="text-2xl">{achievement.icon}</span>
+                      <div>
+                        <h4 class="font-medium text-slate-900 text-sm">{achievement.title}</h4>
+                        <p class="text-xs text-slate-500">{achievement.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <!-- Quick Actions -->
+          <div class="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+            <h3 class="font-bold text-slate-900 mb-4">Aksi Cepat</h3>
+            <div class="space-y-2">
+              <a href="/courses" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
+                <span class="text-xl">📚</span>
+                <span class="text-sm font-medium text-slate-700">Jelajahi Kursus</span>
+              </a>
+              <a href="/quizzes/history" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
+                <span class="text-xl">📋</span>
+                <span class="text-sm font-medium text-slate-700">Riwayat Ujian</span>
+              </a>
+              <a href="/dashboard" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
+                <span class="text-xl">📊</span>
+                <span class="text-sm font-medium text-slate-700">Dashboard</span>
+              </a>
             </div>
           </div>
         </div>
 
-        <!-- Learning Stats -->
+        <!-- Recent Activity -->
         <div class="lg:col-span-2">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div class="bg-white overflow-hidden shadow rounded-lg">
-              <div class="p-5">
-                <div class="flex items-center">
-                  <div class="flex-shrink-0">
-                    <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
-                      <span class="text-white font-bold">Q</span>
-                    </div>
-                  </div>
-                  <div class="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt class="text-sm font-medium text-gray-500 truncate">Total Quizzes</dt>
-                      <dd class="text-lg font-medium text-gray-900">{stats.totalAttempts}</dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
+          <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+              <h2 class="font-bold text-slate-900 flex items-center gap-2">
+                <span>⏱️</span>
+                <span>Aktivitas Terbaru</span>
+              </h2>
+              <a href="/quizzes/history" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                Lihat Semua →
+              </a>
             </div>
-
-            <div class="bg-white overflow-hidden shadow rounded-lg">
-              <div class="p-5">
-                <div class="flex items-center">
-                  <div class="flex-shrink-0">
-                    <div class="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
-                      <span class="text-white font-bold">A</span>
-                    </div>
+            <div class="divide-y divide-slate-100">
+              {stats.recentActivity.length === 0 ? (
+                <div class="p-12 text-center">
+                  <div class="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
+                    <span class="text-3xl">📝</span>
                   </div>
-                  <div class="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt class="text-sm font-medium text-gray-500 truncate">Average Score</dt>
-                      <dd class="text-lg font-medium text-gray-900">{stats.averageScore}%</dd>
-                    </dl>
-                  </div>
+                  <p class="text-slate-500 mb-4">Belum ada aktivitas ujian</p>
+                  <a href="/courses" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
+                    Mulai Belajar
+                  </a>
                 </div>
-              </div>
-            </div>
-
-            <div class="bg-white overflow-hidden shadow rounded-lg">
-              <div class="p-5">
-                <div class="flex items-center">
-                  <div class="flex-shrink-0">
-                    <div class="w-8 h-8 bg-purple-500 rounded-md flex items-center justify-center">
-                      <span class="text-white font-bold">C</span>
-                    </div>
-                  </div>
-                  <div class="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt class="text-sm font-medium text-gray-500 truncate">Courses</dt>
-                      <dd class="text-lg font-medium text-gray-900">{stats.coursesCompleted}</dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Achievements -->
-          <div class="bg-white rounded-lg shadow p-6 mb-8">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Achievements</h3>
-            {achievements.length === 0 ? (
-              <p class="text-gray-500 text-center py-8">Complete quizzes to earn achievements!</p>
-            ) : (
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {achievements.map((achievement) => (
-                  <div class="flex items-center p-4 border border-gray-200 rounded-lg">
-                    <div class="text-2xl mr-4">{achievement.icon}</div>
-                    <div>
-                      <h4 class="font-medium text-gray-900">{achievement.title}</h4>
-                      <p class="text-sm text-gray-500">{achievement.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <!-- Recent Activity -->
-          <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-            {stats.recentActivity.length === 0 ? (
-              <p class="text-gray-500 text-center py-8">No quiz attempts yet. Start learning!</p>
-            ) : (
-              <div class="flow-root">
-                <ul class="-mb-8">
-                  {stats.recentActivity.map((activity, index) => (
-                    <li>
-                      <div class="relative pb-8">
-                        {index !== stats.recentActivity.length - 1 && (
-                          <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" />
-                        )}
-                        <div class="relative flex space-x-3">
-                          <div>
-                            <span class={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${
-                              activity.percentage >= 70 ? 'bg-green-500' : 'bg-red-500'
-                            }`}>
-                              <span class="text-white text-sm font-bold">{activity.percentage}%</span>
-                            </span>
-                          </div>
-                          <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                            <div>
-                              <p class="text-sm text-gray-500">
-                                Completed <span class="font-medium text-gray-900">{activity.quiz.title}</span> in {activity.quiz.course.title}
-                              </p>
-                              <p class="text-sm text-gray-500">
-                                {activity.correctAnswers}/{activity.totalQuestions} correct answers
-                              </p>
-                            </div>
-                            <div class="text-right text-sm whitespace-nowrap text-gray-500">
-                              <time>{new Date(activity.completedAt).toLocaleDateString()}</time>
-                            </div>
-                          </div>
+              ) : (
+                stats.recentActivity.map((activity) => {
+                  const scoreColor = getScoreColor(activity.percentage);
+                  return (
+                    <div class="px-6 py-4 hover:bg-slate-50 transition-colors">
+                      <div class="flex items-center gap-4">
+                        <div class={`w-12 h-12 rounded-xl bg-${scoreColor}-100 flex items-center justify-center`}>
+                          <span class={`text-lg font-bold text-${scoreColor}-600`}>{activity.percentage}%</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <h4 class="font-medium text-slate-900 truncate">{activity.quiz.title}</h4>
+                          <p class="text-sm text-slate-500">
+                            {activity.correctAnswers}/{activity.totalQuestions} benar • {activity.quiz.course?.title || 'Kuis Mandiri'}
+                          </p>
+                        </div>
+                        <div class="text-right text-sm text-slate-500">
+                          {formatDate(activity.completedAt)}
                         </div>
                       </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 </Layout>
-
