@@ -8,6 +8,7 @@ const { id } = Astro.params;
 
 // Fetch quiz details directly from database
 let quiz: any = null;
+let clientQuiz: any = null; // Sanitized version for client (no solutions/answers)
 let error = '';
 
 try {
@@ -42,6 +43,28 @@ try {
     } else {
       // Unknown format
       error = 'Invalid quiz format';
+    }
+
+    // Create sanitized version for client - REMOVE solutions and correct answers
+    if (quiz && !quiz.isEssay && Array.isArray(quiz.questions)) {
+      clientQuiz = {
+        id: quiz.id,
+        title: quiz.title,
+        courseId: quiz.courseId,
+        chapterId: quiz.chapterId,
+        settings: quiz.settings,
+        isEssay: quiz.isEssay,
+        questions: quiz.questions.map((q: any, idx: number) => ({
+          id: q.id || idx + 1,
+          type: q.type,
+          question: q.question,
+          options: q.options,
+          images: q.images,
+          // SECURITY: Do NOT include correctAnswer or metadata.solution
+        }))
+      };
+    } else {
+      clientQuiz = quiz;
     }
   }
 } catch (err) {
@@ -169,7 +192,7 @@ try {
           <div class="flex-1 flex flex-col overflow-hidden">
             <!-- Question Display Area -->
             <div class="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 scroll-smooth">
-              <div id="question-container" class="max-w-4xl mx-auto overflow-visible">
+              <div id="question-container" class="max-w-4xl mx-auto overflow-visible quiz-content">
                 <!-- Questions will be rendered here by JavaScript -->
               </div>
               
@@ -307,6 +330,23 @@ try {
     
     .scroll-smooth:hover::-webkit-scrollbar-thumb {
       background: #e2e8f0;
+    }
+
+    /* Anti-cheating: Disable text selection on quiz content */
+    .quiz-content {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    
+    /* Allow selection on input fields */
+    .quiz-content input,
+    .quiz-content textarea {
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
     }
 
     .math-display {
@@ -746,7 +786,7 @@ try {
   <!-- Load marked.js for markdown rendering -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   
-  <script define:vars={{ quiz, id }}>
+  <script define:vars={{ quiz: clientQuiz, id }}>
     // Escape HTML for safe attribute embedding
     function escapeHtml(text) {
       if (!text) return '';
@@ -1038,8 +1078,8 @@ try {
         `;
       }).join('');
       
-      // Process solution with LaTeX
-      const solutionHtml = question.metadata?.solution ? processLatex(question.metadata.solution) : '';
+      // NOTE: Solutions are NOT sent to client for security
+      // They are only shown on the results page after quiz submission
       
       // Render navigation bar directly into nav-container
       navContainer.innerHTML = `
@@ -1389,5 +1429,53 @@ try {
       originalGoToQuestion(index);
       updateMobileNav();
     };
+
+    // ============================================
+    // ANTI-CHEATING MEASURES
+    // ============================================
+    
+    // Disable right-click on quiz content
+    document.getElementById('question-container')?.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      return false;
+    });
+
+    // Disable common keyboard shortcuts for DevTools/View Source
+    document.addEventListener('keydown', (e) => {
+      // Disable F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
+      if (
+        e.key === 'F12' ||
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j')) ||
+        (e.ctrlKey && (e.key === 'U' || e.key === 'u'))
+      ) {
+        e.preventDefault();
+        return false;
+      }
+    });
+
+    // Detect if DevTools is open (basic detection)
+    let devToolsWarningShown = false;
+    const devToolsDetector = setInterval(() => {
+      const widthThreshold = window.outerWidth - window.innerWidth > 160;
+      const heightThreshold = window.outerHeight - window.innerHeight > 160;
+      
+      if ((widthThreshold || heightThreshold) && !devToolsWarningShown) {
+        devToolsWarningShown = true;
+        console.clear();
+        console.log('%c⚠️ PERINGATAN!', 'color: red; font-size: 24px; font-weight: bold;');
+        console.log('%cMembuka DevTools selama ujian dapat dianggap sebagai kecurangan dan akan dicatat.', 'color: red; font-size: 14px;');
+        console.log('%cOpening DevTools during the exam may be considered cheating and will be logged.', 'color: red; font-size: 14px;');
+      }
+    }, 1000);
+
+    // Clear interval when leaving page
+    window.addEventListener('beforeunload', () => {
+      clearInterval(devToolsDetector);
+    });
+
+    // Disable drag on images
+    document.querySelectorAll('img').forEach(img => {
+      img.addEventListener('dragstart', (e) => e.preventDefault());
+    });
   </script>
 </Layout>
