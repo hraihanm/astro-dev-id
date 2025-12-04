@@ -132,6 +132,62 @@ export function generateBlockId(blocks: InteractiveBlock[]): string {
 }
 
 /**
+ * Sync blocks from content markers
+ * Extracts block markers from content and creates/updates block objects
+ * Preserves existing block data (like sourceUrl for simulations)
+ */
+export function syncBlocksFromContent(
+  content: string,
+  existingBlocks: InteractiveBlock[] = []
+): InteractiveBlock[] {
+  const markers = extractBlockMarkers(content);
+  const blocksMap = new Map<string, InteractiveBlock>();
+  
+  // Start with existing blocks (preserve their data)
+  for (const block of existingBlocks) {
+    blocksMap.set(block.id, block);
+  }
+  
+  // Update/create blocks from markers
+  for (const marker of markers) {
+    const existingBlock = blocksMap.get(marker.blockId);
+    
+    if (existingBlock) {
+      // Update position if block exists
+      existingBlock.position = marker.position;
+    } else {
+      // Create new block with default data
+      const newBlock: InteractiveBlock = {
+        id: marker.blockId,
+        type: marker.type,
+        position: marker.position
+      } as InteractiveBlock;
+      
+      // Add type-specific defaults
+      if (marker.type === 'simulation') {
+        (newBlock as SimulationBlock).sourceUrl = '';
+      } else if (marker.type === 'quiz') {
+        (newBlock as QuizBlock).quizId = 0;
+      } else if (marker.type === 'code-editor') {
+        (newBlock as CodeEditorBlock).language = 'javascript';
+      }
+      
+      blocksMap.set(marker.blockId, newBlock);
+    }
+  }
+  
+  // Remove blocks that no longer have markers
+  const markerIds = new Set(markers.map(m => m.blockId));
+  for (const [blockId, block] of blocksMap.entries()) {
+    if (!markerIds.has(blockId)) {
+      blocksMap.delete(blockId);
+    }
+  }
+  
+  return Array.from(blocksMap.values());
+}
+
+/**
  * Split rendered HTML content at block marker positions
  * Returns an array of content segments and block IDs in order
  */

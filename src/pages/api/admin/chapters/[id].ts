@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { prisma } from '../../../../lib/db';
+import { syncBlocksFromContent, parseBlocks, serializeBlocks } from '../../../../lib/blocks';
 
 export const prerender = false;
 
@@ -44,7 +45,7 @@ export const PUT: APIRoute = async ({ params, request, cookies }) => {
     
     console.log('Chapter data:', { title, order, content: content ? `${content.length} chars` : 'null' });
 
-    // Get current chapter to check if order changed
+    // Get current chapter to check if order changed and get existing blocks
     const currentChapter = await prisma.chapter.findUnique({
       where: { id: parseInt(id) }
     });
@@ -92,13 +93,21 @@ export const PUT: APIRoute = async ({ params, request, cookies }) => {
       }
     }
 
+    // Sync blocks from content markers
+    const existingBlocks = parseBlocks(currentChapter.blocks);
+    const syncedBlocks = content ? syncBlocksFromContent(content, existingBlocks) : [];
+    const blocksJson = serializeBlocks(syncedBlocks);
+    
+    console.log('Synced blocks:', blocksJson);
+
     // Update the chapter
     const updatedChapter = await prisma.chapter.update({
       where: { id: parseInt(id) },
       data: {
         title,
         order: order ? parseInt(order) : currentChapter.order,
-        content: content || null
+        content: content || null,
+        blocks: blocksJson || null
       }
     });
 

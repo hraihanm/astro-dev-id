@@ -62,11 +62,11 @@ const allChapters = await prisma.chapter.findMany({
   </script>
   <div class="min-h-screen bg-slate-50">
     <!-- Header -->
-    <div class="bg-white border-b border-slate-200 sticky top-0 z-20">
+    <div class="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
       <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
           <div class="flex items-center gap-4">
-            <a href={`/admin/courses/${courseId}/edit`} class="text-slate-600 hover:text-slate-900 transition-colors">
+            <a href={`/admin/courses/${courseId}/edit`} id="header-back-link" class="text-slate-600 hover:text-slate-900 transition-colors">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
@@ -75,9 +75,13 @@ const allChapters = await prisma.chapter.findMany({
               <h1 class="text-xl font-bold text-slate-900">Edit Bab</h1>
               <p class="text-xs text-slate-500">Kursus: {chapter.course.title}</p>
             </div>
+            <div id="header-unsaved-indicator" class="hidden items-center gap-2 px-3 py-1 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-xs">
+              <span class="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
+              <span class="font-medium">Belum disimpan</span>
+            </div>
           </div>
           <div class="flex items-center gap-3">
-            <a href="/admin/tutorial" target="_blank" class="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+            <a href="/admin/tutorial" target="_blank" class="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 px-2 py-1 hover:bg-blue-50 rounded transition-colors">
               <span>📚</span>
               <span>Tutorial Formatting</span>
             </a>
@@ -160,7 +164,7 @@ const allChapters = await prisma.chapter.findMany({
             style="display: none;"
           >{chapter.content || ''}</textarea>
           <!-- Monaco Editor container -->
-          <div id="monaco-editor-container" class="flex-1 min-h-0" style="height: 100%;"></div>
+          <div id="monaco-editor-container" class="flex-1 min-h-0" style="min-height: 400px; height: 100%;"></div>
           <div class="px-4 py-2 bg-slate-50 border-t border-slate-200">
             <p class="text-xs text-slate-500">
               Mendukung Markdown & LaTeX. Gunakan <code class="bg-slate-200 px-1 rounded">$...$</code> untuk inline dan <code class="bg-slate-200 px-1 rounded">$$...$$</code> untuk display math.
@@ -193,27 +197,48 @@ const allChapters = await prisma.chapter.findMany({
       </div>
 
       <!-- Bottom Bar: Actions -->
-      <div class="bg-white border-t border-slate-200 px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-        <button
-          type="button"
-          id="delete-btn"
-          class="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
-        >
-          Hapus Bab
-        </button>
-        <div class="flex items-center gap-3">
-          <a
-            href={`/admin/courses/${courseId}/edit`}
-            class="px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
-          >
-            Batal
-          </a>
-          <button
-            type="submit"
-            class="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Simpan Perubahan
-          </button>
+      <div class="bg-white border-t border-slate-200 shadow-lg">
+        <div class="px-4 sm:px-6 lg:px-8 py-4">
+          <div class="flex items-center justify-between gap-4">
+            <!-- Left: Delete & Unsaved Indicator -->
+            <div class="flex items-center gap-4">
+              <button
+                type="button"
+                id="delete-btn"
+                class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all border border-red-200 hover:border-red-300"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Hapus Bab
+              </button>
+              <div id="unsaved-indicator" class="hidden items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm">
+                <span class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
+                <span class="font-medium">Perubahan belum disimpan</span>
+              </div>
+            </div>
+            
+            <!-- Right: Cancel & Save -->
+            <div class="flex items-center gap-3">
+              <a
+                href={`/admin/courses/${courseId}/edit`}
+                id="cancel-link"
+                class="px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all border border-slate-200 hover:border-slate-300"
+              >
+                Batal
+              </a>
+              <button
+                type="submit"
+                id="save-btn"
+                class="inline-flex items-center gap-2 px-6 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg id="save-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <span id="save-text">Simpan Perubahan</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </form>
@@ -425,7 +450,7 @@ const allChapters = await prisma.chapter.findMany({
   </div>
 </Layout>
 
-<script define:vars={{ chapterId: chapter.id, courseId: parseInt(courseId) }}>
+<script define:vars={{ chapterId: chapter.id, courseId: parseInt(courseId), originalContent: chapter.content || '', originalTitle: chapter.title, originalOrder: chapter.order }}>
   // Track content size
   function updateContentSize() {
     const content = monacoEditor ? monacoEditor.getValue() : (document.getElementById('content')?.value || '');
@@ -522,9 +547,22 @@ const allChapters = await prisma.chapter.findMany({
         return;
       }
 
-      // Ensure container has height
-      if (container.offsetHeight === 0) {
+      // Ensure container has height - check multiple ways
+      const computedStyle = window.getComputedStyle(container);
+      const parentHeight = container.parentElement?.offsetHeight || 0;
+      
+      console.log('Container check:', {
+        offsetHeight: container.offsetHeight,
+        clientHeight: container.clientHeight,
+        parentHeight: parentHeight,
+        computedHeight: computedStyle.height
+      });
+      
+      // Force a minimum height if container has no height
+      if (container.offsetHeight === 0 && container.clientHeight === 0) {
         container.style.height = '500px';
+        container.style.minHeight = '500px';
+        console.log('Set container height to 500px');
       }
 
       console.log('Loading Monaco Editor...');
@@ -534,14 +572,23 @@ const allChapters = await prisma.chapter.findMany({
         throw new Error('Monaco Editor not available after loading');
       }
 
-      // Ensure container has proper dimensions
+      // Ensure container has proper dimensions before creating editor
       const containerHeight = container.offsetHeight || container.clientHeight || 500;
       if (containerHeight < 100) {
         container.style.height = '500px';
+        container.style.minHeight = '500px';
+        console.log('Container too small, set to 500px');
       }
       
-      // Wait a bit for container to be fully rendered
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Wait a bit for container to be fully rendered and layout to settle
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Final check before creating editor
+      if (container.offsetHeight === 0 && container.clientHeight === 0) {
+        console.warn('Container still has no height, forcing 500px');
+        container.style.height = '500px';
+        container.style.minHeight = '500px';
+      }
 
       console.log('Creating Monaco Editor instance...');
       // Initialize Monaco Editor
@@ -596,17 +643,44 @@ const allChapters = await prisma.chapter.findMany({
       console.log('Monaco Editor initialized successfully');
     } catch (error) {
       console.error('Failed to initialize Monaco Editor:', error);
+      console.error('Error details:', error.stack);
+      
       // Fallback to textarea if Monaco fails
       const container = document.getElementById('monaco-editor-container');
       const hiddenTextarea = document.getElementById('content');
+      
       if (container && hiddenTextarea) {
-        container.innerHTML = `<textarea id="content-fallback" class="w-full h-full p-3 border-0 font-mono text-sm" style="resize: none;">${hiddenTextarea.value || ''}</textarea>`;
+        console.log('Setting up fallback textarea editor...');
+        const contentValue = hiddenTextarea.value || '';
+        container.innerHTML = `
+          <textarea 
+            id="content-fallback" 
+            class="w-full h-full p-4 border-0 font-mono text-sm focus:outline-none" 
+            style="resize: none; min-height: 400px;"
+            placeholder="Mulai mengetik konten Anda di sini..."
+          >${contentValue}</textarea>
+        `;
+        
         const fallback = document.getElementById('content-fallback');
-        fallback.addEventListener('input', () => {
-          hiddenTextarea.value = fallback.value;
-          updateContentSize();
-          updatePreview();
-        });
+        if (fallback) {
+          // Sync to hidden textarea
+          fallback.addEventListener('input', () => {
+            hiddenTextarea.value = fallback.value;
+            updateContentSize();
+            // Update preview with debounce
+            clearTimeout(window.previewTimeout);
+            window.previewTimeout = setTimeout(() => {
+              updatePreview().catch(err => console.error('Preview update error:', err));
+            }, 500);
+          });
+          
+          // Track changes for unsaved indicator
+          fallback.addEventListener('input', checkForChanges);
+          
+          console.log('Fallback textarea editor ready');
+        }
+      } else {
+        console.error('Container or textarea not found for fallback');
       }
     }
   }
@@ -1059,8 +1133,9 @@ const allChapters = await prisma.chapter.findMany({
 
     // CRITICAL: Extract and process HTML blocks BEFORE markdown parsing
     // This prevents marked.js from treating content inside HTML blocks as code blocks
+    // NOTE: Keep in sync with HTML_BLOCK_CLASSES in src/lib/markdown-blocks.ts
     const htmlBlocks = [];
-    const htmlBlockClasses = ['definition-block', 'info-block', 'warning-block', 'tip-block', 'note-block', 'example-block'];
+    const htmlBlockClasses = ['definition-block', 'info-block', 'warning-block', 'tip-block', 'note-block', 'example-block', 'theorem-block'];
     const classPattern = htmlBlockClasses.join('|');
     
     // Match HTML blocks with nested divs - use a balanced match approach
@@ -1141,7 +1216,8 @@ const allChapters = await prisma.chapter.findMany({
     // Post-process: Find content divs inside HTML blocks and process their content
     // This handles cases where marked.js wrapped content in <pre><code> tags
     // Process definition-content, info-content, etc. divs specifically
-    const contentDivClasses = ['definition-content', 'info-content', 'warning-content', 'tip-content', 'note-content', 'example-content'];
+    // NOTE: Keep in sync with CONTENT_DIV_CLASSES in src/lib/markdown-blocks.ts
+    const contentDivClasses = ['definition-content', 'info-content', 'warning-content', 'tip-content', 'note-content', 'example-content', 'example-problem', 'example-solution', 'theorem-content'];
     const contentClassPattern = contentDivClasses.join('|');
     
     html = html.replace(new RegExp(`(<div\\s+class="(${contentClassPattern})"[^>]*>)([\\s\\S]*?)(<\\/div>)`, 'gi'), (match, openTag, className, content, closeTag) => {
@@ -1758,16 +1834,119 @@ const allChapters = await prisma.chapter.findMany({
     }
   }
 
+  // Unsaved changes tracking
+  let hasUnsavedChanges = false;
+  let isSaving = false;
+  
+  // Global error handler for script initialization
+  window.addEventListener('error', function(e) {
+    console.error('Global error caught:', e.error);
+    const container = document.getElementById('monaco-editor-container');
+    if (container && !container.querySelector('textarea')) {
+      container.innerHTML = `
+        <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg m-4">
+          <p class="text-yellow-800 font-medium">⚠️ Editor initialization issue</p>
+          <p class="text-yellow-600 text-sm mt-1">Please check the browser console (F12) for details.</p>
+          <p class="text-yellow-600 text-xs mt-2">Error: ${e.message || 'Unknown error'}</p>
+        </div>
+      `;
+    }
+  });
+
+  function updateUnsavedIndicator() {
+    const bottomIndicator = document.getElementById('unsaved-indicator');
+    const headerIndicator = document.getElementById('header-unsaved-indicator');
+    
+    if (hasUnsavedChanges && !isSaving) {
+      bottomIndicator?.classList.remove('hidden');
+      bottomIndicator?.classList.add('flex');
+      headerIndicator?.classList.remove('hidden');
+      headerIndicator?.classList.add('flex');
+    } else {
+      bottomIndicator?.classList.add('hidden');
+      bottomIndicator?.classList.remove('flex');
+      headerIndicator?.classList.add('hidden');
+      headerIndicator?.classList.remove('flex');
+    }
+  }
+
+  function checkForChanges() {
+    const currentContent = monacoEditor ? monacoEditor.getValue() : (document.getElementById('content')?.value || '');
+    const currentTitle = document.getElementById('title')?.value || '';
+    const currentOrder = parseInt(document.getElementById('order')?.value || '0');
+    
+    const contentChanged = currentContent !== savedContent;
+    const titleChanged = currentTitle !== savedTitle;
+    const orderChanged = currentOrder !== savedOrder;
+    
+    hasUnsavedChanges = contentChanged || titleChanged || orderChanged;
+    updateUnsavedIndicator();
+  }
+  
+  // Initialize original values (from server via define:vars)
+  // Variables from define:vars are available as: originalContent, originalTitle, originalOrder
+  // Create mutable copies for tracking changes with safe defaults
+  let savedContent = (typeof originalContent !== 'undefined') ? originalContent : '';
+  let savedTitle = (typeof originalTitle !== 'undefined') ? originalTitle : '';
+  let savedOrder = (typeof originalOrder !== 'undefined') ? originalOrder : 0;
+
+  // Warn before leaving with unsaved changes
+  window.addEventListener('beforeunload', function(e) {
+    if (hasUnsavedChanges && !isSaving) {
+      e.preventDefault();
+      e.returnValue = 'Anda memiliki perubahan yang belum disimpan. Apakah Anda yakin ingin meninggalkan halaman ini?';
+      return e.returnValue;
+    }
+  });
+
+  // Intercept navigation links
+  function interceptNavigation(e) {
+    if (hasUnsavedChanges && !isSaving) {
+      e.preventDefault();
+      if (confirm('Anda memiliki perubahan yang belum disimpan. Apakah Anda yakin ingin meninggalkan halaman ini?')) {
+        hasUnsavedChanges = false;
+        window.location.href = e.target.href || e.target.closest('a').href;
+      }
+    }
+  }
+
   // Initialize on page load
   document.addEventListener('DOMContentLoaded', async function() {
-    // Initialize Monaco Editor
-    await initMonacoEditor();
+    console.log('DOMContentLoaded - Starting initialization...');
+    
+    try {
+      // Initialize Monaco Editor
+      console.log('Initializing Monaco Editor...');
+      await initMonacoEditor();
+      console.log('Monaco Editor initialization complete');
+    } catch (error) {
+      console.error('Error initializing Monaco Editor:', error);
+      // Fallback: show error message in container
+      const container = document.getElementById('monaco-editor-container');
+      if (container) {
+        container.innerHTML = `
+          <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p class="text-red-800 font-medium">Error loading editor</p>
+            <p class="text-red-600 text-sm mt-1">${error.message}</p>
+            <p class="text-red-600 text-xs mt-2">Please refresh the page or check the browser console for details.</p>
+          </div>
+        `;
+      }
+    }
     
     // Update size on load
-    updateContentSize();
+    try {
+      updateContentSize();
+    } catch (error) {
+      console.error('Error updating content size:', error);
+    }
     
     // Initial preview update
-    await updatePreview();
+    try {
+      await updatePreview();
+    } catch (error) {
+      console.error('Error updating preview:', error);
+    }
     
     // Preview button functionality
     const previewBtn = document.getElementById('preview-btn');
@@ -1780,21 +1959,55 @@ const allChapters = await prisma.chapter.findMany({
     // Initialize block insertion
     setupBlockInsertion();
 
+    // Track changes in form fields
+    const titleInput = document.getElementById('title');
+    const orderSelect = document.getElementById('order');
+    
+    if (titleInput) {
+      titleInput.addEventListener('input', checkForChanges);
+      titleInput.addEventListener('change', checkForChanges);
+    }
+    
+    if (orderSelect) {
+      orderSelect.addEventListener('change', checkForChanges);
+    }
+
+    // Track changes in Monaco Editor
+    if (monacoEditor) {
+      monacoEditor.onDidChangeModelContent(() => {
+        checkForChanges();
+      });
+    }
+
+    // Intercept navigation links
+    const cancelLink = document.getElementById('cancel-link');
+    const headerBackLink = document.getElementById('header-back-link');
+    
+    if (cancelLink) {
+      cancelLink.addEventListener('click', interceptNavigation);
+    }
+    
+    if (headerBackLink) {
+      headerBackLink.addEventListener('click', interceptNavigation);
+    }
+
     // Form submission with large file handling
     const form = document.getElementById('chapter-form');
     if (form) {
       form.addEventListener('submit', async function(e) {
         e.preventDefault();
         
+        if (isSaving) return; // Prevent double submission
+        
         const formData = new FormData(form);
-        const content = formData.get('content');
+        const content = monacoEditor ? monacoEditor.getValue() : formData.get('content');
         
         // Check content size and warn if large
         const contentSize = new Blob([content]).size;
         const sizeMB = (contentSize / 1024 / 1024).toFixed(2);
         
         if (contentSize > 5 * 1024 * 1024) { // > 5MB
-          if (!confirm(`This chapter is ${sizeMB}MB. Large files may take longer to save and load. Continue?`)) {
+          if (!confirm(`Bab ini berukuran ${sizeMB}MB. File besar mungkin membutuhkan waktu lebih lama untuk disimpan dan dimuat. Lanjutkan?`)) {
             return;
           }
         }
@@ -1806,10 +2019,24 @@ const allChapters = await prisma.chapter.findMany({
         };
         
         // Show loading indicator
-        const submitBtn = form.querySelector('button[type="submit"]');
-        const originalText = submitBtn.textContent;
-        submitBtn.textContent = 'Saving...';
-        submitBtn.disabled = true;
+        isSaving = true;
+        const submitBtn = document.getElementById('save-btn');
+        const saveIcon = document.getElementById('save-icon');
+        const saveText = document.getElementById('save-text');
+        const originalText = saveText?.textContent || 'Simpan Perubahan';
+        
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          if (saveIcon) {
+            saveIcon.innerHTML = '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>';
+            saveIcon.classList.add('animate-spin');
+          }
+          if (saveText) {
+            saveText.textContent = 'Menyimpan...';
+          }
+        }
+        
+        updateUnsavedIndicator();
         
         try {
           console.log('Sending chapter data:', chapterData);
@@ -1823,17 +2050,45 @@ const allChapters = await prisma.chapter.findMany({
           });
           
           console.log('Response status:', response.status);
-          console.log('Response headers:', response.headers);
           
           if (response.ok) {
             const result = await response.json();
             console.log('Success:', result);
-            window.location.href = `/admin/courses/${courseId}/edit`;
+            
+            // Update saved values
+            savedContent = content;
+            savedTitle = chapterData.title;
+            savedOrder = chapterData.order;
+            hasUnsavedChanges = false;
+            isSaving = false;
+            
+            // Show success message
+            if (saveText) {
+              saveText.textContent = 'Berhasil Disimpan!';
+            }
+            if (saveIcon) {
+              saveIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />';
+              saveIcon.classList.remove('animate-spin');
+            }
+            
+            updateUnsavedIndicator();
+            
+            // Ask user if they want to stay or go back
+            setTimeout(() => {
+              const stay = confirm('Bab berhasil disimpan! Klik OK untuk tetap di halaman ini, atau Cancel untuk kembali ke editor kursus.');
+              if (!stay) {
+                window.location.href = `/admin/courses/${courseId}/edit`;
+              } else {
+                // Reset button
+                if (submitBtn) submitBtn.disabled = false;
+                if (saveText) saveText.textContent = originalText;
+              }
+            }, 500);
           } else {
             const errorText = await response.text();
             console.error('Error response:', errorText);
             
-            let errorMessage = 'Unknown error';
+            let errorMessage = 'Terjadi kesalahan';
             try {
               const errorData = JSON.parse(errorText);
               errorMessage = errorData.error || errorData.message || errorText;
@@ -1841,19 +2096,39 @@ const allChapters = await prisma.chapter.findMany({
               errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`;
             }
             
-            alert(`Error updating chapter: ${errorMessage}`);
-            submitBtn.textContent = originalText;
-            submitBtn.disabled = false;
+            alert(`Error memperbarui bab: ${errorMessage}`);
+            
+            // Reset button
+            isSaving = false;
+            if (submitBtn) submitBtn.disabled = false;
+            if (saveIcon) {
+              saveIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />';
+              saveIcon.classList.remove('animate-spin');
+            }
+            if (saveText) saveText.textContent = originalText;
+            updateUnsavedIndicator();
           }
         } catch (error) {
           console.error('Chapter update error:', error);
+          isSaving = false;
+          
+          let errorMessage = 'Terjadi kesalahan saat menyimpan';
           if (error.message.includes('431') || error.message.includes('header')) {
-            alert('Content is too large. Please reduce the file size or split into multiple chapters.');
-          } else {
-            alert(`Error updating chapter: ${error.message || 'Network error. Please try again.'}`);
+            errorMessage = 'Konten terlalu besar. Silakan kurangi ukuran file atau bagi menjadi beberapa bab.';
+          } else if (error.message) {
+            errorMessage = `Error: ${error.message}`;
           }
-          submitBtn.textContent = originalText;
-          submitBtn.disabled = false;
+          
+          alert(errorMessage);
+          
+          // Reset button
+          if (submitBtn) submitBtn.disabled = false;
+          if (saveIcon) {
+            saveIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />';
+            saveIcon.classList.remove('animate-spin');
+          }
+          if (saveText) saveText.textContent = originalText;
+          updateUnsavedIndicator();
         }
       });
     }
@@ -1862,9 +2137,18 @@ const allChapters = await prisma.chapter.findMany({
     const deleteBtn = document.getElementById('delete-btn');
     if (deleteBtn) {
       deleteBtn.addEventListener('click', async function() {
-        if (!confirm('Are you sure you want to delete this chapter? This action cannot be undone.')) {
-          return;
+        if (hasUnsavedChanges) {
+          if (!confirm('Anda memiliki perubahan yang belum disimpan. Hapus bab ini akan menghapus semua perubahan. Lanjutkan?')) {
+            return;
+          }
+        } else {
+          if (!confirm('Apakah Anda yakin ingin menghapus bab ini? Tindakan ini tidak dapat dibatalkan.')) {
+            return;
+          }
         }
+
+        deleteBtn.disabled = true;
+        deleteBtn.textContent = 'Menghapus...';
 
         try {
           const response = await fetch(`/api/admin/chapters/${chapterId}`, {
@@ -1872,14 +2156,19 @@ const allChapters = await prisma.chapter.findMany({
           });
           
           if (response.ok) {
+            hasUnsavedChanges = false; // Clear flag before redirect
             window.location.href = `/admin/courses/${courseId}/edit`;
           } else {
             const error = await response.json();
-            alert(`Error deleting chapter: ${error.error || 'Unknown error'}`);
+            alert(`Error menghapus bab: ${error.error || 'Terjadi kesalahan'}`);
+            deleteBtn.disabled = false;
+            deleteBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> Hapus Bab';
           }
         } catch (error) {
           console.error('Chapter deletion error:', error);
-          alert('Error deleting chapter. Please try again.');
+          alert('Error menghapus bab. Silakan coba lagi.');
+          deleteBtn.disabled = false;
+          deleteBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> Hapus Bab';
         }
       });
     }

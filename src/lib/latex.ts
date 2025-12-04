@@ -1,4 +1,5 @@
 import { marked } from 'marked';
+import { HTML_BLOCK_CLASSES, CONTENT_DIV_CLASSES } from './markdown-blocks';
 
 // Configure marked.js to preserve HTML and handle GFM
 marked.setOptions({
@@ -51,8 +52,7 @@ export function renderMarkdown(content: string): string {
   // CRITICAL: Extract and process HTML blocks BEFORE markdown parsing
   // This prevents marked.js from treating content inside HTML blocks as code blocks
   const htmlBlocks: string[] = [];
-  const htmlBlockClasses = ['definition-block', 'info-block', 'warning-block', 'tip-block', 'note-block', 'example-block'];
-  const classPattern = htmlBlockClasses.join('|');
+  const classPattern = HTML_BLOCK_CLASSES.join('|');
   
   // Match HTML blocks with nested divs - use a balanced match approach
   processed = processed.replace(new RegExp(`(<div\\s+class="(${classPattern})"[^>]*>)([\\s\\S]*?)(<\\/div>)`, 'gi'), (match, openTag, className, content, closeTag) => {
@@ -137,52 +137,142 @@ export function renderMarkdown(content: string): string {
   // Post-process: Find content divs inside HTML blocks and process their content
   // This handles cases where marked.js wrapped content in <pre><code> tags
   // Process definition-content, info-content, etc. divs specifically
-  const contentDivClasses = ['definition-content', 'info-content', 'warning-content', 'tip-content', 'note-content', 'example-content'];
-  const contentClassPattern = contentDivClasses.join('|');
+  // Use balanced matching to handle nested divs properly
+  const contentClassPattern = CONTENT_DIV_CLASSES.join('|');
   
-  html = html.replace(new RegExp(`(<div\\s+class="(${contentClassPattern})"[^>]*>)([\\s\\S]*?)(<\\/div>)`, 'gi'), (match, openTag, className, content, closeTag) => {
-    // Check if content is wrapped in code blocks or contains unprocessed LaTeX
-    if (content.includes('<pre><code') || 
-        (content.includes('$$') && !content.includes('math-display')) || 
-        (content.includes('$') && !content.includes('math-inline') && !content.includes('math-display'))) {
+  // Find all opening tags for content divs
+  const contentDivRegex = new RegExp(`<div\\s+class="(${contentClassPattern})"[^>]*>`, 'gi');
+  let contentMatch;
+  const processedDivs: Array<{start: number, end: number, replacement: string}> = [];
+  
+  // Collect all content divs with their positions
+  while ((contentMatch = contentDivRegex.exec(html)) !== null) {
+    const openTag = contentMatch[0];
+    const startIndex = contentMatch.index;
+    const contentStart = startIndex + openTag.length;
+    
+    // Find matching closing tag by tracking div depth
+    let depth = 1;
+    let i = contentStart;
+    let foundClosing = false;
+    
+    while (i < html.length && depth > 0) {
+      const nextOpen = html.indexOf('<div', i);
+      const nextClose = html.indexOf('</div>', i);
       
-      // Extract all content from <pre><code> blocks
-      let processedContent = content;
-      const codeBlockRegex = /<pre><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi;
-      let codeMatch;
+      if (nextClose === -1) break; // No closing tag found
       
-      while ((codeMatch = codeBlockRegex.exec(content)) !== null) {
-        const codeContent = codeMatch[1];
-        // Decode HTML entities
-        const decodedContent = codeContent
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&amp;/g, '&')
-          .replace(/&quot;/g, '"')
-          .replace(/&#039;/g, "'")
-          .replace(/&nbsp;/g, ' ')
-          .replace(/<span[^>]*>/g, '') // Remove highlight.js spans
-          .replace(/<\/span>/g, '');
-        
-        // Process the decoded content
-        const processed = processHtmlBlockContent(decodedContent);
-        // Replace the code block with processed content
-        processedContent = processedContent.replace(codeMatch[0], processed);
+      if (nextOpen !== -1 && nextOpen < nextClose) {
+        depth++;
+        i = nextOpen + 4;
+      } else {
+        depth--;
+        if (depth === 0) {
+          // Found matching closing tag
+          const content = html.slice(contentStart, nextClose);
+          
+          // Check if content needs processing - always process if it has code blocks
+          // or unprocessed LaTeX
+          const hasCodeBlocks = content.includes('<pre><code');
+          const hasUnprocessedDisplayMath = content.includes('$$') && !content.includes('math-display');
+          const hasUnprocessedInlineMath = content.includes('$') && !content.includes('math-inline') && !content.includes('math-display');
+          
+          if (hasCodeBlocks || hasUnprocessedDisplayMath || hasUnprocessedInlineMath) {
+            
+            // Extract ALL content from code blocks and combine with text between them
+            let fullContent = '';
+            const codeBlockRegex = /<pre><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi;
+            let lastIndex = 0;
+            let codeMatch;
+            let hasCodeBlocks = false;
+            
+            // Reset regex lastIndex
+            codeBlockRegex.lastIndex = 0;
+            
+            // Extract content from all code blocks and preserve text between them
+            while ((codeMatch = codeBlockRegex.exec(content)) !== null) {
+              hasCodeBlocks = true;
+              
+              // Add text before this code block (preserve all text, including whitespace)
+              const textBefore = content.slice(lastIndex, codeMatch.index);
+              fullContent += textBefore;
+              
+              // Extract and decode code block content
+              const codeContent = codeMatch[1];
+              
+              // First, remove highlight.js spans but preserve their text content
+              let decodedContent = codeContent
+                .replace(/<span[^>]*>/g, '')
+                .replace(/<\/span>/g, '');
+              
+              // Then decode HTML entities comprehensively
+              decodedContent = decodedContent
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/&amp;/g, '&')
+                .replace(/&quot;/g, '"')
+                .replace(/&#039;/g, "'")
+                .replace(/&nbsp;/g, ' ')
+                // Decode zero-width spaces (used in our placeholders) - try multiple encodings
+                .replace(/&#8203;/g, '\u200B')
+                .replace(/&#x200B;/gi, '\u200B');
+              
+              // Decode numeric HTML entities
+              decodedContent = decodedContent.replace(/&#(\d+);/g, (match, code) => {
+                const num = parseInt(code, 10);
+                if (num === 8203) return '\u200B'; // Zero-width space
+                if (num >= 32 && num <= 126) return String.fromCharCode(num); // Printable ASCII
+                return match; // Keep other entities as-is
+              });
+              
+              // Decode hex HTML entities
+              decodedContent = decodedContent.replace(/&#x([0-9a-fA-F]+);/gi, (match, hex) => {
+                const num = parseInt(hex, 16);
+                if (num === 0x200B) return '\u200B'; // Zero-width space
+                if (num >= 32 && num <= 126) return String.fromCharCode(num); // Printable ASCII
+                return match; // Keep other entities as-is
+              });
+              
+              fullContent += decodedContent;
+              lastIndex = codeMatch.index + codeMatch[0].length;
+            }
+            
+            // Add any remaining text after the last code block
+            if (hasCodeBlocks) {
+              const textAfter = content.slice(lastIndex);
+              fullContent += textAfter;
+            } else {
+              // No code blocks found, use original content
+              fullContent = content;
+            }
+            
+            // Clean up: remove any remaining HTML tags that shouldn't be there
+            // but preserve the structure we need
+            fullContent = fullContent.trim();
+            
+            // Process the combined content as a whole - this will handle LaTeX and markdown
+            const processedContent = processHtmlBlockContent(fullContent);
+            const replacement = `${openTag}${processedContent}</div>`;
+            
+            processedDivs.push({
+              start: startIndex,
+              end: nextClose + 6,
+              replacement: replacement
+            });
+          }
+          
+          foundClosing = true;
+          break;
+        }
+        i = nextClose + 6;
       }
-      
-      // If there are still code blocks or unprocessed LaTeX, process everything
-      if (processedContent.includes('<pre><code') || 
-          (processedContent.includes('$$') && !processedContent.includes('math-display')) ||
-          (processedContent.includes('$') && !processedContent.includes('math-inline') && !processedContent.includes('math-display'))) {
-        // Remove all code blocks and process the remaining content
-        const cleanedContent = processedContent.replace(/<pre><code[^>]*>[\s\S]*?<\/code><\/pre>/gi, '');
-        const finalProcessed = processHtmlBlockContent(cleanedContent);
-        processedContent = finalProcessed;
-      }
-      
-      return `${openTag}${processedContent}${closeTag}`;
     }
-    return match;
+  }
+  
+  // Apply replacements in reverse order to maintain correct indices
+  processedDivs.sort((a, b) => b.start - a.start);
+  processedDivs.forEach(({start, end, replacement}) => {
+    html = html.slice(0, start) + replacement + html.slice(end);
   });
 
   // Fix any escaped HTML entities (marked.js might escape our divs/spans)
@@ -271,4 +361,3 @@ function sanitizeLatex(latex: string): string {
     .replace(/[ \t]+/g, ' ')
     .trim();
 }
-
