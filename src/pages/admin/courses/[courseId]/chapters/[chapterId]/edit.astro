@@ -1001,7 +1001,26 @@ const allChapters = await prisma.chapter.findMany({
     inlineMathCount = (tempProcessed.match(/\$[^$\n]+?\$/g) || []).length;
     console.log('Found LaTeX in markdown:', displayMathCount, 'display,', inlineMathCount, 'inline');
 
-    // Parse markdown to HTML FIRST
+    // CRITICAL: Process display math blocks BEFORE markdown parsing
+    // Replace $$...$$ with placeholders that won't be processed by marked.js
+    const displayMathBlocks = [];
+    processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
+      const cleanLatex = sanitizeLatex((latex || '').trim());
+      const placeholder = `\u200B\u200BDISPLAYMATH${displayMathBlocks.length}\u200B\u200B`;
+      displayMathBlocks.push(cleanLatex);
+      return placeholder;
+    });
+
+    // Also process inline math BEFORE markdown parsing to avoid conflicts
+    const inlineMathBlocks = [];
+    processed = processed.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (match, latex) => {
+      const cleanLatex = sanitizeLatex((latex || '').trim());
+      const placeholder = `\u200B\u200BINLINEMATH${inlineMathBlocks.length}\u200B\u200B`;
+      inlineMathBlocks.push(cleanLatex);
+      return placeholder;
+    });
+
+    // Parse markdown to HTML
     let html;
     try {
       if (window.marked) {
@@ -1020,15 +1039,42 @@ const allChapters = await prisma.chapter.findMany({
       html = processed;
     }
 
-    // Process LaTeX in the HTML string AFTER markdown parsing
-    html = processLatexInHTMLString(html);
+    // Restore display math blocks AFTER markdown parsing
+    displayMathBlocks.forEach((latex, index) => {
+      const escapedLatex = latex.replace(/"/g, '&quot;');
+      const mathDiv = `<div class="math-display" data-latex="${escapedLatex}"></div>`;
+      const placeholder = `\u200B\u200BDISPLAYMATH${index}\u200B\u200B`;
+      html = html.split(placeholder).join(mathDiv);
+      // Also try HTML-escaped version
+      const escapedPlaceholder = placeholder.replace(/\u200B/g, '&#8203;');
+      html = html.split(escapedPlaceholder).join(mathDiv);
+    });
+
+    // Restore inline math blocks AFTER markdown parsing
+    inlineMathBlocks.forEach((latex, index) => {
+      const escapedLatex = latex.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+      const mathSpan = `<span class="math-inline" data-latex="${escapedLatex}"></span>`;
+      const placeholder = `\u200B\u200BINLINEMATH${index}\u200B\u200B`;
+      html = html.split(placeholder).join(mathSpan);
+      // Also try HTML-escaped version
+      const escapedPlaceholder = placeholder.replace(/\u200B/g, '&#8203;');
+      html = html.split(escapedPlaceholder).join(mathSpan);
+    });
+
+    // Fix any escaped HTML entities (marked.js might escape our divs/spans)
+    html = html.replace(/&lt;div class="math-display" data-latex="([^"]+)"&gt;&lt;\/div&gt;/g,
+      '<div class="math-display" data-latex="$1"></div>');
+    html = html.replace(/&lt;span class="math-inline" data-latex="([^"]+)"&gt;&lt;\/span&gt;/g, 
+      '<span class="math-inline" data-latex="$1"></span>');
+    html = html.replace(/&lt;span class='math-inline' data-latex='([^']+)'&gt;&lt;\/span&gt;/g, 
+      '<span class="math-inline" data-latex="$1"></span>');
     
     // Count math elements created
     const mathInlineCount = (html.match(/<span class="math-inline"/g) || []).length;
     const mathDisplayCount = (html.match(/<div class="math-display"/g) || []).length;
     console.log('Created math elements:', mathDisplayCount, 'display,', mathInlineCount, 'inline');
     
-    return {html, displayMathBlocks: [], inlineMathBlocks: []};
+    return {html, displayMathBlocks, inlineMathBlocks};
   }
   
   // Process any remaining placeholders in the DOM (fallback)
