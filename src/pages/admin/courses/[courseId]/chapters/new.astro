@@ -190,14 +190,31 @@ const nextOrder = chapterCount + 1;
     if (markedLoadPromise) return markedLoadPromise;
     markedLoadPromise = new Promise((resolve, reject) => {
       if (window.marked) {
-        try { window.marked.setOptions({ gfm: true, breaks: true }); } catch {}
+        try { 
+          window.marked.setOptions({ 
+            gfm: true, 
+            breaks: true,
+            headerIds: false,
+            mangle: false
+          }); 
+        } catch {}
         resolve();
         return;
       }
       const script = document.createElement('script');
       script.id = 'marked-js';
       script.src = 'https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js';
-      script.onload = () => { try { window.marked.setOptions({ gfm: true, breaks: true }); } catch {} resolve(); };
+      script.onload = () => { 
+        try { 
+          window.marked.setOptions({ 
+            gfm: true, 
+            breaks: true,
+            headerIds: false,
+            mangle: false
+          }); 
+        } catch {} 
+        resolve(); 
+      };
       script.onerror = (e) => reject(e);
       document.head.appendChild(script);
     });
@@ -210,27 +227,57 @@ const nextOrder = chapterCount + 1;
     // Normalize newlines to LF to make regex anchors predictable
     let processed = String(text).replace(/\r\n?|\u2028|\u2029/g, '\n');
 
-    // Convert display math blocks ($$ ... $$) to placeholders.
-    // Use a non-anchored, non-greedy pattern that supports multiple blocks in a row.
+    // Fix tabs in list items - marked.js treats lines starting with tabs as code blocks
+    processed = processed.split('\n').map(line => {
+      // If line starts with a list marker followed by tabs, convert tabs to spaces
+      if (/^(\s*[-*+]|\s*\d+\.)\s*\t/.test(line)) {
+        return line.replace(/\t/g, '    '); // 4 spaces per tab
+      }
+      return line;
+    }).join('\n');
+
+    // Step 1: Convert display math blocks ($$ ... $$) to HTML divs FIRST
     processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
       const cleanLatex = (latex || '').trim();
-      // Ensure block boundaries so Marked treats each as a separate paragraph
-      return `\n<div class=\"math-display\" data-latex=\"${cleanLatex}\"></div>\n`;
+      return `\n<div class="math-display" data-latex="${cleanLatex.replace(/"/g, '&quot;')}"></div>\n`;
     });
 
-    // Convert inline math $...$ to placeholders (avoid $$ and multi-$ sequences)
+    // Step 2: Use unique placeholders for inline math to avoid marked.js escaping HTML
+    const inlineMathMap = new Map();
+    let placeholderIndex = 0;
+    
     processed = processed.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (match, latex) => {
       const cleanLatex = (latex || '').trim();
-      return `<span class=\"math-inline\" data-latex=\"${cleanLatex}\"></span>`;
+      const escapedLatex = cleanLatex.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+      const placeholder = `__MATH_INLINE_${placeholderIndex}__`;
+      inlineMathMap.set(placeholder, `<span class="math-inline" data-latex="${escapedLatex}"></span>`);
+      placeholderIndex++;
+      return placeholder;
     });
 
-    // Use Marked to parse Markdown (tables, lists, etc.)
+    // Step 3: Parse markdown to HTML
+    let html;
     try {
-      return window.marked ? window.marked.parse(processed) : processed;
+      html = window.marked ? window.marked.parse(processed) : processed;
     } catch (e) {
       console.warn('Marked parse failed, returning raw processed HTML', e);
-      return processed;
+      html = processed;
     }
+
+    // Step 4: Replace placeholders with actual HTML spans AFTER markdown parsing
+    inlineMathMap.forEach((htmlSpan, placeholder) => {
+      const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      html = html.replace(new RegExp(escapedPlaceholder, 'g'), htmlSpan);
+    });
+
+    // Step 5: Fix any escaped HTML entities as a fallback
+    html = html.replace(/&lt;span class="math-inline" data-latex="([^"]+)"&gt;&lt;\/span&gt;/g, 
+      '<span class="math-inline" data-latex="$1"></span>');
+    
+    html = html.replace(/&lt;span class='math-inline' data-latex='([^']+)'&gt;&lt;\/span&gt;/g, 
+      '<span class="math-inline" data-latex="$1"></span>');
+
+    return html;
   }
 
   // Base path for images for new chapter preview (temporary id "new")

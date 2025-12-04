@@ -44,16 +44,18 @@ model Chapter {
 }
 
 model Quiz {
-  id        Int           @id @default(autoincrement())
-  courseId  Int? // Made nullable for standalone quizzes
-  chapterId Int?
-  title     String
-  questions String
-  settings  String?
-  createdAt DateTime      @default(now())
-  course    Course?       @relation(fields: [courseId], references: [id])
-  chapter   Chapter?      @relation(fields: [chapterId], references: [id])
-  attempts  QuizAttempt[]
+  id           Int           @id @default(autoincrement())
+  courseId     Int? // Made nullable for standalone quizzes
+  chapterId    Int?
+  title        String
+  questions    String
+  settings     String?
+  quizType     String        @default("latihan") // "latihan" (unlimited), "tryout" (limited attempts)
+  attemptLimit Int?          // null = unlimited, number = max attempts allowed
+  createdAt    DateTime      @default(now())
+  course       Course?       @relation(fields: [courseId], references: [id])
+  chapter      Chapter?      @relation(fields: [chapterId], references: [id])
+  attempts     QuizAttempt[]
 }
 
 model QuizAttempt {

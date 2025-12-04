@@ -27,10 +27,14 @@ export async function getUserProfile(userId: number) {
 }
 
 export async function updateUserProfile(userId: number, data: {
+  nickname?: string;
+  fullName?: string;
   firstName?: string;
   lastName?: string;
   bio?: string;
   avatar?: string;
+  school?: string;
+  grade?: string;
   preferences?: any;
   learningGoals?: string[];
   timezone?: string;
@@ -38,10 +42,14 @@ export async function updateUserProfile(userId: number, data: {
   learningLevel?: string;
 }) {
   const profileData = {
+    nickname: data.nickname,
+    fullName: data.fullName,
     firstName: data.firstName,
     lastName: data.lastName,
     bio: data.bio,
     avatar: data.avatar,
+    school: data.school,
+    grade: data.grade,
     preferences: data.preferences ? JSON.stringify(data.preferences) : undefined,
     learningGoals: data.learningGoals ? JSON.stringify(data.learningGoals) : undefined,
     timezone: data.timezone,

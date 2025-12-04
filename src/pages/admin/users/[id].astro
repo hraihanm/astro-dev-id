@@ -1,0 +1,293 @@
+---
+export const prerender = false;
+
+import Layout from '../../../components/Layout.astro';
+import { getSessionUser } from '../../../lib/auth-guard';
+import { prisma } from '../../../lib/db';
+
+const { id } = Astro.params;
+const admin = await getSessionUser(Astro.cookies);
+
+if (!admin || admin.role !== 'admin') {
+  return Astro.redirect('/');
+}
+
+const userId = parseInt(id || '0');
+
+// Get user with profile and quiz attempts
+const user = await prisma.user.findUnique({
+  where: { id: userId },
+  include: {
+    profile: true,
+    attempts: {
+      include: {
+        quiz: {
+          select: {
+            id: true,
+            title: true,
+            courseId: true,
+            chapterId: true
+          }
+        }
+      },
+      orderBy: { completedAt: 'desc' },
+      take: 20 // Latest 20 attempts
+    }
+  }
+});
+
+if (!user) {
+  return Astro.redirect('/admin/users');
+}
+
+// Parse profile data
+const profile = user.profile ? {
+  ...user.profile,
+  learningGoals: user.profile.learningGoals ? JSON.parse(user.profile.learningGoals) : [],
+  preferences: user.profile.preferences ? JSON.parse(user.profile.preferences) : {}
+} : null;
+
+// Calculate stats
+const totalAttempts = user.attempts.length;
+const averageScore = totalAttempts > 0
+  ? Math.round(user.attempts.reduce((sum, a) => sum + a.percentage, 0) / totalAttempts)
+  : 0;
+const bestScore = totalAttempts > 0
+  ? Math.max(...user.attempts.map(a => a.percentage))
+  : 0;
+
+function formatDate(date: Date): string {
+  return new Date(date).toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function formatDateShort(date: Date): string {
+  return new Date(date).toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
+}
+---
+
+<Layout title={`Detail Pengguna - ${user.email}`}>
+  <div class="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+    <!-- Header -->
+    <div class="bg-white border-b border-slate-200 sticky top-0 z-10">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <div class="flex items-center gap-4">
+            <a href="/admin/users" class="text-slate-500 hover:text-slate-700 transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+            </a>
+            <div>
+              <h1 class="text-lg font-bold text-slate-900">Detail Pengguna</h1>
+              <p class="text-sm text-slate-500">{user.email}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-6 sm:py-8">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <!-- Left Column - User Info -->
+        <div class="lg:col-span-1 space-y-6">
+          <!-- User Card -->
+          <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+            <div class="text-center mb-6">
+              <div class={`w-20 h-20 mx-auto rounded-full flex items-center justify-center text-2xl font-bold mb-4 ${
+                user.role === 'admin' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'
+              }`}>
+                {user.email.charAt(0).toUpperCase()}
+              </div>
+              <h2 class="text-xl font-bold text-slate-900 mb-1">
+                {profile?.nickname || profile?.firstName || user.email.split('@')[0]}
+              </h2>
+              <p class="text-sm text-slate-500 mb-3">{user.email}</p>
+              <span class={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                user.role === 'admin' 
+                  ? 'bg-purple-100 text-purple-700' 
+                  : 'bg-blue-100 text-blue-700'
+              }`}>
+                {user.role === 'admin' ? '⭐ Admin' : '🎓 Siswa'}
+              </span>
+            </div>
+
+            <div class="space-y-3 pt-6 border-t border-slate-100">
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-slate-500">Bergabung</span>
+                <span class="font-medium text-slate-900">{formatDateShort(user.createdAt)}</span>
+              </div>
+              {profile?.grade && (
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-slate-500">Kelas</span>
+                  <span class="font-medium text-slate-900">{profile.grade}</span>
+                </div>
+              )}
+              {profile?.school && (
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-slate-500">Sekolah</span>
+                  <span class="font-medium text-slate-900">{profile.school}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <!-- Stats Card -->
+          <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+            <h3 class="font-semibold text-slate-900 mb-4">Statistik</h3>
+            <div class="space-y-4">
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-sm text-slate-500">Total Percobaan</span>
+                  <span class="text-lg font-bold text-slate-900">{totalAttempts}</span>
+                </div>
+              </div>
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-sm text-slate-500">Rata-rata Skor</span>
+                  <span class="text-lg font-bold text-slate-900">{averageScore}%</span>
+                </div>
+              </div>
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-sm text-slate-500">Skor Terbaik</span>
+                  <span class="text-lg font-bold text-slate-900">{bestScore}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column - Details & Activity -->
+        <div class="lg:col-span-2 space-y-6">
+          <!-- Profile Information -->
+          <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+            <h3 class="font-semibold text-slate-900 mb-4">Informasi Profil</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {profile?.fullName && (
+                <div>
+                  <label class="text-xs font-medium text-slate-500 uppercase tracking-wider">Nama Lengkap</label>
+                  <p class="mt-1 text-sm text-slate-900">{profile.fullName}</p>
+                </div>
+              )}
+              {profile?.firstName && (
+                <div>
+                  <label class="text-xs font-medium text-slate-500 uppercase tracking-wider">Nama Depan</label>
+                  <p class="mt-1 text-sm text-slate-900">{profile.firstName}</p>
+                </div>
+              )}
+              {profile?.lastName && (
+                <div>
+                  <label class="text-xs font-medium text-slate-500 uppercase tracking-wider">Nama Belakang</label>
+                  <p class="mt-1 text-sm text-slate-900">{profile.lastName}</p>
+                </div>
+              )}
+              {profile?.nickname && (
+                <div>
+                  <label class="text-xs font-medium text-slate-500 uppercase tracking-wider">Nama Panggilan</label>
+                  <p class="mt-1 text-sm text-slate-900">{profile.nickname}</p>
+                </div>
+              )}
+              {profile?.bio && (
+                <div class="md:col-span-2">
+                  <label class="text-xs font-medium text-slate-500 uppercase tracking-wider">Bio</label>
+                  <p class="mt-1 text-sm text-slate-900">{profile.bio}</p>
+                </div>
+              )}
+              {profile?.timezone && (
+                <div>
+                  <label class="text-xs font-medium text-slate-500 uppercase tracking-wider">Zona Waktu</label>
+                  <p class="mt-1 text-sm text-slate-900">{profile.timezone}</p>
+                </div>
+              )}
+              {profile?.language && (
+                <div>
+                  <label class="text-xs font-medium text-slate-500 uppercase tracking-wider">Bahasa</label>
+                  <p class="mt-1 text-sm text-slate-900">{profile.language === 'id' ? 'Bahasa Indonesia' : 'English'}</p>
+                </div>
+              )}
+            </div>
+
+            {profile?.learningGoals && profile.learningGoals.length > 0 && (
+              <div class="mt-6 pt-6 border-t border-slate-100">
+                <label class="text-xs font-medium text-slate-500 uppercase tracking-wider block mb-3">Target Belajar</label>
+                <div class="flex flex-wrap gap-2">
+                  {profile.learningGoals.map((goal: string) => (
+                    <span class="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
+                      {goal === 'osn' ? 'OSN Astronomi' :
+                       goal === 'ioaa' ? 'IOAA' :
+                       goal === 'hobby' ? 'Hobi Astronomi' :
+                       goal === 'academic' ? 'Akademik' : goal}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <!-- Recent Activity -->
+          <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50">
+              <h3 class="font-semibold text-slate-900">Aktivitas Terakhir</h3>
+            </div>
+            
+            {user.attempts.length === 0 ? (
+              <div class="p-12 text-center">
+                <div class="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
+                  <span class="text-3xl">📝</span>
+                </div>
+                <p class="text-slate-500">Belum ada aktivitas ujian</p>
+              </div>
+            ) : (
+              <div class="divide-y divide-slate-100">
+                {user.attempts.map((attempt) => (
+                  <div class="p-6 hover:bg-slate-50 transition-colors">
+                    <div class="flex items-start justify-between">
+                      <div class="flex-1">
+                        <h4 class="font-semibold text-slate-900 mb-1">{attempt.quiz.title}</h4>
+                        <div class="flex items-center gap-4 text-sm text-slate-600 mt-2">
+                          <span class="flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            {attempt.correctAnswers}/{attempt.totalQuestions} benar
+                          </span>
+                          <span class="flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            {Math.floor(attempt.timeSpent / 60)}m {attempt.timeSpent % 60}s
+                          </span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-2">{formatDate(attempt.completedAt)}</p>
+                      </div>
+                      <div class="ml-4">
+                        <div class={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
+                          attempt.percentage >= 80 ? 'bg-green-100 text-green-700' :
+                          attempt.percentage >= 60 ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-red-100 text-red-700'
+                        }`}>
+                          {attempt.percentage}%
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
+

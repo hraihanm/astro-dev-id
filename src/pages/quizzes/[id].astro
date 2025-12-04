@@ -1,15 +1,22 @@
 ---
 import Layout from '../../components/Layout.astro';
 import { renderMarkdown } from '../../lib/latex';
+import { getSessionUser } from '../../lib/auth-guard';
+import { prisma } from '../../lib/db';
 
 export const prerender = false;
 
 const { id } = Astro.params;
 
+// Get logged in user
+const user = await getSessionUser(Astro.cookies);
+
 // Fetch quiz details directly from database
 let quiz: any = null;
 let clientQuiz: any = null; // Sanitized version for client (no solutions/answers)
 let error = '';
+let attemptLimitReached = false;
+let userAttemptCount = 0;
 
 try {
   const quizId = parseInt(id || '0');
@@ -33,6 +40,21 @@ try {
         : rawQuiz.settings
     };
     
+    // Check attempt limits for logged in users
+    if (user && quiz.attemptLimit) {
+      const attempts = await prisma.quizAttempt.count({
+        where: {
+          userId: user.id,
+          quizId: quizId
+        }
+      });
+      userAttemptCount = attempts;
+      
+      if (attempts >= quiz.attemptLimit) {
+        attemptLimitReached = true;
+      }
+    }
+    
     // Handle essay problem format
     if (quiz.settings?.type === 'essay' && quiz.questions?.type === 'essay-problem-set') {
       // Essay problems have a different structure
@@ -53,6 +75,9 @@ try {
         courseId: quiz.courseId,
         chapterId: quiz.chapterId,
         settings: quiz.settings,
+        quizType: quiz.quizType || 'latihan',
+        attemptLimit: quiz.attemptLimit,
+        userAttemptCount: userAttemptCount,
         isEssay: quiz.isEssay,
         questions: quiz.questions.map((q: any, idx: number) => ({
           id: q.id || idx + 1,
@@ -85,6 +110,42 @@ try {
           <a href="/quizzes" class="text-blue-600 hover:text-blue-700">
             ← Back to Practice Quizzes
           </a>
+        </div>
+      </div>
+    ) : attemptLimitReached ? (
+      <div class="max-w-2xl mx-auto px-4 py-8">
+        <div class="bg-white rounded-xl shadow-lg p-8 text-center border border-amber-200">
+          <div class="w-20 h-20 mx-auto mb-6 bg-amber-100 rounded-full flex items-center justify-center">
+            <svg class="w-10 h-10 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+          </div>
+          <h2 class="text-2xl font-bold text-gray-900 mb-3">Batas Percobaan Tercapai</h2>
+          <p class="text-gray-600 mb-2">Kamu sudah menggunakan semua kesempatan untuk kuis ini.</p>
+          <div class="inline-flex items-center gap-2 bg-amber-50 px-4 py-2 rounded-lg text-amber-800 font-medium mb-6">
+            <span>📝</span>
+            <span>Percobaan: {userAttemptCount} / {quiz.attemptLimit}</span>
+          </div>
+          {quiz.quizType === 'tryout' && (
+            <div class="bg-slate-50 rounded-lg p-4 mb-6 text-left">
+              <h3 class="font-semibold text-slate-800 mb-2">💡 Tentang Try Out</h3>
+              <p class="text-sm text-slate-600">
+                Kuis tipe Try Out memiliki batas percobaan untuk mensimulasikan kondisi ujian yang sebenarnya. 
+                Ini membantu kamu berlatih dengan tekanan waktu dan keterbatasan kesempatan.
+              </p>
+            </div>
+          )}
+          <div class="flex flex-col sm:flex-row gap-3 justify-center">
+            <a href="/quizzes/history" class="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+              </svg>
+              Lihat Riwayat Hasil
+            </a>
+            <a href="/quizzes" class="inline-flex items-center justify-center gap-2 px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium transition-colors">
+              ← Kembali ke Daftar Kuis
+            </a>
+          </div>
         </div>
       </div>
     ) : quiz?.isEssay ? (

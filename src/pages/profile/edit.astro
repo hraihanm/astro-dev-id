@@ -16,36 +16,57 @@ const learningGoals = profile?.profile?.learningGoals || [];
 ---
 
 <Layout title="Edit Profil">
-  <div class="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
+  <div class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-50">
     <!-- Header -->
-    <div class="bg-white border-b border-slate-200">
+    <div class="bg-white border-b border-gray-200 shadow-sm">
       <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div class="flex items-center gap-4">
-          <a href="/profile" class="flex items-center gap-2 text-slate-600 hover:text-blue-600 transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <a href="/profile" class="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors group">
+            <svg class="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
             </svg>
-            <span class="text-sm font-medium">Kembali</span>
+            <span class="text-sm font-medium">Kembali ke Profil</span>
           </a>
-          <div class="h-6 w-px bg-slate-300"></div>
-          <h1 class="text-xl sm:text-2xl font-bold text-slate-900">Edit Profil</h1>
+          <div class="h-6 w-px bg-gray-300"></div>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <div>
+              <h1 class="text-xl sm:text-2xl font-bold text-gray-900">Edit Profil</h1>
+              <p class="text-sm text-gray-500">Kelola informasi profil Anda</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Profile Edit Form -->
-    <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <form id="profile-form" class="space-y-6">
         <!-- Avatar Section -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <div class="flex items-center gap-6">
-            <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-              {profile?.profile?.firstName?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+          <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+            <div class="relative">
+              <div class="w-28 h-28 bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 rounded-2xl flex items-center justify-center text-white font-bold text-4xl shadow-xl ring-4 ring-blue-100">
+                {profile?.profile?.nickname?.[0]?.toUpperCase() || profile?.profile?.firstName?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
+              </div>
+              <div class="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg border-4 border-white">
+                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
             </div>
-            <div>
-              <h3 class="text-lg font-semibold text-slate-900">Foto Profil</h3>
-              <p class="text-sm text-slate-500 mb-3">Fitur upload foto akan segera hadir</p>
-              <button type="button" class="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors" disabled>
+            <div class="flex-1 text-center sm:text-left">
+              <h3 class="text-lg font-semibold text-gray-900 mb-1">Foto Profil</h3>
+              <p class="text-sm text-gray-500 mb-4">Fitur upload foto akan segera hadir. Saat ini menggunakan inisial nama Anda.</p>
+              <button type="button" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors cursor-not-allowed" disabled>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
                 Ganti Foto
               </button>
             </div>
@@ -53,28 +74,43 @@ const learningGoals = profile?.profile?.learningGoals || [];
         </div>
 
         <!-- Personal Information -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <h3 class="text-lg font-semibold text-slate-900 mb-1">Informasi Pribadi</h3>
-          <p class="text-sm text-slate-500 mb-6">Informasi ini akan ditampilkan di profil Anda</p>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+          <div class="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
+            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">Informasi Pribadi</h3>
+              <p class="text-sm text-gray-500">Informasi ini akan ditampilkan di profil Anda</p>
+            </div>
+          </div>
           
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label for="nickname" class="block text-sm font-medium text-slate-700 mb-1">
-                Nama Panggilan
+              <label for="nickname" class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                <span>Nama Panggilan</span>
+                <span class="text-blue-600">*</span>
               </label>
               <input
                 type="text"
                 name="nickname"
                 id="nickname"
                 value={profile?.profile?.nickname || ''}
-                class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 focus:bg-white"
                 placeholder="Contoh: Budi"
               />
-              <p class="mt-1 text-xs text-slate-500">Nama yang akan ditampilkan di situs</p>
+              <p class="mt-1.5 text-xs text-gray-500 flex items-center gap-1">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Nama yang akan ditampilkan di situs
+              </p>
             </div>
             
             <div>
-              <label for="fullName" class="block text-sm font-medium text-slate-700 mb-1">
+              <label for="fullName" class="block text-sm font-semibold text-gray-700 mb-2">
                 Nama Lengkap
               </label>
               <input
@@ -82,13 +118,13 @@ const learningGoals = profile?.profile?.learningGoals || [];
                 name="fullName"
                 id="fullName"
                 value={profile?.profile?.fullName || ''}
-                class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 focus:bg-white"
                 placeholder="Contoh: Budi Santoso"
               />
             </div>
 
             <div>
-              <label for="firstName" class="block text-sm font-medium text-slate-700 mb-1">
+              <label for="firstName" class="block text-sm font-semibold text-gray-700 mb-2">
                 Nama Depan
               </label>
               <input
@@ -96,13 +132,13 @@ const learningGoals = profile?.profile?.learningGoals || [];
                 name="firstName"
                 id="firstName"
                 value={profile?.profile?.firstName || ''}
-                class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 focus:bg-white"
                 placeholder="Nama depan"
               />
             </div>
             
             <div>
-              <label for="lastName" class="block text-sm font-medium text-slate-700 mb-1">
+              <label for="lastName" class="block text-sm font-semibold text-gray-700 mb-2">
                 Nama Belakang
               </label>
               <input
@@ -110,54 +146,68 @@ const learningGoals = profile?.profile?.learningGoals || [];
                 name="lastName"
                 id="lastName"
                 value={profile?.profile?.lastName || ''}
-                class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 focus:bg-white"
                 placeholder="Nama belakang"
               />
             </div>
           </div>
           
           <div class="mt-6">
-            <label for="bio" class="block text-sm font-medium text-slate-700 mb-1">
+            <label for="bio" class="block text-sm font-semibold text-gray-700 mb-2">
               Tentang Saya
             </label>
             <textarea
               name="bio"
               id="bio"
-              rows="3"
-              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
+              rows="4"
+              class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none bg-gray-50 focus:bg-white"
               placeholder="Ceritakan sedikit tentang dirimu..."
             >{profile?.profile?.bio || ''}</textarea>
+            <p class="mt-1.5 text-xs text-gray-500">Maksimal 500 karakter</p>
           </div>
         </div>
 
         <!-- Education Info -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <h3 class="text-lg font-semibold text-slate-900 mb-1">Informasi Pendidikan</h3>
-          <p class="text-sm text-slate-500 mb-6">Bantu kami menyesuaikan konten pembelajaran</p>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+          <div class="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
+            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14v7m0-7l-6.16-3.422a12.083 12.083 0 00-.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 006.824-2.998 12.078 12.078 0 00-.665-6.479L12 14z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">Informasi Pendidikan</h3>
+              <p class="text-sm text-gray-500">Bantu kami menyesuaikan konten pembelajaran</p>
+            </div>
+          </div>
           
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label for="school" class="block text-sm font-medium text-slate-700 mb-1">
-                Sekolah / Institusi
+              <label for="school" class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                <span>Sekolah / Institusi</span>
+                <span class="text-blue-600">*</span>
               </label>
               <input
                 type="text"
                 name="school"
                 id="school"
                 value={profile?.profile?.school || ''}
-                class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 focus:bg-white"
                 placeholder="Nama sekolah atau universitas"
               />
             </div>
             
             <div>
-              <label for="grade" class="block text-sm font-medium text-slate-700 mb-1">
-                Kelas / Tingkat
+              <label for="grade" class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                <span>Kelas / Tingkat</span>
+                <span class="text-blue-600">*</span>
               </label>
               <select
                 name="grade"
                 id="grade"
-                class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 focus:bg-white"
               >
                 <option value="">Pilih kelas</option>
                 <option value="smp-7" selected={profile?.profile?.grade === 'smp-7'}>SMP Kelas 7</option>
@@ -174,56 +224,86 @@ const learningGoals = profile?.profile?.learningGoals || [];
         </div>
 
         <!-- Learning Goals -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <h3 class="text-lg font-semibold text-slate-900 mb-1">Target Belajar</h3>
-          <p class="text-sm text-slate-500 mb-6">Apa tujuan belajar kamu?</p>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+          <div class="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
+            <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+              <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">Target Belajar</h3>
+              <p class="text-sm text-gray-500">Apa tujuan belajar kamu?</p>
+            </div>
+          </div>
           
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
-              <input type="checkbox" name="goals" value="osn" checked={learningGoals.includes('osn')} class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-slate-300">
-              <div>
-                <span class="text-sm font-medium text-slate-700">OSN Astronomi</span>
-                <p class="text-xs text-slate-500">Olimpiade Sains Nasional</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label class="group flex items-start gap-4 p-4 border-2 border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50/50 cursor-pointer transition-all">
+              <input type="checkbox" name="goals" value="osn" checked={learningGoals.includes('osn')} class="mt-1 w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300 group-hover:border-blue-400">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-lg">🏆</span>
+                  <span class="text-sm font-semibold text-gray-900">OSN Astronomi</span>
+                </div>
+                <p class="text-xs text-gray-500">Olimpiade Sains Nasional</p>
               </div>
             </label>
-            <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
-              <input type="checkbox" name="goals" value="ioaa" checked={learningGoals.includes('ioaa')} class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-slate-300">
-              <div>
-                <span class="text-sm font-medium text-slate-700">IOAA</span>
-                <p class="text-xs text-slate-500">Int'l Olympiad on Astronomy</p>
+            <label class="group flex items-start gap-4 p-4 border-2 border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50/50 cursor-pointer transition-all">
+              <input type="checkbox" name="goals" value="ioaa" checked={learningGoals.includes('ioaa')} class="mt-1 w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300 group-hover:border-blue-400">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-lg">🌍</span>
+                  <span class="text-sm font-semibold text-gray-900">IOAA</span>
+                </div>
+                <p class="text-xs text-gray-500">Int'l Olympiad on Astronomy</p>
               </div>
             </label>
-            <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
-              <input type="checkbox" name="goals" value="hobby" checked={learningGoals.includes('hobby')} class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-slate-300">
-              <div>
-                <span class="text-sm font-medium text-slate-700">Hobi Astronomi</span>
-                <p class="text-xs text-slate-500">Belajar untuk kesenangan</p>
+            <label class="group flex items-start gap-4 p-4 border-2 border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50/50 cursor-pointer transition-all">
+              <input type="checkbox" name="goals" value="hobby" checked={learningGoals.includes('hobby')} class="mt-1 w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300 group-hover:border-blue-400">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-lg">⭐</span>
+                  <span class="text-sm font-semibold text-gray-900">Hobi Astronomi</span>
+                </div>
+                <p class="text-xs text-gray-500">Belajar untuk kesenangan</p>
               </div>
             </label>
-            <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
-              <input type="checkbox" name="goals" value="academic" checked={learningGoals.includes('academic')} class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-slate-300">
-              <div>
-                <span class="text-sm font-medium text-slate-700">Akademik</span>
-                <p class="text-xs text-slate-500">Persiapan kuliah / riset</p>
+            <label class="group flex items-start gap-4 p-4 border-2 border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50/50 cursor-pointer transition-all">
+              <input type="checkbox" name="goals" value="academic" checked={learningGoals.includes('academic')} class="mt-1 w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300 group-hover:border-blue-400">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-lg">📚</span>
+                  <span class="text-sm font-semibold text-gray-900">Akademik</span>
+                </div>
+                <p class="text-xs text-gray-500">Persiapan kuliah / riset</p>
               </div>
             </label>
           </div>
         </div>
 
         <!-- Preferences -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <h3 class="text-lg font-semibold text-slate-900 mb-1">Preferensi</h3>
-          <p class="text-sm text-slate-500 mb-6">Sesuaikan pengalaman belajarmu</p>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+          <div class="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
+            <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+              <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">Preferensi</h3>
+              <p class="text-sm text-gray-500">Sesuaikan pengalaman belajarmu</p>
+            </div>
+          </div>
           
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label for="timezone" class="block text-sm font-medium text-slate-700 mb-1">
+              <label for="timezone" class="block text-sm font-semibold text-gray-700 mb-2">
                 Zona Waktu
               </label>
               <select
                 name="timezone"
                 id="timezone"
-                class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 focus:bg-white"
               >
                 <option value="WIB" selected={profile?.profile?.timezone === 'WIB'}>WIB - Waktu Indonesia Barat</option>
                 <option value="WITA" selected={profile?.profile?.timezone === 'WITA'}>WITA - Waktu Indonesia Tengah</option>
@@ -232,13 +312,13 @@ const learningGoals = profile?.profile?.learningGoals || [];
             </div>
             
             <div>
-              <label for="language" class="block text-sm font-medium text-slate-700 mb-1">
+              <label for="language" class="block text-sm font-semibold text-gray-700 mb-2">
                 Bahasa
               </label>
               <select
                 name="language"
                 id="language"
-                class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 focus:bg-white"
               >
                 <option value="id" selected={profile?.profile?.language === 'id' || !profile?.profile?.language}>Bahasa Indonesia</option>
                 <option value="en" selected={profile?.profile?.language === 'en'}>English</option>
@@ -248,19 +328,22 @@ const learningGoals = profile?.profile?.learningGoals || [];
         </div>
 
         <!-- Submit Buttons -->
-        <div class="flex flex-col sm:flex-row justify-end gap-3 pt-4">
+        <div class="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t border-gray-200">
           <a
             href="/profile"
-            class="px-6 py-2.5 text-center border border-slate-300 rounded-lg text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors"
+            class="inline-flex items-center justify-center gap-2 px-6 py-3 border-2 border-gray-300 rounded-xl text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-all"
           >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
             Batal
           </a>
           <button
             type="submit"
             id="save-btn"
-            class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+            class="inline-flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 font-semibold text-sm transition-all shadow-lg hover:shadow-xl"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
             Simpan Perubahan
@@ -315,34 +398,76 @@ const learningGoals = profile?.profile?.learningGoals || [];
         // Show success message briefly
         if (saveBtn) {
           saveBtn.innerHTML = `
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
             Tersimpan!
           `;
-          saveBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-          saveBtn.classList.add('bg-green-600');
+          saveBtn.classList.remove('from-blue-600', 'to-blue-700', 'hover:from-blue-700', 'hover:to-blue-800');
+          saveBtn.classList.add('from-green-600', 'to-green-700', 'hover:from-green-700', 'hover:to-green-800');
         }
+        
+        // Show success notification
+        const successDiv = document.createElement('div');
+        successDiv.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-xl shadow-lg z-50 flex items-center gap-3 animate-slide-in';
+        successDiv.innerHTML = `
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+          <span>Profil berhasil diperbarui!</span>
+        `;
+        document.body.appendChild(successDiv);
+        setTimeout(() => successDiv.remove(), 3000);
         
         setTimeout(() => {
           window.location.href = '/profile';
-        }, 1000);
+        }, 1500);
       } else {
         throw new Error('Failed to update');
       }
     } catch (error) {
       console.error('Profile update error:', error);
-      alert('Gagal menyimpan profil. Silakan coba lagi.');
+      
+      // Show error notification
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-4 rounded-xl shadow-lg z-50 flex items-center gap-3 animate-slide-in';
+      errorDiv.innerHTML = `
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+        <span>Gagal menyimpan profil. Silakan coba lagi.</span>
+      `;
+      document.body.appendChild(errorDiv);
+      setTimeout(() => errorDiv.remove(), 5000);
       
       if (saveBtn) {
         saveBtn.innerHTML = `
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
           </svg>
           Simpan Perubahan
         `;
         saveBtn.disabled = false;
+        saveBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+        saveBtn.classList.add('from-blue-600', 'to-blue-700', 'hover:from-blue-700', 'hover:to-blue-800');
       }
     }
   });
 </script>
+
+<style>
+  @keyframes slide-in {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  .animate-slide-in {
+    animation: slide-in 0.3s ease-out;
+  }
+</style>

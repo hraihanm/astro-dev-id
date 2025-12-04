@@ -52,7 +52,18 @@ export async function getAllUsers() {
       id: true,
       email: true,
       role: true,
-      createdAt: true
+      createdAt: true,
+      profile: {
+        select: {
+          firstName: true,
+          lastName: true,
+          nickname: true,
+          fullName: true
+        }
+      }
+    },
+    orderBy: {
+      createdAt: 'desc'
     }
   });
 }

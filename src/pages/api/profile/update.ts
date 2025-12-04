@@ -15,12 +15,16 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     const body = await request.json();
-    const { firstName, lastName, bio, learningGoals, learningLevel, timezone, language } = body;
+    const { nickname, fullName, firstName, lastName, bio, school, grade, learningGoals, learningLevel, timezone, language } = body;
 
     const profileData = {
+      nickname,
+      fullName,
       firstName,
       lastName,
       bio,
+      school,
+      grade,
       learningGoals,
       learningLevel,
       timezone,

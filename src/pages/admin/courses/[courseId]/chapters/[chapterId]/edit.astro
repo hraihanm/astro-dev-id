@@ -29,279 +29,398 @@ const allChapters = await prisma.chapter.findMany({
 ---
 
 <Layout title={`Edit ${chapter.title}`}>
-  <div class="min-h-screen bg-gray-50">
+  <!-- Preload marked.js and KaTeX for faster preview rendering -->
+  <script is:inline>
+    // Preload marked.js
+    if (!window.marked) {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js';
+      script.async = true;
+      document.head.appendChild(script);
+    }
+    
+    // Preload KaTeX CSS
+    if (!document.getElementById('katex-css')) {
+      const link = document.createElement('link');
+      link.id = 'katex-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css';
+      document.head.appendChild(link);
+    }
+    
+    // Preload KaTeX JS
+    if (!window.katex && !document.getElementById('katex-js')) {
+      const script = document.createElement('script');
+      script.id = 'katex-js';
+      script.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js';
+      script.async = true;
+      script.onload = () => {
+        console.log('KaTeX preloaded in head');
+      };
+      document.head.appendChild(script);
+    }
+  </script>
+  <div class="min-h-screen bg-slate-50">
     <!-- Header -->
-    <div class="bg-white shadow">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-          <div class="flex items-center">
-            <a href={`/admin/courses/${courseId}/edit`} class="text-gray-700 hover:text-blue-600 mr-4">
-              ← Back to Course
+    <div class="bg-white border-b border-slate-200 sticky top-0 z-20">
+      <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center h-16">
+          <div class="flex items-center gap-4">
+            <a href={`/admin/courses/${courseId}/edit`} class="text-slate-600 hover:text-slate-900 transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
             </a>
-            <h1 class="text-2xl font-bold text-gray-900">Edit Chapter</h1>
+            <div>
+              <h1 class="text-xl font-bold text-slate-900">Edit Bab</h1>
+              <p class="text-xs text-slate-500">Kursus: {chapter.course.title}</p>
+            </div>
           </div>
-          <div class="flex items-center space-x-4">
-            <a href="/admin/tutorial" target="_blank" class="text-blue-600 hover:text-blue-800 text-sm font-medium underline">
-              📚 Content Formatting Tutorial
+          <div class="flex items-center gap-3">
+            <a href="/admin/tutorial" target="_blank" class="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+              <span>📚</span>
+              <span>Tutorial Formatting</span>
             </a>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Chapter Edit Form -->
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <form id="chapter-form" class="space-y-6">
-        <input type="hidden" name="chapterId" value={chapter.id} />
-        
-        <!-- Chapter Information -->
-        <div class="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
-          <div class="space-y-6">
-            <div>
-              <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Chapter Information</h3>
-              <p class="text-sm text-gray-500 mb-4">
-                Course: <span class="font-medium">{chapter.course.title}</span>
-              </p>
-            </div>
+    <!-- Main Content: Split View -->
+    <form id="chapter-form" class="h-[calc(100vh-4rem)] flex flex-col">
+      <input type="hidden" name="chapterId" value={chapter.id} />
+      
+      <!-- Top Bar: Chapter Info -->
+      <div class="bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-3">
+        <div class="flex flex-wrap items-center gap-4">
+          <div class="flex-1 min-w-[200px]">
+            <label for="title" class="block text-xs font-medium text-slate-700 mb-1">
+              Judul Bab *
+            </label>
+            <input
+              type="text"
+              name="title"
+              id="title"
+              required
+              value={chapter.title}
+              class="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Bab 1: Pengenalan"
+            />
+          </div>
+          <div class="w-32">
+            <label for="order" class="block text-xs font-medium text-slate-700 mb-1">
+              Urutan *
+            </label>
+            <select
+              name="order"
+              id="order"
+              required
+              class="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              {Array.from({ length: allChapters.length + 5 }, (_, i) => i + 1).map((num) => (
+                <option value={num} selected={num === chapter.order}>
+                  {num}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div class="flex items-end gap-2">
+            <p id="content-size" class="text-xs text-slate-500 mb-1">
+              Ukuran: 0 KB
+            </p>
+          </div>
+        </div>
+      </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label for="title" class="block text-sm font-medium text-gray-700">
-                  Chapter Title *
-                </label>
-                <input
-                  type="text"
-                  name="title"
-                  id="title"
-                  required
-                  value={chapter.title}
-                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Chapter 1: Introduction"
-                />
-              </div>
-
-              <div>
-                <label for="order" class="block text-sm font-medium text-gray-700">
-                  Urutan Bab *
-                </label>
-                <select
-                  name="order"
-                  id="order"
-                  required
-                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                >
-                  {Array.from({ length: allChapters.length + 5 }, (_, i) => i + 1).map((num) => (
-                    <option value={num} selected={num === chapter.order}>
-                      {num}
-                    </option>
-                  ))}
-                </select>
-                <p class="mt-1 text-xs text-gray-500">
-                  Saat ini: {chapter.order} dari {allChapters.length} bab
-                </p>
-              </div>
+      <!-- Split View: Editor | Preview -->
+      <div class="flex-1 flex overflow-hidden">
+        <!-- Left: Editor -->
+        <div class="flex-1 flex flex-col border-r border-slate-200 bg-white min-h-0">
+          <div class="px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+              </svg>
+              <span class="text-sm font-medium text-slate-700">Editor</span>
             </div>
-
-            <div>
-              <label for="content" class="block text-sm font-medium text-gray-700 mb-2">
-                Konten Bab (Markdown + LaTeX)
-              </label>
-              <textarea
-                name="content"
-                id="content"
-                rows="20"
-                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-mono"
-                placeholder="# Judul Bab&#10;&#10;Konten Anda di sini dengan **markdown** dan $LaTeX$&#10;&#10;## Bagian 1&#10;&#10;Konten dengan matematika: $E = mc^2$"
-              >{chapter.content || ''}</textarea>
-              <div class="mt-2 flex items-center justify-between">
-                <p class="text-sm text-gray-500">
-                  Mendukung format Markdown dan matematika LaTeX. Gunakan $...$ untuk matematika inline dan $$...$$ untuk matematika display.
-                </p>
-                <p id="content-size" class="text-xs text-gray-400">
-                  Size: 0 KB
-                </p>
-              </div>
+            <div class="flex items-center gap-2">
+              <a
+                href="#tools-section"
+                class="text-xs text-slate-600 hover:text-slate-900 font-medium px-2 py-1 hover:bg-slate-100 rounded transition-colors"
+                title="Lihat Tools & Template"
+              >
+                Tools & Template ↓
+              </a>
             </div>
+          </div>
+          <!-- Hidden textarea for form submission -->
+          <textarea
+            name="content"
+            id="content"
+            style="display: none;"
+          >{chapter.content || ''}</textarea>
+          <!-- Monaco Editor container -->
+          <div id="monaco-editor-container" class="flex-1 min-h-0" style="height: 100%;"></div>
+          <div class="px-4 py-2 bg-slate-50 border-t border-slate-200">
+            <p class="text-xs text-slate-500">
+              Mendukung Markdown & LaTeX. Gunakan <code class="bg-slate-200 px-1 rounded">$...$</code> untuk inline dan <code class="bg-slate-200 px-1 rounded">$$...$$</code> untuk display math.
+            </p>
           </div>
         </div>
 
-        <!-- Preview Section -->
-        <div class="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-medium leading-6 text-gray-900">Preview</h3>
+        <!-- Right: Preview -->
+        <div class="flex-1 flex flex-col bg-white">
+          <div class="px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              <span class="text-sm font-medium text-slate-700">Pratinjau</span>
+            </div>
             <button
               type="button"
               id="preview-btn"
-              class="text-blue-600 hover:text-blue-900 text-sm font-medium"
+              class="text-xs text-blue-600 hover:text-blue-700 font-medium px-2 py-1 hover:bg-blue-50 rounded transition-colors"
             >
-              Refresh Preview
+              Segarkan
             </button>
           </div>
-          <div id="preview-content" class="prose max-w-none border border-gray-200 rounded-md p-4 min-h-[200px]">
-            <p class="text-gray-400 italic">Click "Refresh Preview" to see how your content will look.</p>
+          <div id="preview-content" class="flex-1 overflow-y-auto p-6 prose prose-slate max-w-none">
+            <p class="text-slate-400 italic text-sm">Mulai mengetik untuk melihat pratinjau konten Anda...</p>
           </div>
         </div>
+      </div>
 
-        <!-- Block Insertion Tools -->
-        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div class="flex items-center justify-between mb-3">
-            <h4 class="text-sm font-semibold text-green-900">Interactive Block Tools</h4>
-            <a
-              href="/admin/tutorial"
-              target="_blank"
-              class="text-green-700 hover:text-green-800 text-xs font-medium underline"
-            >
-              View Full Tutorial →
-            </a>
+      <!-- Bottom Bar: Actions -->
+      <div class="bg-white border-t border-slate-200 px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+        <button
+          type="button"
+          id="delete-btn"
+          class="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+        >
+          Hapus Bab
+        </button>
+        <div class="flex items-center gap-3">
+          <a
+            href={`/admin/courses/${courseId}/edit`}
+            class="px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
+          >
+            Batal
+          </a>
+          <button
+            type="submit"
+            class="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Simpan Perubahan
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <!-- Tools & Reference Section -->
+    <div id="tools-section" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <!-- Interactive Block Tools -->
+      <div class="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-lg font-semibold text-green-900 mb-1">Interactive Block Tools</h3>
+            <p class="text-sm text-green-700">
+              Sisipkan elemen interaktif (kuis, simulasi, dll.) pada posisi kursor
+            </p>
           </div>
-          <p class="text-xs text-green-700 mb-3">
-            Insert interactive elements (quizzes, simulations, etc.) at the cursor position
-          </p>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-            <button
-              type="button"
-              id="insert-quiz"
-              class="flex items-center p-2 bg-green-100 hover:bg-green-200 rounded-lg transition-colors"
-              title="Insert Quiz Block"
-            >
-              <svg class="w-4 h-4 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <a
+            href="/admin/tutorial"
+            target="_blank"
+            class="text-sm text-green-700 hover:text-green-800 font-medium flex items-center gap-1 underline decoration-green-300 hover:decoration-green-500 transition-colors"
+          >
+            Lihat Tutorial Lengkap
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <button
+            type="button"
+            id="insert-quiz"
+            class="group flex flex-col items-center p-4 bg-white hover:bg-green-100 rounded-lg border-2 border-green-200 hover:border-green-300 transition-all shadow-sm hover:shadow-md"
+            title="Sisipkan Blok Kuis"
+          >
+            <div class="w-10 h-10 bg-green-100 group-hover:bg-green-200 rounded-lg flex items-center justify-center mb-2 transition-colors">
+              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
-              <span class="text-xs font-medium text-green-800">Quiz</span>
-            </button>
+            </div>
+            <span class="text-sm font-medium text-green-800">Kuis</span>
+          </button>
 
-            <button
-              type="button"
-              id="insert-simulation"
-              class="flex items-center p-2 bg-purple-100 hover:bg-purple-200 rounded-lg transition-colors"
-              title="Insert Simulation Block"
-            >
-              <svg class="w-4 h-4 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button
+            type="button"
+            id="insert-simulation"
+            class="group flex flex-col items-center p-4 bg-white hover:bg-purple-100 rounded-lg border-2 border-purple-200 hover:border-purple-300 transition-all shadow-sm hover:shadow-md"
+            title="Sisipkan Blok Simulasi"
+          >
+            <div class="w-10 h-10 bg-purple-100 group-hover:bg-purple-200 rounded-lg flex items-center justify-center mb-2 transition-colors">
+              <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span class="text-xs font-medium text-purple-800">Simulation</span>
-            </button>
-
-            <button
-              type="button"
-              id="insert-code-editor"
-              class="flex items-center p-2 bg-indigo-100 hover:bg-indigo-200 rounded-lg transition-colors"
-              title="Insert Code Editor Block"
-            >
-              <svg class="w-4 h-4 text-indigo-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-              </svg>
-              <span class="text-xs font-medium text-indigo-800">Code Editor</span>
-            </button>
-
-            <button
-              type="button"
-              id="insert-diagram"
-              class="flex items-center p-2 bg-cyan-100 hover:bg-cyan-200 rounded-lg transition-colors"
-              title="Insert Interactive Diagram Block"
-            >
-              <svg class="w-4 h-4 text-cyan-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-              </svg>
-              <span class="text-xs font-medium text-cyan-800">Diagram</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Content Template Helpers -->
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h4 class="text-sm font-semibold text-blue-900 mb-2">Content Templates</h4>
-          <p class="text-xs text-blue-700 mb-3">
-            Insert styled content blocks at cursor position
-          </p>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <button
-              type="button"
-              id="insert-definition"
-              class="flex items-center p-2 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
-              title="Insert Definition Block"
-            >
-              <span class="text-blue-600 mr-2">📘</span>
-              <span class="text-xs font-medium text-blue-800">Definition</span>
-            </button>
-
-            <button
-              type="button"
-              id="insert-theorem"
-              class="flex items-center p-2 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition-colors"
-              title="Insert Theorem Block"
-            >
-              <span class="text-emerald-600 mr-2">⚡</span>
-              <span class="text-xs font-medium text-emerald-800">Theorem</span>
-            </button>
-
-            <button
-              type="button"
-              id="insert-example"
-              class="flex items-center p-2 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors"
-              title="Insert Example Block"
-            >
-              <span class="text-amber-600 mr-2">📝</span>
-              <span class="text-xs font-medium text-amber-800">Example</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Quick Reference -->
-        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
-          <h4 class="text-sm font-semibold text-gray-900 mb-2">Quick Markdown & LaTeX Reference</h4>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-700">
-            <div>
-              <p class="font-medium mb-1">Markdown:</p>
-              <ul class="space-y-1 ml-4">
-                <li>• **bold** or __bold__</li>
-                <li>• *italic* or _italic_</li>
-                <li>• # Heading 1</li>
-                <li>• ## Heading 2</li>
-                <li>• [link](url)</li>
-                <li>• ![image](url)</li>
-                <li>• `code` or ```code block```</li>
-              </ul>
             </div>
-            <div>
-              <p class="font-medium mb-1">LaTeX:</p>
-              <ul class="space-y-1 ml-4">
-                <li>• Inline: $x^2 + y^2 = z^2$</li>
-                <li>• Display: $$\int_0^1 x^2 dx$$</li>
-                <li>• Fractions: $\frac&#123;a&#125;&#123;b&#125;$</li>
-                <li>• Greek: $\alpha, \beta, \gamma$</li>
-                <li>• Sqrt: $\sqrt&#123;x&#125;$</li>
-              </ul>
-            </div>
-          </div>
-        </div>
+            <span class="text-sm font-medium text-purple-800">Simulasi</span>
+          </button>
 
-        <!-- Action Buttons -->
-        <div class="flex justify-between">
           <button
             type="button"
-            id="delete-btn"
-            class="bg-red-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            id="insert-code-editor"
+            class="group flex flex-col items-center p-4 bg-white hover:bg-indigo-100 rounded-lg border-2 border-indigo-200 hover:border-indigo-300 transition-all shadow-sm hover:shadow-md"
+            title="Sisipkan Editor Kode"
           >
-            Delete Chapter
+            <div class="w-10 h-10 bg-indigo-100 group-hover:bg-indigo-200 rounded-lg flex items-center justify-center mb-2 transition-colors">
+              <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+              </svg>
+            </div>
+            <span class="text-sm font-medium text-indigo-800">Editor Kode</span>
           </button>
-          <div class="flex space-x-3">
-            <a
-              href={`/admin/courses/${courseId}/edit`}
-              class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Cancel
-            </a>
-            <button
-              type="submit"
-              class="bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Save Changes
-            </button>
+
+          <button
+            type="button"
+            id="insert-diagram"
+            class="group flex flex-col items-center p-4 bg-white hover:bg-cyan-100 rounded-lg border-2 border-cyan-200 hover:border-cyan-300 transition-all shadow-sm hover:shadow-md"
+            title="Sisipkan Diagram Interaktif"
+          >
+            <div class="w-10 h-10 bg-cyan-100 group-hover:bg-cyan-200 rounded-lg flex items-center justify-center mb-2 transition-colors">
+              <svg class="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+              </svg>
+            </div>
+            <span class="text-sm font-medium text-cyan-800">Diagram</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Content Templates -->
+      <div class="bg-gradient-to-br from-blue-50 to-sky-50 border border-blue-200 rounded-xl p-6 shadow-sm">
+        <div class="mb-4">
+          <h3 class="text-lg font-semibold text-blue-900 mb-1">Template Konten</h3>
+          <p class="text-sm text-blue-700">
+            Sisipkan blok konten yang sudah distyling pada posisi kursor
+          </p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <button
+            type="button"
+            id="insert-definition"
+            class="group flex items-center p-4 bg-white hover:bg-blue-100 rounded-lg border-2 border-blue-200 hover:border-blue-300 transition-all shadow-sm hover:shadow-md"
+            title="Sisipkan Blok Definisi"
+          >
+            <div class="w-10 h-10 bg-blue-100 group-hover:bg-blue-200 rounded-lg flex items-center justify-center mr-3 transition-colors">
+              <span class="text-xl">📘</span>
+            </div>
+            <span class="text-sm font-medium text-blue-800">Definisi</span>
+          </button>
+
+          <button
+            type="button"
+            id="insert-theorem"
+            class="group flex items-center p-4 bg-white hover:bg-emerald-100 rounded-lg border-2 border-emerald-200 hover:border-emerald-300 transition-all shadow-sm hover:shadow-md"
+            title="Sisipkan Blok Teorema"
+          >
+            <div class="w-10 h-10 bg-emerald-100 group-hover:bg-emerald-200 rounded-lg flex items-center justify-center mr-3 transition-colors">
+              <span class="text-xl">⚡</span>
+            </div>
+            <span class="text-sm font-medium text-emerald-800">Teorema</span>
+          </button>
+
+          <button
+            type="button"
+            id="insert-example"
+            class="group flex items-center p-4 bg-white hover:bg-amber-100 rounded-lg border-2 border-amber-200 hover:border-amber-300 transition-all shadow-sm hover:shadow-md"
+            title="Sisipkan Blok Contoh"
+          >
+            <div class="w-10 h-10 bg-amber-100 group-hover:bg-amber-200 rounded-lg flex items-center justify-center mr-3 transition-colors">
+              <span class="text-xl">📝</span>
+            </div>
+            <span class="text-sm font-medium text-amber-800">Contoh</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Reference -->
+      <div class="bg-gradient-to-br from-slate-50 to-gray-50 border border-slate-200 rounded-xl p-6 shadow-sm">
+        <h3 class="text-lg font-semibold text-slate-900 mb-4">Referensi Cepat Markdown & LaTeX</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-white rounded-lg p-4 border border-slate-200">
+            <h4 class="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
+              <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+              </svg>
+              Markdown
+            </h4>
+            <ul class="space-y-2 text-xs text-slate-700">
+              <li class="flex items-start gap-2">
+                <span class="text-slate-400 mt-0.5">•</span>
+                <span><code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800">**tebal**</code> atau <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800">__tebal__</code></span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-slate-400 mt-0.5">•</span>
+                <span><code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800">*miring*</code> atau <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800">_miring_</code></span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-slate-400 mt-0.5">•</span>
+                <span><code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800"># Heading 1</code></span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-slate-400 mt-0.5">•</span>
+                <span><code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800">## Heading 2</code></span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-slate-400 mt-0.5">•</span>
+                <span><code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800">[link](url)</code></span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-slate-400 mt-0.5">•</span>
+                <span><code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800">![gambar](url)</code></span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-slate-400 mt-0.5">•</span>
+                <span><code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800">`kode`</code> atau <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800">```blok kode```</code></span>
+              </li>
+            </ul>
+          </div>
+          <div class="bg-white rounded-lg p-4 border border-slate-200">
+            <h4 class="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
+              <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+              </svg>
+              LaTeX
+            </h4>
+            <ul class="space-y-2 text-xs text-slate-700">
+              <li class="flex items-start gap-2">
+                <span class="text-slate-400 mt-0.5">•</span>
+                <span>Inline: <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800">$x^2 + y^2 = z^2$</code></span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-slate-400 mt-0.5">•</span>
+                <span>Display: <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800">$$\int_0^1 x^2 dx$$</code></span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-slate-400 mt-0.5">•</span>
+                <span>Pecahan: <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800">$\frac&#123;a&#125;&#123;b&#125;$</code></span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-slate-400 mt-0.5">•</span>
+                <span>Yunani: <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800">$\alpha, \beta, \gamma$</code></span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-slate-400 mt-0.5">•</span>
+                <span>Akar: <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800">$\sqrt&#123;x&#125;$</code></span>
+              </li>
+            </ul>
           </div>
         </div>
-      </form>
+      </div>
     </div>
   </div>
 </Layout>
@@ -309,7 +428,7 @@ const allChapters = await prisma.chapter.findMany({
 <script define:vars={{ chapterId: chapter.id, courseId: parseInt(courseId) }}>
   // Track content size
   function updateContentSize() {
-    const content = document.getElementById('content')?.value || '';
+    const content = monacoEditor ? monacoEditor.getValue() : (document.getElementById('content')?.value || '');
     const size = new Blob([content]).size;
     const sizeDisplay = document.getElementById('content-size');
 
@@ -335,68 +454,238 @@ const allChapters = await prisma.chapter.findMany({
     return 'block-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
   }
 
-  // Insert text at cursor position in textarea
-  function insertAtCursor(textarea, text) {
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const before = textarea.value.substring(0, start);
-    const after = textarea.value.substring(end);
+  // Monaco Editor instance
+  let monacoEditor = null;
 
-    textarea.value = before + text + after;
-    textarea.selectionStart = textarea.selectionEnd = start + text.length;
-    textarea.focus();
+  // Load Monaco Editor from CDN
+  async function loadMonacoEditor() {
+    return new Promise((resolve, reject) => {
+      if (window.monaco && window.monaco.editor) {
+        resolve();
+        return;
+      }
 
-    // Trigger content size update
-    updateContentSize();
+      // Check if loader is already being loaded
+      if (document.querySelector('script[src*="monaco-editor"]')) {
+        // Wait for it to load
+        const checkInterval = setInterval(() => {
+          if (window.monaco && window.monaco.editor) {
+            clearInterval(checkInterval);
+            resolve();
+          }
+        }, 100);
+        setTimeout(() => {
+          clearInterval(checkInterval);
+          if (!window.monaco || !window.monaco.editor) {
+            reject(new Error('Monaco Editor failed to load'));
+          }
+        }, 10000);
+        return;
+      }
+
+      // Load Monaco Editor using AMD loader approach
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.min.js';
+      script.onload = () => {
+        if (typeof require !== 'undefined') {
+          require.config({ 
+            paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' },
+            'vs/nls': { availableLanguages: { '*': 'en' } }
+          });
+          require(['vs/editor/editor.main'], () => {
+            console.log('Monaco Editor loaded successfully');
+            resolve();
+          }, (err) => {
+            console.error('Monaco Editor load error:', err);
+            reject(err);
+          });
+        } else {
+          reject(new Error('require is not defined'));
+        }
+      };
+      script.onerror = (err) => {
+        console.error('Failed to load Monaco Editor script:', err);
+        reject(err);
+      };
+      document.head.appendChild(script);
+    });
+  }
+
+  // Initialize Monaco Editor
+  async function initMonacoEditor() {
+    try {
+      const container = document.getElementById('monaco-editor-container');
+      const hiddenTextarea = document.getElementById('content');
+      
+      if (!container || !hiddenTextarea) {
+        console.error('Monaco Editor container or textarea not found');
+        return;
+      }
+
+      // Ensure container has height
+      if (container.offsetHeight === 0) {
+        container.style.height = '500px';
+      }
+
+      console.log('Loading Monaco Editor...');
+      await loadMonacoEditor();
+      
+      if (!window.monaco || !window.monaco.editor) {
+        throw new Error('Monaco Editor not available after loading');
+      }
+
+      // Ensure container has proper dimensions
+      const containerHeight = container.offsetHeight || container.clientHeight || 500;
+      if (containerHeight < 100) {
+        container.style.height = '500px';
+      }
+      
+      // Wait a bit for container to be fully rendered
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      console.log('Creating Monaco Editor instance...');
+      // Initialize Monaco Editor
+      monacoEditor = window.monaco.editor.create(container, {
+        value: hiddenTextarea.value || '',
+        language: 'markdown',
+        theme: 'vs',
+        fontSize: 14,
+        lineNumbers: 'on',
+        roundedSelection: false,
+        scrollBeyondLastLine: false,
+        readOnly: false,
+        minimap: { enabled: true },
+        tabSize: 2,
+        insertSpaces: true,
+        wordWrap: 'on',
+        automaticLayout: true,
+        formatOnPaste: true,
+        formatOnType: true,
+        suggestOnTriggerCharacters: true,
+        acceptSuggestionOnEnter: 'on',
+        quickSuggestions: true,
+        // Enable VSCode-like features
+        codeLens: false,
+        folding: true,
+        bracketPairColorization: { enabled: true },
+        // LaTeX support
+        wordBasedSuggestions: 'allDocuments',
+      });
+
+      // Sync Monaco Editor content to hidden textarea and auto-update preview
+      let previewUpdateTimeout;
+      monacoEditor.onDidChangeModelContent(() => {
+        const value = monacoEditor.getValue();
+        hiddenTextarea.value = value;
+        updateContentSize();
+        
+        // Debounce preview updates (update 500ms after user stops typing)
+        clearTimeout(previewUpdateTimeout);
+        previewUpdateTimeout = setTimeout(async () => {
+          try {
+            await updatePreview();
+          } catch (error) {
+            console.error('Error updating preview:', error);
+          }
+        }, 500);
+      });
+
+      // Update content size on initialization
+      updateContentSize();
+
+      console.log('Monaco Editor initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize Monaco Editor:', error);
+      // Fallback to textarea if Monaco fails
+      const container = document.getElementById('monaco-editor-container');
+      const hiddenTextarea = document.getElementById('content');
+      if (container && hiddenTextarea) {
+        container.innerHTML = `<textarea id="content-fallback" class="w-full h-full p-3 border-0 font-mono text-sm" style="resize: none;">${hiddenTextarea.value || ''}</textarea>`;
+        const fallback = document.getElementById('content-fallback');
+        fallback.addEventListener('input', () => {
+          hiddenTextarea.value = fallback.value;
+          updateContentSize();
+          updatePreview();
+        });
+      }
+    }
+  }
+
+  // Insert text at cursor position (works with Monaco Editor or textarea)
+  function insertAtCursor(element, text) {
+    if (monacoEditor) {
+      // Monaco Editor
+      const selection = monacoEditor.getSelection();
+      const range = new monaco.Range(
+        selection.startLineNumber,
+        selection.startColumn,
+        selection.endLineNumber,
+        selection.endColumn
+      );
+      const op = { range, text };
+      monacoEditor.executeEdits('insert-text', [op]);
+      monacoEditor.focus();
+    } else if (element && element.tagName === 'TEXTAREA') {
+      // Fallback to textarea
+      const start = element.selectionStart;
+      const end = element.selectionEnd;
+      const before = element.value.substring(0, start);
+      const after = element.value.substring(end);
+
+      element.value = before + text + after;
+      element.selectionStart = element.selectionEnd = start + text.length;
+      element.focus();
+      updateContentSize();
+    }
   }
 
   // Block insertion handlers
   function setupBlockInsertion() {
     // Interactive blocks
     document.getElementById('insert-quiz')?.addEventListener('click', () => {
-      const textarea = document.getElementById('content');
-      if (textarea) {
+      const editor = monacoEditor || document.getElementById('content') || document.getElementById('content-fallback');
+      if (editor) {
         const blockId = generateBlockId();
         const marker = `\n\n<!-- BLOCK:quiz:${blockId} -->\n\n`;
-        insertAtCursor(textarea, marker);
+        insertAtCursor(editor, marker);
         updatePreview();
       }
     });
 
     document.getElementById('insert-simulation')?.addEventListener('click', () => {
-      const textarea = document.getElementById('content');
-      if (textarea) {
+      const editor = monacoEditor || document.getElementById('content') || document.getElementById('content-fallback');
+      if (editor) {
         const blockId = generateBlockId();
         const marker = `\n\n<!-- BLOCK:simulation:${blockId} -->\n\n`;
-        insertAtCursor(textarea, marker);
+        insertAtCursor(editor, marker);
         updatePreview();
       }
     });
 
     document.getElementById('insert-code-editor')?.addEventListener('click', () => {
-      const textarea = document.getElementById('content');
-      if (textarea) {
+      const editor = monacoEditor || document.getElementById('content') || document.getElementById('content-fallback');
+      if (editor) {
         const blockId = generateBlockId();
         const marker = `\n\n<!-- BLOCK:code-editor:${blockId} -->\n\n`;
-        insertAtCursor(textarea, marker);
+        insertAtCursor(editor, marker);
         updatePreview();
       }
     });
 
     document.getElementById('insert-diagram')?.addEventListener('click', () => {
-      const textarea = document.getElementById('content');
-      if (textarea) {
+      const editor = monacoEditor || document.getElementById('content') || document.getElementById('content-fallback');
+      if (editor) {
         const blockId = generateBlockId();
         const marker = `\n\n<!-- BLOCK:interactive-diagram:${blockId} -->\n\n`;
-        insertAtCursor(textarea, marker);
+        insertAtCursor(editor, marker);
         updatePreview();
       }
     });
 
     // Content templates
     document.getElementById('insert-definition')?.addEventListener('click', () => {
-      const textarea = document.getElementById('content');
-      if (textarea) {
+      const editor = monacoEditor || document.getElementById('content') || document.getElementById('content-fallback');
+      if (editor) {
         const template = `<div class="definition-block">
   <div class="definition-header">📘 Definisi: [Judul Definisi]</div>
   <div class="definition-content">
@@ -405,14 +694,14 @@ const allChapters = await prisma.chapter.findMany({
 </div>
 
 `;
-        insertAtCursor(textarea, template);
+        insertAtCursor(editor, template);
         updatePreview();
       }
     });
 
     document.getElementById('insert-theorem')?.addEventListener('click', () => {
-      const textarea = document.getElementById('content');
-      if (textarea) {
+      const editor = monacoEditor || document.getElementById('content') || document.getElementById('content-fallback');
+      if (editor) {
         const template = `<div class="theorem-block">
   <div class="theorem-header">⚡ Teorema: [Nama Teorema]</div>
   <div class="theorem-content">
@@ -421,14 +710,14 @@ const allChapters = await prisma.chapter.findMany({
 </div>
 
 `;
-        insertAtCursor(textarea, template);
+        insertAtCursor(editor, template);
         updatePreview();
       }
     });
 
     document.getElementById('insert-example')?.addEventListener('click', () => {
-      const textarea = document.getElementById('content');
-      if (textarea) {
+      const editor = monacoEditor || document.getElementById('content') || document.getElementById('content-fallback');
+      if (editor) {
         const template = `<div class="example-block">
   <div class="example-header">📝 Contoh [nomor]</div>
   <div class="example-problem">
@@ -443,7 +732,7 @@ const allChapters = await prisma.chapter.findMany({
 </div>
 
 `;
-        insertAtCursor(textarea, template);
+        insertAtCursor(editor, template);
         updatePreview();
       }
     });
@@ -454,50 +743,472 @@ const allChapters = await prisma.chapter.findMany({
   function loadMarkedAssets() {
     if (markedLoadPromise) return markedLoadPromise;
     markedLoadPromise = new Promise((resolve, reject) => {
-      if (window.marked) {
-        try { window.marked.setOptions({ gfm: true, breaks: true }); } catch {}
+      // Check if already loaded
+      if (window.marked && typeof window.marked.parse === 'function') {
+        try { 
+          window.marked.setOptions({ 
+            gfm: true, 
+            breaks: true,
+            headerIds: false,
+            mangle: false
+          }); 
+        } catch (e) {
+          console.warn('Error setting marked options:', e);
+        }
         resolve();
         return;
       }
+      
+      // Check if script is already being loaded
+      const existingScript = document.getElementById('marked-js');
+      if (existingScript) {
+        // Wait for it to load
+        existingScript.onload = () => {
+          if (window.marked && typeof window.marked.parse === 'function') {
+            try {
+              window.marked.setOptions({ 
+                gfm: true, 
+                breaks: true,
+                headerIds: false,
+                mangle: false
+              });
+            } catch (e) {
+              console.warn('Error setting marked options:', e);
+            }
+            resolve();
+          } else {
+            reject(new Error('Marked.js loaded but not available'));
+          }
+        };
+        existingScript.onerror = () => reject(new Error('Failed to load marked.js'));
+        return;
+      }
+      
+      // Create and load script
       const script = document.createElement('script');
       script.id = 'marked-js';
       script.src = 'https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js';
-      script.onload = () => { try { window.marked.setOptions({ gfm: true, breaks: true }); } catch {} resolve(); };
-      script.onerror = (e) => reject(e);
+      script.onload = () => {
+        // Wait a bit to ensure marked is available
+        const checkMarked = () => {
+          if (window.marked && typeof window.marked.parse === 'function') {
+            try { 
+              window.marked.setOptions({ 
+                gfm: true, 
+                breaks: true,
+                headerIds: false,
+                mangle: false
+              }); 
+            } catch (e) {
+              console.warn('Error setting marked options:', e);
+            }
+            resolve();
+          } else {
+            // Retry after a short delay
+            setTimeout(checkMarked, 50);
+          }
+        };
+        checkMarked();
+      };
+      script.onerror = (e) => {
+        console.error('Failed to load marked.js:', e);
+        reject(new Error('Failed to load marked.js from CDN'));
+      };
       document.head.appendChild(script);
     });
     return markedLoadPromise;
   }
 
-  // Enhanced markdown renderer with better LaTeX support (Marked + placeholders)
-  function renderMarkdown(text) {
-    if (!text) return '';
-    // Normalize newlines to LF to make regex anchors predictable
-    let processed = String(text).replace(/\r\n?|\u2028|\u2029/g, '\n');
-
-    // Convert display math blocks ($$ ... $$) to placeholders.
-    // Use a non-anchored, non-greedy pattern that supports multiple blocks in a row.
-    processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
-      // Sanitize LaTeX content to remove problematic Unicode characters
+  // Process LaTeX BEFORE markdown parsing (most reliable approach)
+  function processLatexBeforeMarkdown(text) {
+    if (!text) return text;
+    
+    // Step 1: Process display math blocks ($$...$$) FIRST
+    const displayMathBlocks = [];
+    text = text.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
       const cleanLatex = sanitizeLatex((latex || '').trim());
-      // Ensure block boundaries so Marked treats each as a separate paragraph
-      return `\n<div class="math-display" data-latex="${cleanLatex}"></div>\n`;
+      const placeholder = `__DISPLAY_MATH_${displayMathBlocks.length}__`;
+      displayMathBlocks.push(cleanLatex);
+      return placeholder;
     });
-
-    // Convert inline math $...$ to placeholders (avoid $$ and multi-$ sequences)
-    processed = processed.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (match, latex) => {
-      // Sanitize LaTeX content to remove problematic Unicode characters
+    
+    // Step 2: Process inline math ($...$) - match single $...$ but not $$...$$
+    const inlineMathBlocks = [];
+    text = text.replace(/\$([^$\n]+?)\$/g, (match, latex) => {
       const cleanLatex = sanitizeLatex((latex || '').trim());
-      return `<span class="math-inline" data-latex="${cleanLatex}"></span>`;
+      const placeholder = `__INLINE_MATH_${inlineMathBlocks.length}__`;
+      inlineMathBlocks.push(cleanLatex);
+      return placeholder;
     });
-
-    // Use Marked to parse Markdown (tables, lists, etc.)
-    try {
-      return window.marked ? window.marked.parse(processed) : processed;
-    } catch (e) {
-      console.warn('Marked parse failed, returning raw processed HTML', e);
-      return processed;
+    
+    // Store blocks for later restoration
+    text.__displayMathBlocks = displayMathBlocks;
+    text.__inlineMathBlocks = inlineMathBlocks;
+    
+    return text;
+  }
+  
+  // Restore LaTeX AFTER markdown parsing
+  function restoreLatexAfterMarkdown(html, displayMathBlocks, inlineMathBlocks) {
+    if (!html) return html;
+    
+    console.log('Restoring LaTeX:', displayMathBlocks.length, 'display,', inlineMathBlocks.length, 'inline');
+    console.log('HTML before restoration (first 500 chars):', html.substring(0, 500));
+    
+    // Check what placeholders exist in HTML
+    const displayPlaceholders = html.match(/\u200B\u200BDISPLAYMATH\d+\u200B\u200B/g) || [];
+    const inlinePlaceholders = html.match(/\u200B\u200BINLINEMATH\d+\u200B\u200B/g) || [];
+    console.log('Found placeholders in HTML:', displayPlaceholders.length, 'display,', inlinePlaceholders.length, 'inline');
+    
+    // Restore display math blocks
+    displayMathBlocks.forEach((latex, index) => {
+      const escapedLatex = latex.replace(/"/g, '&quot;');
+      const mathDiv = `<div class="math-display" data-latex="${escapedLatex}"></div>`;
+      const placeholder = `\u200B\u200BDISPLAYMATH${index}\u200B\u200B`;
+      
+      // Count occurrences before replacement
+      const beforeCount = (html.match(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
+      
+      // Direct string replacement (most reliable)
+      html = html.split(placeholder).join(mathDiv);
+      
+      // Also try with HTML-escaped zero-width spaces
+      const escapedPlaceholder = placeholder.replace(/\u200B/g, '&#8203;');
+      html = html.split(escapedPlaceholder).join(mathDiv);
+      
+      if (beforeCount > 0) {
+        console.log(`Replaced ${beforeCount} occurrence(s) of DISPLAYMATH${index}`);
+      }
+    });
+    
+    // Restore inline math blocks
+    inlineMathBlocks.forEach((latex, index) => {
+      const escapedLatex = latex.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+      const mathSpan = `<span class="math-inline" data-latex="${escapedLatex}"></span>`;
+      const placeholder = `\u200B\u200BINLINEMATH${index}\u200B\u200B`;
+      
+      // Count occurrences before replacement
+      const beforeCount = (html.match(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
+      
+      // Direct string replacement (most reliable)
+      html = html.split(placeholder).join(mathSpan);
+      
+      // Also try with HTML-escaped zero-width spaces
+      const escapedPlaceholder = placeholder.replace(/\u200B/g, '&#8203;');
+      html = html.split(escapedPlaceholder).join(mathSpan);
+      
+      if (beforeCount > 0) {
+        console.log(`Replaced ${beforeCount} occurrence(s) of INLINEMATH${index}`);
+      }
+    });
+    
+    // Fix any escaped HTML entities
+    html = html.replace(/&lt;span class="math-inline" data-latex="([^"]+)"&gt;&lt;\/span&gt;/g, 
+      '<span class="math-inline" data-latex="$1"></span>');
+    
+    html = html.replace(/&lt;span class='math-inline' data-latex='([^']+)'&gt;&lt;\/span&gt;/g, 
+      '<span class="math-inline" data-latex="$1"></span>');
+    
+    html = html.replace(/&lt;div class="math-display" data-latex="([^"]+)"&gt;&lt;\/div&gt;/g,
+      '<div class="math-display" data-latex="$1"></div>');
+    
+    // Check if placeholders still exist (for debugging)
+    const remainingDisplay = (html.match(/\u200B\u200BDISPLAYMATH\d+\u200B\u200B/g) || []).length;
+    const remainingInline = (html.match(/\u200B\u200BINLINEMATH\d+\u200B\u200B/g) || []).length;
+    const finalMathInline = (html.match(/<span class="math-inline"/g) || []).length;
+    const finalMathDisplay = (html.match(/<div class="math-display"/g) || []).length;
+    
+    console.log('After restoration:', finalMathDisplay, 'display math elements,', finalMathInline, 'inline math elements');
+    if (remainingDisplay > 0 || remainingInline > 0) {
+      console.warn('WARNING: Still have unreplaced placeholders:', remainingDisplay, 'display,', remainingInline, 'inline');
     }
+    
+    return html;
+  }
+  
+  // Process LaTeX in HTML string (after markdown parsing)
+  function processLatexInHTMLString(html) {
+    if (!html) return html;
+    
+    // First, unescape any HTML-escaped dollar signs (marked.js might escape them)
+    html = html.replace(/&#36;/g, '$');
+    html = html.replace(/&dollar;/g, '$');
+    
+    // Step 1: Process display math blocks first ($$...$$)
+    // Replace with temporary markers
+    const displayMathBlocks = [];
+    html = html.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
+      const cleanLatex = sanitizeLatex((latex || '').trim());
+      const escapedLatex = cleanLatex.replace(/"/g, '&quot;');
+      const placeholder = `__DISPLAY_MATH_${displayMathBlocks.length}__`;
+      displayMathBlocks.push(`<div class="math-display" data-latex="${escapedLatex}"></div>`);
+      return placeholder;
+    });
+    
+    // Step 2: Process inline math ($...$) - simple match, display math already replaced
+    const inlineMathBlocks = [];
+    html = html.replace(/\$([^$\n]+?)\$/g, (match, latex) => {
+      const cleanLatex = sanitizeLatex((latex || '').trim());
+      const escapedLatex = cleanLatex.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+      const placeholder = `__INLINE_MATH_${inlineMathBlocks.length}__`;
+      inlineMathBlocks.push(`<span class="math-inline" data-latex="${escapedLatex}"></span>`);
+      return placeholder;
+    });
+    
+    // Step 3: Restore display math
+    displayMathBlocks.forEach((block, index) => {
+      html = html.split(`__DISPLAY_MATH_${index}__`).join(block);
+    });
+    
+    // Step 4: Restore inline math
+    inlineMathBlocks.forEach((block, index) => {
+      html = html.split(`__INLINE_MATH_${index}__`).join(block);
+    });
+    
+    // Step 5: Fix any escaped HTML entities (marked.js might escape our spans)
+    html = html.replace(/&lt;span class="math-inline" data-latex="([^"]+)"&gt;&lt;\/span&gt;/g, 
+      '<span class="math-inline" data-latex="$1"></span>');
+    
+    html = html.replace(/&lt;span class='math-inline' data-latex='([^']+)'&gt;&lt;\/span&gt;/g, 
+      '<span class="math-inline" data-latex="$1"></span>');
+    
+    html = html.replace(/&lt;div class="math-display" data-latex="([^"]+)"&gt;&lt;\/div&gt;/g,
+      '<div class="math-display" data-latex="$1"></div>');
+    
+    return html;
+  }
+  
+  // Simple markdown renderer - returns {html, displayMathBlocks, inlineMathBlocks}
+  function renderMarkdown(text) {
+    if (!text) return {html: '', displayMathBlocks: [], inlineMathBlocks: []};
+    
+    // Normalize newlines
+    let processed = String(text).replace(/\r\n?|\u2028|\u2029/g, '\n');
+    
+    // Fix tabs in list items
+    processed = processed.split('\n').map(line => {
+      if (/^(\s*[-*+]|\s*\d+\.)\s*\t/.test(line)) {
+        return line.replace(/\t/g, '    ');
+      }
+      return line;
+    }).join('\n');
+
+    // Count LaTeX before processing (simple count, not exact)
+    const displayMathCount = (processed.match(/\$\$[\s\S]*?\$\$/g) || []).length;
+    // Count inline math by counting $ signs that aren't part of $$
+    let inlineMathCount = 0;
+    const tempProcessed = processed.replace(/\$\$[\s\S]*?\$\$/g, ''); // Remove display math first
+    inlineMathCount = (tempProcessed.match(/\$[^$\n]+?\$/g) || []).length;
+    console.log('Found LaTeX in markdown:', displayMathCount, 'display,', inlineMathCount, 'inline');
+
+    // Parse markdown to HTML FIRST
+    let html;
+    try {
+      if (window.marked) {
+        window.marked.setOptions({
+          gfm: true,
+          breaks: true,
+          headerIds: false,
+          mangle: false
+        });
+        html = window.marked.parse(processed);
+      } else {
+        html = processed;
+      }
+    } catch (e) {
+      console.warn('Marked parse failed:', e);
+      html = processed;
+    }
+
+    // Process LaTeX in the HTML string AFTER markdown parsing
+    html = processLatexInHTMLString(html);
+    
+    // Count math elements created
+    const mathInlineCount = (html.match(/<span class="math-inline"/g) || []).length;
+    const mathDisplayCount = (html.match(/<div class="math-display"/g) || []).length;
+    console.log('Created math elements:', mathDisplayCount, 'display,', mathInlineCount, 'inline');
+    
+    return {html, displayMathBlocks: [], inlineMathBlocks: []};
+  }
+  
+  // Process any remaining placeholders in the DOM (fallback)
+  function processRemainingPlaceholders(container, displayMathBlocks, inlineMathBlocks) {
+    if (!container || !displayMathBlocks || !inlineMathBlocks) return;
+    
+    // Find and replace any remaining placeholders
+    const walker = document.createTreeWalker(
+      container,
+      NodeFilter.SHOW_TEXT,
+      null
+    );
+    
+    const textNodes = [];
+    let node;
+    while (node = walker.nextNode()) {
+      const text = node.textContent;
+      if (text.includes('DISPLAYMATH') || text.includes('INLINEMATH') || 
+          text.includes('__DISPLAY_MATH_') || text.includes('__INLINE_MATH_')) {
+        textNodes.push(node);
+      }
+    }
+    
+    if (textNodes.length > 0) {
+      console.log('Found', textNodes.length, 'text nodes with placeholders, processing...');
+    }
+    
+    textNodes.forEach(textNode => {
+      let text = textNode.textContent;
+      const parent = textNode.parentElement;
+      if (!parent) return;
+      
+      // Process display math placeholders
+      displayMathBlocks.forEach((latex, index) => {
+        const oldPlaceholder = `__DISPLAY_MATH_${index}__`;
+        const newPlaceholder = `\u200B\u200BDISPLAYMATH${index}\u200B\u200B`;
+        const escapedLatex = latex.replace(/"/g, '&quot;');
+        const mathDiv = `<div class="math-display" data-latex="${escapedLatex}"></div>`;
+        
+        if (text.includes(oldPlaceholder)) {
+          text = text.split(oldPlaceholder).join(mathDiv);
+        }
+        if (text.includes(newPlaceholder)) {
+          text = text.split(newPlaceholder).join(mathDiv);
+        }
+      });
+      
+      // Process inline math placeholders
+      inlineMathBlocks.forEach((latex, index) => {
+        const oldPlaceholder = `__INLINE_MATH_${index}__`;
+        const newPlaceholder = `\u200B\u200BINLINEMATH${index}\u200B\u200B`;
+        const escapedLatex = latex.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        const mathSpan = `<span class="math-inline" data-latex="${escapedLatex}"></span>`;
+        
+        if (text.includes(oldPlaceholder)) {
+          text = text.split(oldPlaceholder).join(mathSpan);
+        }
+        if (text.includes(newPlaceholder)) {
+          text = text.split(newPlaceholder).join(mathSpan);
+        }
+      });
+      
+      // If text changed, replace the node
+      if (text !== textNode.textContent) {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = text;
+        const fragment = document.createDocumentFragment();
+        while (tempDiv.firstChild) {
+          fragment.appendChild(tempDiv.firstChild);
+        }
+        parent.replaceChild(fragment, textNode);
+      }
+    });
+  }
+  
+  // Process LaTeX in the DOM (fallback for any missed cases)
+  function processLatexInDOM(container) {
+    if (!container) return;
+    
+    // Only process text nodes that still contain $ signs
+    const walker = document.createTreeWalker(
+      container,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: function(node) {
+          const parent = node.parentElement;
+          // Skip code blocks, scripts, styles, and existing math elements
+          if (parent && (
+            parent.tagName === 'SCRIPT' || 
+            parent.tagName === 'STYLE' || 
+            parent.tagName === 'CODE' || 
+            parent.tagName === 'PRE' ||
+            parent.classList.contains('math-inline') ||
+            parent.classList.contains('math-display') ||
+            parent.classList.contains('katex')
+          )) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          // Only process nodes with $ signs
+          if (!node.textContent || !node.textContent.includes('$')) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      }
+    );
+    
+    const textNodes = [];
+    let node;
+    while (node = walker.nextNode()) {
+      textNodes.push(node);
+    }
+    
+    if (textNodes.length > 0) {
+      console.log('Processing', textNodes.length, 'remaining text nodes with LaTeX');
+    }
+    
+    // Process each text node
+    textNodes.forEach(textNode => {
+      const text = textNode.textContent;
+      const parent = textNode.parentElement;
+      if (!parent) return;
+      
+      // Process display math first
+      const displayMathRegex = /\$\$([\s\S]*?)\$\$/g;
+      if (displayMathRegex.test(text)) {
+        displayMathRegex.lastIndex = 0;
+        const fragment = document.createDocumentFragment();
+        let lastIndex = 0;
+        let match;
+        
+        while ((match = displayMathRegex.exec(text)) !== null) {
+          if (match.index > lastIndex) {
+            fragment.appendChild(document.createTextNode(text.substring(lastIndex, match.index)));
+          }
+          
+          const div = document.createElement('div');
+          div.className = 'math-display';
+          div.setAttribute('data-latex', sanitizeLatex(match[1].trim()));
+          fragment.appendChild(div);
+          
+          lastIndex = match.index + match[0].length;
+        }
+        
+        if (lastIndex < text.length) {
+          fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+        }
+        
+        parent.replaceChild(fragment, textNode);
+        return;
+      }
+      
+      // Process inline math
+      const inlineMathRegex = /(?<!\$)\$([^$\n]+?)\$(?!\$)/g;
+      if (inlineMathRegex.test(text)) {
+        inlineMathRegex.lastIndex = 0;
+        const fragment = document.createDocumentFragment();
+        let lastIndex = 0;
+        let match;
+        
+        while ((match = inlineMathRegex.exec(text)) !== null) {
+          if (match.index > lastIndex) {
+            fragment.appendChild(document.createTextNode(text.substring(lastIndex, match.index)));
+          }
+          
+          const span = document.createElement('span');
+          span.className = 'math-inline';
+          span.setAttribute('data-latex', sanitizeLatex(match[1].trim()));
+          fragment.appendChild(span);
+          
+          lastIndex = match.index + match[0].length;
+        }
+        
+        if (lastIndex < text.length) {
+          fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+        }
+        
+        parent.replaceChild(fragment, textNode);
+      }
+    });
   }
 
   // Base path for images placed in public/uploads
@@ -515,9 +1226,15 @@ const allChapters = await prisma.chapter.findMany({
   // Load KaTeX CSS/JS once and cache the promise
   let katexLoadPromise;
   function loadKatexAssets() {
+    // If already loaded, return immediately
+    if (window.katex && typeof window.katex.render === 'function') {
+      return Promise.resolve();
+    }
+    
     if (katexLoadPromise) return katexLoadPromise;
+    
     katexLoadPromise = new Promise((resolve, reject) => {
-      // CSS
+      // CSS - ensure it's loaded
       if (!document.getElementById('katex-css')) {
         const link = document.createElement('link');
         link.id = 'katex-css';
@@ -525,19 +1242,66 @@ const allChapters = await prisma.chapter.findMany({
         link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css';
         document.head.appendChild(link);
       }
-      // JS
-      if (window.katex) {
-        resolve();
-        return;
+      
+      // Check if script already exists (preloaded in head)
+      const existingScript = document.getElementById('katex-js');
+      
+      // Function to wait for KaTeX to become available
+      const waitForKaTeX = (maxAttempts = 100) => {
+        let attempts = 0;
+        const checkInterval = setInterval(() => {
+          attempts++;
+          if (window.katex && typeof window.katex.render === 'function') {
+            clearInterval(checkInterval);
+            console.log('KaTeX is now available');
+            resolve();
+          } else if (attempts >= maxAttempts) {
+            clearInterval(checkInterval);
+            console.error('KaTeX not available after', maxAttempts * 100, 'ms');
+            console.error('window.katex:', window.katex);
+            console.error('Script element:', existingScript);
+            console.error('Script complete:', existingScript?.complete);
+            reject(new Error('KaTeX failed to load - window.katex not available'));
+          }
+        }, 100);
+      };
+      
+      if (existingScript) {
+        // Script exists, wait for it to load
+        if (existingScript.complete) {
+          // Script already loaded, wait for KaTeX to initialize
+          waitForKaTeX();
+        } else {
+          // Script is still loading
+          existingScript.onload = () => {
+            waitForKaTeX();
+          };
+          existingScript.onerror = (e) => {
+            console.error('KaTeX script failed to load:', e);
+            reject(new Error('Failed to load KaTeX script'));
+          };
+        }
+      } else {
+        // Load the script
+        const script = document.createElement('script');
+        script.id = 'katex-js';
+        script.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js';
+        script.async = true;
+        
+        script.onload = () => {
+          console.log('KaTeX script loaded, waiting for initialization...');
+          waitForKaTeX();
+        };
+        
+        script.onerror = (e) => {
+          console.error('Failed to load KaTeX script:', e);
+          reject(new Error('Failed to load KaTeX script from CDN'));
+        };
+        
+        document.head.appendChild(script);
       }
-      const script = document.createElement('script');
-      script.id = 'katex-js';
-      script.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js';
-      script.defer = true;
-      script.onload = () => resolve();
-      script.onerror = (e) => reject(e);
-      document.head.appendChild(script);
     });
+    
     return katexLoadPromise;
   }
 
@@ -589,52 +1353,9 @@ const allChapters = await prisma.chapter.findMany({
       .trim();
   }
 
-  // Enhanced LaTeX renderer for better math display (KaTeX)
+  // Enhanced LaTeX renderer for better math display (KaTeX) - DEPRECATED, use renderLatexWithKaTeX instead
   async function renderLatexPreview() {
-    // Find all math elements within the preview div
-    const previewDiv = document.getElementById('preview-content');
-    if (!previewDiv) {
-      console.log('Preview div not found');
-      return;
-    }
-    
-    const mathElements = previewDiv.querySelectorAll('.math-display, .math-inline');
-
-    console.log('Found math elements in preview:', mathElements.length);
-    
-    // Ensure KaTeX is loaded
-    try {
-      await loadKatexAssets();
-    } catch (e) {
-      console.error('Failed to load KaTeX:', e);
-      return;
-    }
-
-    mathElements.forEach((element, index) => {
-      const latexRaw = element.getAttribute('data-latex') || '';
-      // Sanitize the LaTeX to remove problematic Unicode characters
-      const sanitizedLatex = sanitizeLatex(latexRaw);
-      // Normalize some TeX commands for KaTeX compatibility
-      const latex = sanitizedLatex.replace(/\\rm\s*/g, '\\mathrm ');
-      const displayMode = element.classList.contains('math-display');
-
-      try {
-        // Clear existing inner content then render with KaTeX
-        element.innerHTML = '';
-        window.katex.render(latex, element, {
-          displayMode,
-          throwOnError: false,
-          trust: true,
-          macros: {
-            '\\degree': '^{\\circ}'
-          }
-        });
-        console.log(`KaTeX rendered element ${index}`);
-      } catch (err) {
-        console.warn('KaTeX render error, falling back to basic rendering:', err);
-        element.innerHTML = `<div class="math-content"><div class="math-raw">$${latex}$</div><div class="math-rendered">${renderBasicLatex(latex)}</div></div>`;
-      }
-    });
+    return renderLatexWithKaTeX();
   }
   
   // Basic LaTeX renderer for common math symbols
@@ -686,89 +1407,182 @@ const allChapters = await prisma.chapter.findMany({
       .replace(/\\right\}/g, '}');
   }
   
+  // Update preview function - clean and simple
+  async function updatePreview() {
+    const content = monacoEditor ? monacoEditor.getValue() : (document.getElementById('content')?.value || '');
+    const previewDiv = document.getElementById('preview-content');
+    
+    if (!previewDiv) return;
+    
+    if (!content || content.trim() === '') {
+      previewDiv.innerHTML = '<p class="text-slate-400 italic text-sm">Mulai mengetik untuk melihat pratinjau konten Anda...</p>';
+      return;
+    }
+    
+    try {
+      // Load libraries
+      await loadMarkedAssets();
+      await loadHighlightAssets();
+      await loadKatexAssets();
+      
+      // Render markdown (LaTeX is processed inside renderMarkdown)
+      const renderResult = renderMarkdown(content);
+      let html = renderResult.html;
+      html = rewriteImageSrcs(html);
+      
+      // Debug: Check math elements in HTML
+      const mathInlineCount = (html.match(/<span class="math-inline"/g) || []).length;
+      const mathDisplayCount = (html.match(/<div class="math-display"/g) || []).length;
+      console.log('Math elements in HTML:', mathInlineCount, 'inline,', mathDisplayCount, 'display');
+      
+      // Insert HTML
+      previewDiv.innerHTML = html;
+      
+      // Fallback: Process any remaining placeholders or LaTeX in DOM
+      processRemainingPlaceholders(previewDiv, renderResult.displayMathBlocks, renderResult.inlineMathBlocks);
+      processLatexInDOM(previewDiv);
+      
+      // Render math with KaTeX
+      await renderLatexWithKaTeX();
+      
+      // Highlight code
+      const codeBlocks = previewDiv.querySelectorAll('pre code');
+      if (codeBlocks.length > 0 && window.hljs) {
+        codeBlocks.forEach(block => window.hljs.highlightElement(block));
+      }
+      
+      // Final check
+      const finalMathInline = previewDiv.querySelectorAll('.math-inline');
+      const finalMathDisplay = previewDiv.querySelectorAll('.math-display');
+      console.log('Final math elements:', finalMathInline.length, 'inline,', finalMathDisplay.length, 'display');
+    } catch (error) {
+      console.error('Preview error:', error);
+      previewDiv.innerHTML = `<p class="text-red-600">Error: ${error.message}</p>`;
+    }
+  }
+  
+  // Render LaTeX with KaTeX
+  async function renderLatexWithKaTeX() {
+    const previewDiv = document.getElementById('preview-content');
+    if (!previewDiv) return;
+    
+    try {
+      await loadKatexAssets();
+      
+      // Additional wait and check
+      let retries = 0;
+      const maxRetries = 20;
+      while (retries < maxRetries) {
+        if (window.katex && typeof window.katex.render === 'function') {
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+        retries++;
+      }
+      
+      if (!window.katex || typeof window.katex.render !== 'function') {
+        console.error('KaTeX not available after loading.');
+        console.error('window.katex:', window.katex);
+        console.error('typeof window.katex:', typeof window.katex);
+        console.error('window.katex?.render:', window.katex?.render);
+        
+        // Check if script tag exists
+        const scriptTag = document.getElementById('katex-js');
+        console.error('KaTeX script tag:', scriptTag);
+        console.error('Script src:', scriptTag?.src);
+        console.error('Script loaded:', scriptTag?.complete);
+        
+        // Try direct injection as fallback
+        console.log('Attempting direct KaTeX injection...');
+        const directScript = document.createElement('script');
+        directScript.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js';
+        directScript.async = false;
+        await new Promise((resolve, reject) => {
+          directScript.onload = () => {
+            setTimeout(() => {
+              if (window.katex && typeof window.katex.render === 'function') {
+                console.log('KaTeX loaded via direct injection');
+                resolve();
+              } else {
+                reject(new Error('Direct injection failed'));
+              }
+            }, 500);
+          };
+          directScript.onerror = reject;
+          document.head.appendChild(directScript);
+        });
+      }
+      
+      if (!window.katex || typeof window.katex.render !== 'function') {
+        throw new Error('KaTeX is not available. Please check browser console for details.');
+      }
+      
+      console.log('KaTeX is available, rendering math...');
+      
+      const mathElements = previewDiv.querySelectorAll('.math-display, .math-inline');
+      console.log('Rendering', mathElements.length, 'math elements with KaTeX');
+      
+      mathElements.forEach((element, index) => {
+        const latexRaw = element.getAttribute('data-latex') || '';
+        if (!latexRaw) {
+          console.warn(`Math element ${index} has no data-latex attribute`);
+          return;
+        }
+        
+        const sanitizedLatex = sanitizeLatex(latexRaw);
+        const latex = sanitizedLatex.replace(/\\rm\s*/g, '\\mathrm ');
+        const displayMode = element.classList.contains('math-display');
+        
+        try {
+          element.innerHTML = '';
+          window.katex.render(latex, element, {
+            displayMode,
+            throwOnError: false,
+            trust: true,
+            strict: false,
+            macros: {
+              '\\degree': '^{\\circ}'
+            }
+          });
+        } catch (err) {
+          console.warn(`KaTeX render error for element ${index}:`, err);
+          element.innerHTML = `<span class="text-red-600">$${latex}$</span>`;
+        }
+      });
+      
+      // Highlight code blocks
+      const codeBlocks = previewDiv.querySelectorAll('pre code');
+      if (codeBlocks.length > 0 && window.hljs) {
+        codeBlocks.forEach((block) => {
+          window.hljs.highlightElement(block);
+        });
+      }
+    } catch (error) {
+      console.error('KaTeX rendering error:', error);
+    }
+  }
+
   // Initialize on page load
-  document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('DOMContentLoaded', async function() {
+    // Initialize Monaco Editor
+    await initMonacoEditor();
+    
     // Update size on load
     updateContentSize();
     
-    // Add input listener for size tracking
-    const contentTextarea = document.getElementById('content');
-    if (contentTextarea) {
-      contentTextarea.addEventListener('input', updateContentSize);
-    }
+    // Initial preview update
+    await updatePreview();
     
-    // Preview functionality
+    // Preview button functionality
     const previewBtn = document.getElementById('preview-btn');
     if (previewBtn) {
       previewBtn.addEventListener('click', async function() {
-        const content = document.getElementById('content').value;
-        const previewDiv = document.getElementById('preview-content');
-        
-        console.log('Preview button clicked');
-        console.log('Content:', content.substring(0, 100) + '...');
-        
-        if (previewDiv) {
-          try {
-            // Ensure Marked is available for tables/GFM
-            await loadMarkedAssets();
-            // Load Highlight.js for code highlighting
-            await loadHighlightAssets();
-            
-            let html = renderMarkdown(content);
-            html = rewriteImageSrcs(html);
-            console.log('Rendered HTML:', html.substring(0, 200) + '...');
-            previewDiv.innerHTML = html;
-            
-            // Enhance LaTeX rendering and code highlighting after HTML is inserted
-            setTimeout(() => {
-              console.log('Enhancing LaTeX preview...');
-              console.log('Preview HTML before enhancement:', previewDiv.innerHTML.substring(0, 500));
-              
-              // Try multiple times to ensure DOM is ready
-              let attempts = 0;
-              const maxAttempts = 5;
-              
-              const tryEnhancement = () => {
-                attempts++;
-                console.log(`Enhancement attempt ${attempts}`);
-                
-                const mathElements = previewDiv.querySelectorAll('.math-display, .math-inline');
-                console.log(`Found ${mathElements.length} math elements in attempt ${attempts}`);
-                
-                if (mathElements.length > 0 || attempts === 1) {
-                  // Render LaTeX
-                if (mathElements.length > 0) {
-                  renderLatexPreview();
-                  }
-                  
-                  // Highlight code blocks
-                  const codeBlocks = previewDiv.querySelectorAll('pre code');
-                  if (codeBlocks.length > 0 && window.hljs) {
-                    codeBlocks.forEach((block) => {
-                      window.hljs.highlightElement(block);
-                    });
-                    console.log(`Highlighted ${codeBlocks.length} code blocks`);
-                  }
-                  
-                  console.log('Preview HTML after enhancement:', previewDiv.innerHTML.substring(0, 500));
-                  console.log('LaTeX preview enhanced');
-                } else if (attempts < maxAttempts) {
-                  console.log(`No math elements found, retrying in 50ms...`);
-                  setTimeout(tryEnhancement, 50);
-                } else {
-                  console.log('Max attempts reached, no math elements found');
-                }
-              };
-              
-              tryEnhancement();
-            }, 10);
-          } catch (error) {
-            console.error('Preview error:', error);
-            previewDiv.innerHTML = '<p class="text-red-600">Error rendering preview. Check your markdown syntax.</p>';
-          }
-        }
+        await updatePreview();
       });
     }
+    
+    // Initialize block insertion
+    setupBlockInsertion();
 
     // Form submission with large file handling
     const form = document.getElementById('chapter-form');
@@ -875,10 +1689,6 @@ const allChapters = await prisma.chapter.findMany({
     }
   });
 
-  // Initialize block insertion on page load
-  document.addEventListener('DOMContentLoaded', () => {
-    setupBlockInsertion();
-  });
 </script>
 
 <style>

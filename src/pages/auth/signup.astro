@@ -164,9 +164,9 @@ import Layout from '../../components/Layout.astro';
                 name="password"
                 type="password"
                 required
-                minlength="6"
+                minlength="8"
                 class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-slate-900 placeholder-slate-400 pr-12"
-                placeholder="Minimal 6 karakter"
+                placeholder="Minimal 8 karakter (huruf & angka)"
               />
               <button 
                 type="button" 
@@ -181,6 +181,20 @@ import Layout from '../../components/Layout.astro';
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
                 </svg>
               </button>
+            </div>
+            <div id="password-requirements" class="mt-2 text-xs text-slate-500 space-y-1">
+              <p class="flex items-center gap-1.5">
+                <span id="req-length" class="w-4 h-4 rounded-full bg-slate-200 flex items-center justify-center text-[10px]">✗</span>
+                Minimal 8 karakter
+              </p>
+              <p class="flex items-center gap-1.5">
+                <span id="req-letter" class="w-4 h-4 rounded-full bg-slate-200 flex items-center justify-center text-[10px]">✗</span>
+                Mengandung huruf (a-z, A-Z)
+              </p>
+              <p class="flex items-center gap-1.5">
+                <span id="req-number" class="w-4 h-4 rounded-full bg-slate-200 flex items-center justify-center text-[10px]">✗</span>
+                Mengandung angka (0-9)
+              </p>
             </div>
           </div>
 
@@ -228,6 +242,41 @@ import Layout from '../../components/Layout.astro';
 </Layout>
 
 <script>
+  // Password validation helpers
+  function validatePassword(password: string) {
+    return {
+      length: password.length >= 8,
+      letter: /[a-zA-Z]/.test(password),
+      number: /[0-9]/.test(password)
+    };
+  }
+
+  function updatePasswordIndicators(validation: { length: boolean, letter: boolean, number: boolean }) {
+    const reqLength = document.getElementById('req-length');
+    const reqLetter = document.getElementById('req-letter');
+    const reqNumber = document.getElementById('req-number');
+
+    if (reqLength) {
+      reqLength.textContent = validation.length ? '✓' : '✗';
+      reqLength.className = `w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${validation.length ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-500'}`;
+    }
+    if (reqLetter) {
+      reqLetter.textContent = validation.letter ? '✓' : '✗';
+      reqLetter.className = `w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${validation.letter ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-500'}`;
+    }
+    if (reqNumber) {
+      reqNumber.textContent = validation.number ? '✓' : '✗';
+      reqNumber.className = `w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${validation.number ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-500'}`;
+    }
+  }
+
+  // Password input listener
+  document.getElementById('password')?.addEventListener('input', (e) => {
+    const password = (e.target as HTMLInputElement).value;
+    const validation = validatePassword(password);
+    updatePasswordIndicators(validation);
+  });
+
   // Toggle password visibility
   document.getElementById('toggle-password')?.addEventListener('click', () => {
     const password = document.getElementById('password') as HTMLInputElement;
@@ -254,6 +303,17 @@ import Layout from '../../components/Layout.astro';
     const errorDiv = document.getElementById('error-message');
     const errorText = errorDiv?.querySelector('p');
     const termsCheckbox = document.getElementById('terms') as HTMLInputElement;
+    const passwordInput = document.getElementById('password') as HTMLInputElement;
+
+    // Validate password
+    const password = passwordInput.value;
+    const validation = validatePassword(password);
+    
+    if (!validation.length || !validation.letter || !validation.number) {
+      if (errorText) errorText.textContent = 'Kata sandi harus minimal 8 karakter dan mengandung huruf serta angka';
+      errorDiv?.classList.remove('hidden');
+      return;
+    }
 
     if (!termsCheckbox.checked) {
       if (errorText) errorText.textContent = 'Anda harus menyetujui Syarat & Ketentuan';
