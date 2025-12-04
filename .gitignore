@@ -26,3 +26,14 @@ prisma/migrations/
 # IDE
 .vscode/
 .idea/
+
+# Ignore Cursor workspaceStorage image files inside assets
+assets/c__Users_Raihan_AppData_Roaming_Cursor_User_workspaceStorage*
+assets/c__Users_*_AppData_Roaming_Cursor_User_workspaceStorage_*_images_*.png
+
+# Keep the assets folder itself
+!assets/
+
+
+# Keep the assets folder itself
+!assets/

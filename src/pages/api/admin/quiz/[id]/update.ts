@@ -16,7 +16,7 @@ export const PUT: APIRoute = async ({ params, cookies, request }) => {
 
     const { id } = params;
     const body = await request.json();
-    const { title, description, timeLimit, quizType, attemptLimit, questions } = body;
+    const { title, description, timeLimit, quizType, attemptLimit, scoreReleaseMode, questions } = body;
 
     if (!title || !questions || questions.length === 0) {
       return new Response(JSON.stringify({ error: 'Title and questions are required' }), {
@@ -33,6 +33,7 @@ export const PUT: APIRoute = async ({ params, cookies, request }) => {
         questions: JSON.stringify(questions),
         quizType: quizType || 'latihan',
         attemptLimit: attemptLimit || null,
+        scoreReleaseMode: scoreReleaseMode || 'immediate',
         settings: JSON.stringify({
           description,
           timeLimit: timeLimit ? timeLimit * 60 : undefined

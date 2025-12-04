@@ -978,6 +978,70 @@ const allChapters = await prisma.chapter.findMany({
     return html;
   }
   
+  // Process markdown and LaTeX inside HTML block content
+  function processHtmlBlockContent(content) {
+    if (!content) return '';
+    
+    // Process display math blocks
+    const displayMathBlocks = [];
+    let processed = content.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
+      const cleanLatex = sanitizeLatex((latex || '').trim());
+      const placeholder = `\u200B\u200BDISPLAYMATH${displayMathBlocks.length}\u200B\u200B`;
+      displayMathBlocks.push(cleanLatex);
+      return placeholder;
+    });
+
+    // Process inline math
+    const inlineMathBlocks = [];
+    processed = processed.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (match, latex) => {
+      const cleanLatex = sanitizeLatex((latex || '').trim());
+      const placeholder = `\u200B\u200BINLINEMATH${inlineMathBlocks.length}\u200B\u200B`;
+      inlineMathBlocks.push(cleanLatex);
+      return placeholder;
+    });
+
+    // Process markdown inside the HTML block
+    let html;
+    try {
+      if (window.marked) {
+        window.marked.setOptions({
+          gfm: true,
+          breaks: true,
+          headerIds: false,
+          mangle: false
+        });
+        html = window.marked.parse(processed);
+      } else {
+        html = processed;
+      }
+    } catch (e) {
+      console.warn('Marked parse failed for HTML block:', e);
+      html = processed;
+    }
+
+    // Restore display math
+    displayMathBlocks.forEach((latex, index) => {
+      const escapedLatex = latex.replace(/"/g, '&quot;');
+      const mathDiv = `<div class="math-display" data-latex="${escapedLatex}"></div>`;
+      const placeholder = `\u200B\u200BDISPLAYMATH${index}\u200B\u200B`;
+      html = html.split(placeholder).join(mathDiv);
+      const escapedPlaceholder = placeholder.replace(/\u200B/g, '&#8203;');
+      html = html.split(escapedPlaceholder).join(mathDiv);
+    });
+
+    // Restore inline math
+    inlineMathBlocks.forEach((latex, index) => {
+      const escapedLatex = latex.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+      const mathSpan = `<span class="math-inline" data-latex="${escapedLatex}"></span>`;
+      const placeholder = `\u200B\u200BINLINEMATH${index}\u200B\u200B`;
+      html = html.split(placeholder).join(mathSpan);
+      const escapedPlaceholder = placeholder.replace(/\u200B/g, '&#8203;');
+      html = html.split(escapedPlaceholder).join(mathSpan);
+    });
+
+    return html;
+  }
+
   // Simple markdown renderer - returns {html, displayMathBlocks, inlineMathBlocks}
   function renderMarkdown(text) {
     if (!text) return {html: '', displayMathBlocks: [], inlineMathBlocks: []};
@@ -992,6 +1056,33 @@ const allChapters = await prisma.chapter.findMany({
       }
       return line;
     }).join('\n');
+
+    // CRITICAL: Extract and process HTML blocks BEFORE markdown parsing
+    // This prevents marked.js from treating content inside HTML blocks as code blocks
+    const htmlBlocks = [];
+    const htmlBlockClasses = ['definition-block', 'info-block', 'warning-block', 'tip-block', 'note-block', 'example-block'];
+    const classPattern = htmlBlockClasses.join('|');
+    
+    // Match HTML blocks with nested divs - use a balanced match approach
+    processed = processed.replace(new RegExp(`(<div\\s+class="(${classPattern})"[^>]*>)([\\s\\S]*?)(<\\/div>)`, 'gi'), (match, openTag, className, content, closeTag) => {
+      // Check if this is actually the matching closing tag (simple check)
+      // Count opening and closing divs in content
+      const openDivs = (content.match(/<div/gi) || []).length;
+      const closeDivs = (content.match(/<\/div>/gi) || []).length;
+      
+      // If content has balanced divs, this is likely the correct match
+      // Otherwise, we'll process what we have (marked.js will handle the rest)
+      if (openDivs === closeDivs || openDivs === 0) {
+        // Process markdown and LaTeX inside the HTML block
+        const processedContent = processHtmlBlockContent(content);
+        const placeholder = `\u200B\u200BHTMLBLOCK${htmlBlocks.length}\u200B\u200B`;
+        htmlBlocks.push(`${openTag}${processedContent}${closeTag}`);
+        return placeholder;
+      }
+      
+      // If divs aren't balanced, return original (let marked.js handle it)
+      return match;
+    });
 
     // Count LaTeX before processing (simple count, not exact)
     const displayMathCount = (processed.match(/\$\$[\s\S]*?\$\$/g) || []).length;
@@ -1038,6 +1129,65 @@ const allChapters = await prisma.chapter.findMany({
       console.warn('Marked parse failed:', e);
       html = processed;
     }
+
+    // Restore HTML blocks AFTER markdown parsing
+    htmlBlocks.forEach((blockHtml, index) => {
+      const placeholder = `\u200B\u200BHTMLBLOCK${index}\u200B\u200B`;
+      html = html.split(placeholder).join(blockHtml);
+      const escapedPlaceholder = placeholder.replace(/\u200B/g, '&#8203;');
+      html = html.split(escapedPlaceholder).join(blockHtml);
+    });
+
+    // Post-process: Find content divs inside HTML blocks and process their content
+    // This handles cases where marked.js wrapped content in <pre><code> tags
+    // Process definition-content, info-content, etc. divs specifically
+    const contentDivClasses = ['definition-content', 'info-content', 'warning-content', 'tip-content', 'note-content', 'example-content'];
+    const contentClassPattern = contentDivClasses.join('|');
+    
+    html = html.replace(new RegExp(`(<div\\s+class="(${contentClassPattern})"[^>]*>)([\\s\\S]*?)(<\\/div>)`, 'gi'), (match, openTag, className, content, closeTag) => {
+      // Check if content is wrapped in code blocks or contains unprocessed LaTeX
+      if (content.includes('<pre><code') || 
+          (content.includes('$$') && !content.includes('math-display')) || 
+          (content.includes('$') && !content.includes('math-inline') && !content.includes('math-display'))) {
+        
+        // Extract all content from <pre><code> blocks
+        let processedContent = content;
+        const codeBlockRegex = /<pre><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi;
+        let codeMatch;
+        
+        while ((codeMatch = codeBlockRegex.exec(content)) !== null) {
+          const codeContent = codeMatch[1];
+          // Decode HTML entities
+          const decodedContent = codeContent
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&amp;/g, '&')
+            .replace(/&quot;/g, '"')
+            .replace(/&#039;/g, "'")
+            .replace(/&nbsp;/g, ' ')
+            .replace(/<span[^>]*>/g, '') // Remove highlight.js spans
+            .replace(/<\/span>/g, '');
+          
+          // Process the decoded content
+          const processed = processHtmlBlockContent(decodedContent);
+          // Replace the code block with processed content
+          processedContent = processedContent.replace(codeMatch[0], processed);
+        }
+        
+        // If there are still code blocks or unprocessed LaTeX, process everything
+        if (processedContent.includes('<pre><code') || 
+            (processedContent.includes('$$') && !processedContent.includes('math-display')) ||
+            (processedContent.includes('$') && !processedContent.includes('math-inline') && !processedContent.includes('math-display'))) {
+          // Remove all code blocks and process the remaining content
+          const cleanedContent = processedContent.replace(/<pre><code[^>]*>[\s\S]*?<\/code><\/pre>/gi, '');
+          const finalProcessed = processHtmlBlockContent(cleanedContent);
+          processedContent = finalProcessed;
+        }
+        
+        return `${openTag}${processedContent}${closeTag}`;
+      }
+      return match;
+    });
 
     // Restore display math blocks AFTER markdown parsing
     displayMathBlocks.forEach((latex, index) => {

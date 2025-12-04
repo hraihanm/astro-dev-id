@@ -38,13 +38,18 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const result = calculateScore(quiz.questions, answers);
     result.timeSpent = timeSpent || 0;
 
+    // Determine if score should be released immediately
+    const scoreReleaseMode = quiz.scoreReleaseMode || 'immediate';
+    const scoreReleasedAt = scoreReleaseMode === 'immediate' ? new Date() : null;
+
     // Save quiz result
     await saveQuizResult({
       userId: parseInt(userId),
       quizId,
       answers,
       result,
-      timeSpent: result.timeSpent
+      timeSpent: result.timeSpent,
+      scoreReleasedAt
     });
 
     return new Response(JSON.stringify({

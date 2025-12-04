@@ -52,6 +52,7 @@ model Quiz {
   settings     String?
   quizType     String        @default("latihan") // "latihan" (unlimited), "tryout" (limited attempts)
   attemptLimit Int?          // null = unlimited, number = max attempts allowed
+  scoreReleaseMode String    @default("immediate") // "immediate" or "admin"
   createdAt    DateTime      @default(now())
   course       Course?       @relation(fields: [courseId], references: [id])
   chapter      Chapter?      @relation(fields: [chapterId], references: [id])
@@ -59,7 +60,7 @@ model Quiz {
 }
 
 model QuizAttempt {
-  id              Int      @id @default(autoincrement())
+  id              Int       @id @default(autoincrement())
   userId          Int
   quizId          Int
   answers         String
@@ -69,9 +70,10 @@ model QuizAttempt {
   percentage      Int
   timeSpent       Int
   detailedResults String
-  completedAt     DateTime @default(now())
-  user            User     @relation(fields: [userId], references: [id])
-  quiz            Quiz     @relation(fields: [quizId], references: [id])
+  completedAt     DateTime  @default(now())
+  scoreReleasedAt DateTime? // null = not released yet, DateTime = when admin released it
+  user            User      @relation(fields: [userId], references: [id])
+  quiz            Quiz      @relation(fields: [quizId], references: [id])
 }
 
 model Profile {
