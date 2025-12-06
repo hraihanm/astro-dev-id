@@ -327,6 +327,68 @@ const learningGoals = profile?.profile?.learningGoals || [];
           </div>
         </div>
 
+        <!-- Security -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+          <div class="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
+            <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+              <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0-1.105-.895-2-2-2s-2 .895-2 2 .895 2 2 2 2-.895 2-2zm0 0c0-1.105.895-2 2-2s2 .895 2 2-.895 2-2 2-2-.895-2-2zm-7 8a7 7 0 0114 0H5z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">Keamanan Akun</h3>
+              <p class="text-sm text-gray-500">Ubah kata sandi Anda</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-6">
+            <div>
+              <label for="currentPassword" class="block text-sm font-semibold text-gray-700 mb-2">
+                Kata Sandi Saat Ini
+              </label>
+              <input
+                type="password"
+                name="currentPassword"
+                id="currentPassword"
+                autocomplete="current-password"
+                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 focus:bg-white"
+                placeholder="••••••••"
+              />
+              <p class="mt-1.5 text-xs text-gray-500">Kosongkan jika belum pernah mengatur kata sandi.</p>
+            </div>
+
+            <div>
+              <label for="newPassword" class="block text-sm font-semibold text-gray-700 mb-2">
+                Kata Sandi Baru
+              </label>
+              <input
+                type="password"
+                name="newPassword"
+                id="newPassword"
+                autocomplete="new-password"
+                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 focus:bg-white"
+                placeholder="Minimal 8 karakter (huruf & angka)"
+              />
+            </div>
+
+            <div>
+              <label for="confirmNewPassword" class="block text-sm font-semibold text-gray-700 mb-2">
+                Konfirmasi Kata Sandi Baru
+              </label>
+              <input
+                type="password"
+                name="confirmNewPassword"
+                id="confirmNewPassword"
+                autocomplete="new-password"
+                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 focus:bg-white"
+                placeholder="Ulangi kata sandi baru"
+              />
+            </div>
+          </div>
+
+          <p class="mt-4 text-sm text-gray-500">Kata sandi baru harus minimal 8 karakter, mengandung huruf dan angka.</p>
+        </div>
+
         <!-- Submit Buttons -->
         <div class="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t border-gray-200">
           <a
@@ -355,6 +417,19 @@ const learningGoals = profile?.profile?.learningGoals || [];
 </Layout>
 
 <script>
+  function showToast(message: string, type: 'success' | 'error' = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `fixed top-4 right-4 ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white px-6 py-4 rounded-xl shadow-lg z-50 flex items-center gap-3 animate-slide-in`;
+    toast.innerHTML = `
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${type === 'success' ? 'M5 13l4 4L19 7' : 'M6 18L18 6M6 6l12 12'}"></path>
+      </svg>
+      <span>${message}</span>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), type === 'success' ? 3000 : 5000);
+  }
+
   document.getElementById('profile-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     
@@ -384,6 +459,64 @@ const learningGoals = profile?.profile?.learningGoals || [];
       timezone: formData.get('timezone'),
       language: formData.get('language')
     };
+
+    const currentPassword = (formData.get('currentPassword') as string || '').trim();
+    const newPassword = (formData.get('newPassword') as string || '').trim();
+    const confirmNewPassword = (formData.get('confirmNewPassword') as string || '').trim();
+
+    const hasPasswordChange = newPassword || confirmNewPassword || currentPassword;
+
+    if (hasPasswordChange) {
+      if (!newPassword) {
+        showToast('Kata sandi baru wajib diisi.', 'error');
+        if (saveBtn) {
+          saveBtn.innerHTML = `
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            Simpan Perubahan
+          `;
+          saveBtn.disabled = false;
+        }
+        return;
+      }
+
+      const hasLetter = /[a-zA-Z]/.test(newPassword);
+      const hasNumber = /[0-9]/.test(newPassword);
+
+      if (newPassword.length < 8 || !hasLetter || !hasNumber) {
+        showToast('Kata sandi baru harus minimal 8 karakter dan mengandung huruf serta angka.', 'error');
+        if (saveBtn) {
+          saveBtn.innerHTML = `
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            Simpan Perubahan
+          `;
+          saveBtn.disabled = false;
+        }
+        return;
+      }
+
+      if (newPassword !== confirmNewPassword) {
+        showToast('Konfirmasi kata sandi baru tidak cocok.', 'error');
+        if (saveBtn) {
+          saveBtn.innerHTML = `
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            Simpan Perubahan
+          `;
+          saveBtn.disabled = false;
+        }
+        return;
+      }
+
+      Object.assign(profileData, {
+        currentPassword: currentPassword || undefined,
+        newPassword
+      });
+    }
     
     try {
       const response = await fetch('/api/profile/update', {
@@ -407,17 +540,8 @@ const learningGoals = profile?.profile?.learningGoals || [];
           saveBtn.classList.add('from-green-600', 'to-green-700', 'hover:from-green-700', 'hover:to-green-800');
         }
         
-        // Show success notification
-        const successDiv = document.createElement('div');
-        successDiv.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-xl shadow-lg z-50 flex items-center gap-3 animate-slide-in';
-        successDiv.innerHTML = `
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-          </svg>
-          <span>Profil berhasil diperbarui!</span>
-        `;
-        document.body.appendChild(successDiv);
-        setTimeout(() => successDiv.remove(), 3000);
+        const result = await response.json();
+        showToast(result.passwordChanged ? 'Profil dan kata sandi berhasil diperbarui!' : 'Profil berhasil diperbarui!', 'success');
         
         setTimeout(() => {
           window.location.href = '/profile';
@@ -427,18 +551,7 @@ const learningGoals = profile?.profile?.learningGoals || [];
       }
     } catch (error) {
       console.error('Profile update error:', error);
-      
-      // Show error notification
-      const errorDiv = document.createElement('div');
-      errorDiv.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-4 rounded-xl shadow-lg z-50 flex items-center gap-3 animate-slide-in';
-      errorDiv.innerHTML = `
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-        <span>Gagal menyimpan profil. Silakan coba lagi.</span>
-      `;
-      document.body.appendChild(errorDiv);
-      setTimeout(() => errorDiv.remove(), 5000);
+      showToast('Gagal menyimpan profil. Silakan coba lagi.', 'error');
       
       if (saveBtn) {
         saveBtn.innerHTML = `

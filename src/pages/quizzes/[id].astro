@@ -1,5 +1,6 @@
 ---
 import Layout from '../../components/Layout.astro';
+import Icon from '../../components/icons/Icon.astro';
 import { renderMarkdown } from '../../lib/latex';
 import { getSessionUser } from '../../lib/auth-guard';
 import { prisma } from '../../lib/db';
@@ -10,6 +11,14 @@ const { id } = Astro.params;
 
 // Get logged in user
 const user = await getSessionUser(Astro.cookies);
+let classroomIds: number[] = [];
+if (user) {
+  const memberships = await prisma.classroomMembership.findMany({
+    where: { userId: user.id, status: 'ACTIVE' },
+    select: { classroomId: true }
+  });
+  classroomIds = memberships.map((m) => m.classroomId);
+}
 
 // Fetch quiz details directly from database
 let quiz: any = null;
@@ -23,7 +32,10 @@ try {
   
   // Use server-side import to get the quiz
   const { getQuiz } = await import('../../lib/quizzes');
-  const rawQuiz = await getQuiz(quizId);
+  const rawQuiz = await getQuiz(quizId, {
+    role: user?.role,
+    classroomIds
+  });
   
   // Check if quiz exists (can be standalone or course quiz)
   if (!rawQuiz) {
@@ -107,8 +119,9 @@ try {
           <div class="text-red-500 text-6xl mb-4">❌</div>
           <h2 class="text-2xl font-bold text-gray-900 mb-2">{error}</h2>
           <p class="text-gray-600 mb-4">The quiz you're looking for doesn't exist.</p>
-          <a href="/quizzes" class="text-blue-600 hover:text-blue-700">
-            ← Back to Practice Quizzes
+          <a href="/quizzes" class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700">
+            <Icon name="arrow-left" class="w-4 h-4" />
+            Back to Practice Quizzes
           </a>
         </div>
       </div>
@@ -123,12 +136,15 @@ try {
           <h2 class="text-2xl font-bold text-gray-900 mb-3">Batas Percobaan Tercapai</h2>
           <p class="text-gray-600 mb-2">Kamu sudah menggunakan semua kesempatan untuk kuis ini.</p>
           <div class="inline-flex items-center gap-2 bg-amber-50 px-4 py-2 rounded-lg text-amber-800 font-medium mb-6">
-            <span>📝</span>
+            <Icon name="pencil" class="w-4 h-4" />
             <span>Percobaan: {userAttemptCount} / {quiz.attemptLimit}</span>
           </div>
           {quiz.quizType === 'tryout' && (
             <div class="bg-slate-50 rounded-lg p-4 mb-6 text-left">
-              <h3 class="font-semibold text-slate-800 mb-2">💡 Tentang Try Out</h3>
+              <h3 class="flex items-center gap-2 font-semibold text-slate-800 mb-2">
+                <Icon name="lightbulb" class="w-4 h-4" />
+                <span>Tentang Try Out</span>
+              </h3>
               <p class="text-sm text-slate-600">
                 Kuis tipe Try Out memiliki batas percobaan untuk mensimulasikan kondisi ujian yang sebenarnya. 
                 Ini membantu kamu berlatih dengan tekanan waktu dan keterbatasan kesempatan.
@@ -143,7 +159,8 @@ try {
               Lihat Riwayat Hasil
             </a>
             <a href="/quizzes" class="inline-flex items-center justify-center gap-2 px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium transition-colors">
-              ← Kembali ke Daftar Kuis
+              <Icon name="arrow-left" class="w-4 h-4" />
+              Kembali ke Daftar Kuis
             </a>
           </div>
         </div>
@@ -164,8 +181,9 @@ try {
 
           <div class="space-y-8">
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <p class="text-blue-800 text-sm">
-                📝 <strong>Soal Essay:</strong> Ini adalah soal essay untuk latihan. Anda dapat membaca dan mengerjakan soal-soal berikut.
+              <p class="text-blue-800 text-sm inline-flex items-center gap-2">
+                <Icon name="pencil" class="w-4 h-4" />
+                <span><strong>Soal Essay:</strong> Ini adalah soal essay untuk latihan. Anda dapat membaca dan mengerjakan soal-soal berikut.</span>
               </p>
             </div>
             
@@ -199,9 +217,10 @@ try {
             <div class="mt-8 pt-6 border-t flex justify-between">
               <a
                 href="/quizzes"
-                class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700"
+                class="inline-flex items-center gap-2 px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700"
               >
-                ← Kembali ke Daftar Kuis
+                <Icon name="arrow-left" class="w-4 h-4" />
+                Kembali ke Daftar Kuis
               </a>
             </div>
           </div>
@@ -215,7 +234,7 @@ try {
           <div class="flex items-center justify-between max-w-7xl mx-auto">
             <div class="flex items-center space-x-2 sm:space-x-3 min-w-0">
               <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <span class="text-blue-600 text-lg sm:text-xl">📝</span>
+                <Icon name="pencil" class="w-5 h-5 text-blue-600" />
               </div>
               <div class="min-w-0">
                 <h1 class="text-base sm:text-xl font-bold text-slate-900 truncate">{quiz.title}</h1>
@@ -279,7 +298,7 @@ try {
             <!-- Question Grid & Legend Container -->
             <div class="p-4 sm:p-5">
               <h3 class="font-bold text-slate-700 text-xs mb-4 uppercase tracking-wider flex items-center gap-2">
-                <span>📋</span>
+                <Icon name="clipboard" class="w-4 h-4" />
                 <span>Nomor Soal</span>
               </h3>
               <div id="question-grid" class="grid grid-cols-5 gap-2 sm:gap-2.5 overflow-y-auto overflow-x-visible p-1 mb-4 max-h-[360px]">
@@ -322,7 +341,7 @@ try {
                 id="flag-btn"
                 class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border-2 border-amber-300 text-amber-700 rounded-lg hover:bg-amber-50 hover:border-amber-400 text-sm font-medium transition-all"
               >
-                <span>🚩</span>
+                <Icon name="flag" class="w-4 h-4" />
                 <span id="flag-text">Ragu-Ragu</span>
               </button>
               
@@ -344,14 +363,16 @@ try {
         
         <!-- Mobile Bottom Navigation -->
         <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 flex items-center justify-between gap-2 z-20">
-          <button id="mobile-prev-btn" class="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-            ← Sebelumnya
+          <button id="mobile-prev-btn" class="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+            <Icon name="arrow-left" class="w-4 h-4" />
+            <span>Sebelumnya</span>
           </button>
-          <button id="mobile-flag-btn" class="px-4 py-2 bg-white border border-amber-300 rounded-md text-amber-700 hover:bg-amber-50">
-            🚩
+          <button id="mobile-flag-btn" class="px-4 py-2 bg-white border border-amber-300 rounded-md text-amber-700 hover:bg-amber-50 inline-flex items-center justify-center">
+            <Icon name="flag" class="w-4 h-4" />
           </button>
-          <button id="mobile-next-btn" class="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
-            Selanjutnya →
+          <button id="mobile-next-btn" class="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
+            <span>Selanjutnya</span>
+            <Icon name="arrow-right" class="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -925,11 +946,14 @@ try {
 
     // Quiz state
     const PROGRESS_KEY = `quiz_progress_${id}`;
+    const arrowLeftSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>';
+    const arrowRightSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>';
     let currentQuestionIndex = 0;
     let answers = new Array(quiz.questions.length).fill(null);
     let flaggedQuestions = new Set();
     let startTime = Date.now();
     let timerInterval = null;
+    const totalTimeLimit = quiz.settings?.timeLimit || 0;
 
     // Load saved progress
     function loadProgress() {
@@ -1009,9 +1033,19 @@ try {
           const minutes = Math.floor((remainingTime % 3600) / 60);
           const seconds = remainingTime % 60;
           const timerDisplay = document.getElementById('timer-display');
+          const timerWrapper = document.getElementById('timer');
           if (timerDisplay) {
             timerDisplay.textContent = 
               `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+          }
+          if (timerWrapper && totalTimeLimit > 0) {
+            const critical = remainingTime <= 60 || remainingTime <= Math.ceil(totalTimeLimit * 0.1);
+            timerWrapper.classList.toggle('bg-rose-50', critical);
+            timerWrapper.classList.toggle('border-rose-200', critical);
+            timerWrapper.classList.toggle('bg-slate-50', !critical);
+            timerWrapper.classList.toggle('border-slate-200', !critical);
+            timerDisplay?.classList.toggle('text-rose-700', critical);
+            timerDisplay?.classList.toggle('text-slate-800', !critical);
           }
         };
         
@@ -1022,7 +1056,7 @@ try {
           
           if (remainingTime <= 0) {
             clearInterval(timerInterval);
-            submitQuiz();
+            submitQuiz('time_up');
             return;
           }
 
@@ -1176,10 +1210,11 @@ try {
         <button
           type="button"
           id="prev-btn-main"
-          class="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           ${currentQuestionIndex === 0 ? 'disabled' : ''}
         >
-          ← Sebelumnya
+          ${arrowLeftSvg}
+          <span>Sebelumnya</span>
         </button>
         
         <span class="text-gray-700 font-medium">
@@ -1189,9 +1224,10 @@ try {
         <button
           type="button"
           id="next-btn-main"
-          class="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          ${currentQuestionIndex === quiz.questions.length - 1 ? 'Selesai ✓' : 'Selanjutnya →'}
+          <span>${currentQuestionIndex === quiz.questions.length - 1 ? 'Selesai' : 'Selanjutnya'}</span>
+          ${arrowRightSvg}
         </button>
       `;
 
@@ -1202,8 +1238,9 @@ try {
             <div class="flex items-center justify-between">
               <span class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Pertanyaan</span>
               ${isComplex ? `
-                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-purple-100 text-purple-700 border border-purple-200">
-                  🔣 Pilihan Ganda Kompleks
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-purple-100 text-purple-700 border border-purple-200">
+                  <Icon name="puzzle" class="w-3.5 h-3.5" />
+                  Pilihan Ganda Kompleks
                 </span>
               ` : ''}
             </div>
@@ -1242,8 +1279,7 @@ try {
         if (currentQuestionIndex < quiz.questions.length - 1) {
           goToQuestion(currentQuestionIndex + 1);
         } else {
-          // On last question, "Selesai" button goes to next or shows completion
-          goToQuestion(currentQuestionIndex + 1);
+          submitQuiz('manual');
         }
       };
 
@@ -1318,7 +1354,8 @@ try {
 
     // Navigation functions
     function goToQuestion(index) {
-      currentQuestionIndex = index;
+      const clampedIndex = Math.max(0, Math.min(index, quiz.questions.length - 1));
+      currentQuestionIndex = clampedIndex;
       renderQuestion();
       renderQuestionGrid();
       // Scroll main area to top
@@ -1352,10 +1389,10 @@ try {
           return;
         }
       }
-      submitQuiz();
+      submitQuiz('manual');
     };
 
-    async function submitQuiz() {
+    async function submitQuiz(endReason = 'manual') {
       if (timerInterval) clearInterval(timerInterval);
       
       const timeSpent = Math.floor((Date.now() - startTime) / 1000);
@@ -1370,7 +1407,8 @@ try {
               questionId: index,
               answer: answer === null ? [] : (Array.isArray(answer) ? answer : [answer])
             })),
-            timeSpent
+            timeSpent,
+            endReason
           })
         });
         
@@ -1488,6 +1526,8 @@ try {
     mobileNextBtn?.addEventListener('click', () => {
       if (currentQuestionIndex < quiz.questions.length - 1) {
         goToQuestion(currentQuestionIndex + 1);
+      } else {
+        submitQuiz('manual');
       }
     });
     
@@ -1509,7 +1549,10 @@ try {
         mobilePrevBtn.disabled = currentQuestionIndex === 0;
       }
       if (mobileNextBtn) {
-        mobileNextBtn.textContent = currentQuestionIndex === quiz.questions.length - 1 ? 'Selesai ✓' : 'Next →';
+        const labelSpan = mobileNextBtn.querySelector('span');
+        if (labelSpan) {
+          labelSpan.textContent = currentQuestionIndex === quiz.questions.length - 1 ? 'Selesai' : 'Next';
+        }
       }
     }
     

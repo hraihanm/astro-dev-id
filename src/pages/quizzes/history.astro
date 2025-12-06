@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import Layout from '../../components/Layout.astro';
+import Icon from '../../components/icons/Icon.astro';
 import { getSessionUser } from '../../lib/auth-guard';
 import { prisma } from '../../lib/db';
 
@@ -63,21 +64,85 @@ function getScoreColor(percentage: number): string {
   if (percentage >= 40) return 'amber';
   return 'red';
 }
+
+const clientAttempts = attempts.map((a) => ({
+  id: a.id,
+  quizId: a.quizId,
+  quizTitle: a.quiz.title,
+  courseTitle: a.quiz.course?.title || null,
+  percentage: a.scoreReleasedAt ? a.percentage : null,
+  correctAnswers: a.scoreReleasedAt ? a.correctAnswers : null,
+  totalQuestions: a.totalQuestions,
+  timeSpent: a.scoreReleasedAt ? a.timeSpent : null,
+  completedAt: a.completedAt,
+  scoreReleasedAt: a.scoreReleasedAt
+}));
+
+const attemptsSorted = [...clientAttempts].sort((a, b) => b.completedAt.getTime() - a.completedAt.getTime());
+
+const pendingCount = attempts.filter((a) => !a.scoreReleasedAt).length;
+const releasedAttempts = attempts.filter((a) => a.scoreReleasedAt);
+const averageScore = releasedAttempts.length > 0
+  ? Math.round(releasedAttempts.reduce((sum, a) => sum + (a.percentage || 0), 0) / releasedAttempts.length)
+  : null;
+const lastAttemptDate = attemptsSorted[0]?.completedAt || null;
 ---
 
 <Layout title="Riwayat Ujian">
-  <div class="min-h-screen bg-gradient-to-b from-slate-50 to-white py-8">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+  <div class="min-h-screen bg-gradient-to-b from-slate-50 via-white to-white py-10">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
       <!-- Header -->
-      <div class="mb-8">
-        <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Riwayat Ujian</h1>
-        <p class="text-slate-600">Lihat dan kelola semua percobaan ujian Anda</p>
+      <div class="flex flex-col gap-6">
+        <div class="flex flex-col gap-2">
+          <p class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-blue-600">
+            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+            Riwayat Ujian
+          </p>
+          <div class="flex flex-col gap-2">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-900">Pantau progres ujian Anda</h1>
+            <p class="text-slate-600 max-w-2xl">Lihat hasil, status skor yang belum dirilis, dan kelola percobaan ujian Anda.</p>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-4 flex items-center gap-3 shadow-sm">
+            <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
+              <Icon name="bar-chart" class="w-5 h-5" />
+            </div>
+            <div>
+              <p class="text-xs uppercase tracking-wide text-blue-700 font-semibold">Total percobaan</p>
+              <p class="text-2xl font-bold text-slate-900">{attempts.length}</p>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-amber-100 bg-amber-50/70 px-4 py-4 flex items-center gap-3 shadow-sm">
+            <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+              <Icon name="clock" class="w-5 h-5" />
+            </div>
+            <div>
+              <p class="text-xs uppercase tracking-wide text-amber-700 font-semibold">Menunggu skor</p>
+              <p class="text-2xl font-bold text-slate-900">{pendingCount}</p>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-4 flex items-center gap-3 shadow-sm">
+            <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+              <Icon name="target" class="w-5 h-5" />
+            </div>
+            <div>
+              <p class="text-xs uppercase tracking-wide text-emerald-700 font-semibold">Skor rata-rata</p>
+              <p class="text-2xl font-bold text-slate-900">{averageScore !== null ? `${averageScore}%` : '—'}</p>
+              {lastAttemptDate && <p class="text-xs text-slate-500">Terakhir: {formatDate(lastAttemptDate)}</p>}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {Object.keys(groupedAttempts).length === 0 ? (
+      {attempts.length === 0 ? (
         <div class="bg-white rounded-xl border border-slate-200 p-12 text-center">
           <div class="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
-            <span class="text-3xl">📝</span>
+            <Icon name="pencil" class="w-6 h-6 text-slate-500" />
           </div>
           <h3 class="text-lg font-bold text-slate-900 mb-2">Belum ada riwayat</h3>
           <p class="text-slate-500 mb-6">Anda belum menyelesaikan ujian apapun.</p>
@@ -86,72 +151,88 @@ function getScoreColor(percentage: number): string {
           </a>
         </div>
       ) : (
-        <div class="space-y-6">
-          {Object.values(groupedAttempts).map(({ quiz, attempts }) => (
-            <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-              <!-- Quiz Header -->
-              <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                    <span class="text-lg">📝</span>
-                  </div>
-                  <div>
-                    <h2 class="font-bold text-slate-900">{quiz.title}</h2>
-                    {quiz.course && (
-                      <p class="text-sm text-slate-500">{quiz.course.title}</p>
-                    )}
-                  </div>
-                </div>
-                <a 
-                  href={`/quizzes/${quiz.id}`}
-                  class="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-                >
-                  Coba Lagi
-                </a>
-              </div>
-              
-              <!-- Attempts List -->
-              <div class="divide-y divide-slate-100">
-                {attempts.map((attempt, index) => {
-                  const scoreColor = getScoreColor(attempt.percentage);
+        <>
+          <div class="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 mb-4 flex flex-wrap gap-3 items-center shadow-sm">
+            <div class="flex items-center gap-2 text-sm text-slate-700 font-semibold">
+              <Icon name="filter" class="w-4 h-4" />
+              <span>Kelompok</span>
+              <select id="group-by" class="border border-slate-200 rounded-lg text-sm px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
+                <option value="none">Tidak ada</option>
+                <option value="quiz">Judul kuis</option>
+                <option value="month">Bulan</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2 text-sm text-slate-700 font-semibold">
+              <Icon name="settings-sliders" class="w-4 h-4" />
+              <span>Urutkan</span>
+              <select id="sort-by" class="border border-slate-200 rounded-lg text-sm px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
+                <option value="recent">Terbaru</option>
+                <option value="oldest">Terlama</option>
+                <option value="score">Skor tertinggi</option>
+                <option value="name">Nama kuis</option>
+              </select>
+            </div>
+            <div class="ml-auto flex items-center gap-2 text-xs sm:text-sm text-amber-700 bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-lg">
+              <Icon name="clock" class="w-4 h-4" />
+              <span>Menunggu skor disorot</span>
+            </div>
+          </div>
+
+          <div id="attempt-groups" class="space-y-6">
+            <section class="space-y-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {attemptsSorted.map((a) => {
+                  const isPending = !a.scoreReleasedAt;
+                  const scoreColor = !isPending ? getScoreColor(a.percentage) : 'amber';
+                  const statusBadge = !isPending
+                    ? <span class={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-${scoreColor}-50 text-${scoreColor}-700 border border-${scoreColor}-200 whitespace-nowrap`}>{a.percentage}%</span>
+                    : <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200 whitespace-nowrap shadow-[0_0_0_1px_rgba(251,191,36,0.4)]"><Icon name="clock" class="w-3.5 h-3.5" />Menunggu skor</span>;
+                  const timeLabel = a.timeSpent != null ? formatTime(a.timeSpent) : '—';
+
                   return (
-                    <div class="px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors group">
-                      <div class="flex items-center gap-4">
-                        <!-- Attempt Number -->
-                        <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-600">
-                          {attempts.length - index}
+                    <div class="border border-slate-200 rounded-2xl p-4 bg-white shadow-sm hover:shadow-lg transition-all flex flex-col gap-3">
+                      <div class="flex items-start justify-between gap-3">
+                        <div class="space-y-1">
+                          <p class="text-sm font-semibold text-slate-900 leading-snug">{a.quizTitle}</p>
+                          {a.courseTitle && <p class="text-xs text-slate-500">{a.courseTitle}</p>}
                         </div>
-                        
-                        <!-- Attempt Info -->
-                        <div>
-                          <div class="flex items-center gap-2">
-                            <span class={`text-xl font-bold text-${scoreColor}-600`}>
-                              {attempt.percentage}%
-                            </span>
-                            <span class="text-slate-400">•</span>
-                            <span class="text-sm text-slate-600">
-                              {attempt.correctAnswers}/{attempt.totalQuestions} benar
-                            </span>
-                          </div>
-                          <div class="flex items-center gap-3 text-sm text-slate-500 mt-0.5">
-                            <span>⏱️ {formatTime(attempt.timeSpent)}</span>
-                            <span>📅 {formatDate(attempt.completedAt)}</span>
-                          </div>
-                        </div>
+                        {statusBadge}
                       </div>
-                      
-                      <!-- Actions -->
-                      <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <a 
-                          href={`/quizzes/${quiz.id}/review/${attempt.id}`}
-                          class="px-3 py-1.5 text-sm font-medium text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors"
-                        >
+                      {isPending ? (
+                        <p class="text-sm text-amber-700 flex items-center gap-2">
+                          <Icon name="clock" class="w-4 h-4" />
+                          Skor belum dirilis
+                        </p>
+                      ) : (
+                        <div class="flex items-center gap-2 text-sm text-slate-600">
+                          <span class="inline-flex items-center gap-1">
+                            <Icon name="target" class="w-4 h-4 text-slate-400" />
+                            {a.correctAnswers}/{a.totalQuestions} benar
+                          </span>
+                          <span class="text-slate-400">•</span>
+                          <span class="inline-flex items-center gap-1">
+                            <Icon name="clock" class="w-4 h-4 text-slate-400" />
+                            {timeLabel}
+                          </span>
+                        </div>
+                      )}
+                      <div class="flex items-center gap-2 text-xs text-slate-500">
+                        <span class="inline-flex items-center gap-1">
+                          <Icon name="calendar" class="w-3.5 h-3.5 text-slate-400" />
+                          {formatDate(a.completedAt)}
+                        </span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <a href={`/quizzes/${a.quizId}/review/${a.id}`} class="inline-flex items-center justify-center px-3 py-2 text-sm font-semibold rounded-lg transition-colors text-emerald-700 bg-emerald-50 hover:bg-emerald-100">
                           Tinjau
                         </a>
+                        <a href={`/quizzes/${a.quizId}/results?score=${!isPending ? a.percentage || 0 : 0}`} class={`inline-flex items-center justify-center px-3 py-2 text-sm font-semibold rounded-lg transition-colors ${isPending ? 'bg-blue-50 text-blue-700 opacity-60 pointer-events-none' : 'text-blue-700 bg-blue-50 hover:bg-blue-100'}`}>
+                          Lihat hasil
+                        </a>
                         <button
-                          class="delete-attempt-btn px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
-                          data-id={attempt.id}
-                          data-quiz={quiz.title}
+                          class="delete-attempt-btn ml-auto px-3 py-2 text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                          data-id={a.id}
+                          data-quiz={a.quizTitle}
                         >
                           Hapus
                         </button>
@@ -160,39 +241,187 @@ function getScoreColor(percentage: number): string {
                   );
                 })}
               </div>
-            </div>
-          ))}
-        </div>
+            </section>
+          </div>
+        </>
       )}
     </div>
   </div>
 </Layout>
 
-<script>
-  document.querySelectorAll('.delete-attempt-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const attemptId = btn.dataset.id;
-      const quizName = btn.dataset.quiz;
-      
-      if (!confirm(`Hapus percobaan ini dari "${quizName}"? Tindakan ini tidak dapat dibatalkan.`)) {
-        return;
-      }
-      
-      try {
-        const response = await fetch(`/api/quiz/attempt/${attemptId}/delete`, {
-          method: 'DELETE'
-        });
-        
-        if (response.ok) {
-          window.location.reload();
-        } else {
-          const result = await response.json();
-          alert('Gagal menghapus: ' + (result.error || 'Kesalahan tidak dikenal'));
-        }
-      } catch (error) {
-        alert('Gagal menghapus percobaan');
-      }
+<script define:vars={{ clientAttempts }}>
+  const attemptData = clientAttempts;
+
+  const groupSelect = document.getElementById('group-by');
+  const sortSelect = document.getElementById('sort-by');
+  const container = document.getElementById('attempt-groups');
+
+  function getScoreColorClient(percentage) {
+    if (percentage >= 80) return 'emerald';
+    if (percentage >= 60) return 'blue';
+    if (percentage >= 40) return 'amber';
+    return 'red';
+  }
+
+  function formatDate(dateStr) {
+    const d = new Date(dateStr);
+    return d.toLocaleString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     });
-  });
+  }
+
+  function formatTime(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (hours > 0) return `${hours}j ${minutes}m ${secs}d`;
+    return `${minutes}m ${secs}d`;
+  }
+
+  function sortAttempts(data, sortBy) {
+    const sorted = [...data];
+    if (sortBy === 'recent') sorted.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+    if (sortBy === 'oldest') sorted.sort((a, b) => new Date(a.completedAt) - new Date(b.completedAt));
+    if (sortBy === 'score') sorted.sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
+    if (sortBy === 'name') sorted.sort((a, b) => a.quizTitle.localeCompare(b.quizTitle));
+    return sorted;
+  }
+
+  function groupAttempts(data, groupBy) {
+    if (groupBy === 'quiz') {
+      const map = {};
+      data.forEach((a) => {
+        if (!map[a.quizTitle]) map[a.quizTitle] = [];
+        map[a.quizTitle].push(a);
+      });
+      return Object.entries(map).map(([label, items]) => ({ label, items }));
+    }
+    if (groupBy === 'month') {
+      const map = {};
+      data.forEach((a) => {
+        const d = new Date(a.completedAt);
+        const label = d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+        if (!map[label]) map[label] = [];
+        map[label].push(a);
+      });
+      return Object.entries(map).map(([label, items]) => ({ label, items }));
+    }
+    return [{ label: null, items: data }];
+  }
+
+  function render() {
+    if (!container) return;
+    if (!attemptData || attemptData.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+    const grouped = groupAttempts(sortAttempts(attemptData, sortSelect.value), groupSelect.value);
+
+    container.innerHTML = grouped.map(({ label, items }) => {
+      const header = label ? `<div class="flex items-center gap-2 mb-3 text-sm font-semibold text-slate-700">
+        <span>${label}</span>
+        <span class="text-xs text-slate-500 font-normal">(${items.length} percobaan)</span>
+      </div>` : '';
+
+      const cards = items.map((a) => {
+        const isPending = !a.scoreReleasedAt;
+        const scoreColor = isPending ? 'amber' : getScoreColorClient(a.percentage);
+        const statusBadge = isPending
+          ? `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200 whitespace-nowrap shadow-[0_0_0_1px_rgba(251,191,36,0.4)]">⏳ Menunggu skor</span>`
+          : `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-${scoreColor}-50 text-${scoreColor}-700 border border-${scoreColor}-200 whitespace-nowrap">${a.percentage}%</span>`;
+        const timeLabel = a.timeSpent != null ? formatTime(a.timeSpent) : '—';
+
+        const stats = isPending
+          ? `<p class="text-sm text-amber-700 flex items-center gap-2">⏳ Skor belum dirilis</p>`
+          : `<div class="flex items-center gap-2 text-sm text-slate-600">
+              <span>${a.correctAnswers}/${a.totalQuestions} benar</span>
+              <span class="text-slate-400">•</span>
+              <span>${timeLabel}</span>
+            </div>`;
+
+        const reviewClass = 'inline-flex items-center justify-center px-3 py-2 text-sm font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors';
+
+        const resultsClass = isPending
+          ? 'inline-flex items-center justify-center px-3 py-2 text-sm font-semibold rounded-lg bg-blue-50 text-blue-700 opacity-60 pointer-events-none'
+          : 'inline-flex items-center justify-center px-3 py-2 text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors';
+
+        return `
+          <div class="border border-slate-200 rounded-xl p-4 bg-white shadow-sm hover:shadow-md transition-all flex flex-col gap-3">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="text-sm font-semibold text-slate-900">${a.quizTitle}</p>
+                ${a.courseTitle ? `<p class="text-xs text-slate-500">${a.courseTitle}</p>` : ''}
+              </div>
+              ${statusBadge}
+            </div>
+            ${stats}
+            <div class="flex items-center gap-2 text-xs text-slate-500">
+              <span>${formatDate(a.completedAt)}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <a href="/quizzes/${a.quizId}/review/${a.id}" class="${reviewClass}">Tinjau</a>
+              <a href="/quizzes/${a.quizId}/results?score=${a.percentage || 0}" class="${resultsClass}">
+                Lihat hasil
+              </a>
+              <button
+                class="delete-attempt-btn ml-auto px-3 py-2 text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                data-id="${a.id}"
+                data-quiz="${a.quizTitle}"
+              >
+                Hapus
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <section class="space-y-3">
+          ${header}
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            ${cards}
+          </div>
+        </section>
+      `;
+    }).join('');
+
+    bindDelete();
+  }
+
+  function bindDelete() {
+    container.querySelectorAll('.delete-attempt-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const attemptId = btn.dataset.id;
+        const quizName = btn.dataset.quiz;
+        
+        if (!confirm(`Hapus percobaan ini dari "${quizName}"? Tindakan ini tidak dapat dibatalkan.`)) {
+          return;
+        }
+        
+        try {
+          const response = await fetch(`/api/quiz/attempt/${attemptId}/delete`, {
+            method: 'DELETE'
+          });
+          
+          if (response.ok) {
+            window.location.reload();
+          } else {
+            const result = await response.json();
+            alert('Gagal menghapus: ' + (result.error || 'Kesalahan tidak dikenal'));
+          }
+        } catch (error) {
+          alert('Gagal menghapus percobaan');
+        }
+      });
+    });
+  }
+
+  groupSelect?.addEventListener('change', render);
+  sortSelect?.addEventListener('change', render);
+  render();
 </script>
 

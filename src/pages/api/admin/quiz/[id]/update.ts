@@ -47,7 +47,18 @@ export const PUT: APIRoute = async ({ params, cookies, request }) => {
 
     const { id } = params;
     const body = await request.json();
-    const { title, description, timeLimit, quizType, attemptLimit, scoreReleaseMode, questions } = body;
+    const {
+      title,
+      description,
+      timeLimit,
+      quizType,
+      attemptLimit,
+      scoreReleaseMode,
+      questions,
+      visibility,
+      courseId: rawCourseId,
+      chapterId: rawChapterId
+    } = body;
 
     if (!title || !questions || questions.length === 0) {
       return new Response(JSON.stringify({ error: 'Title and questions are required' }), {
@@ -64,19 +75,63 @@ export const PUT: APIRoute = async ({ params, cookies, request }) => {
       });
     }
 
-    // Update quiz
+    const vis = visibility?.toString().toUpperCase();
+    const mappedVisibility = vis === 'PRIVATE' ? 'PRIVATE' : 'PUBLIC';
+
+    const parsedCourseId = rawCourseId !== undefined && rawCourseId !== null ? parseInt(rawCourseId) : null;
+    const parsedChapterId = rawChapterId !== undefined && rawChapterId !== null ? parseInt(rawChapterId) : null;
+
+    let courseId: number | null = Number.isFinite(parsedCourseId as any) ? (parsedCourseId as number) : null;
+    let chapterId: number | null = Number.isFinite(parsedChapterId as any) ? (parsedChapterId as number) : null;
+
+    if (chapterId !== null) {
+      const chapter = await prisma.chapter.findUnique({
+        where: { id: chapterId },
+        select: { id: true, courseId: true }
+      });
+
+      if (!chapter) {
+        return new Response(JSON.stringify({ error: 'Invalid chapterId' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      if (courseId === null) {
+        courseId = chapter.courseId;
+      } else if (courseId !== chapter.courseId) {
+        return new Response(JSON.stringify({ error: 'chapterId does not belong to courseId' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    if (courseId !== null) {
+      const courseExists = await prisma.course.findUnique({ where: { id: courseId } });
+      if (!courseExists) {
+        return new Response(JSON.stringify({ error: 'Invalid courseId' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     const quiz = await prisma.quiz.update({
       where: { id: parseInt(id!) },
       data: {
         title,
+        courseId,
+        chapterId,
         questions: JSON.stringify(questions),
         quizType: quizType || 'latihan',
-        attemptLimit: attemptLimit || null,
+        attemptLimit: attemptLimit ?? null,
         scoreReleaseMode: scoreReleaseMode || 'immediate',
         settings: JSON.stringify({
           description,
           timeLimit: timeLimit ? timeLimit * 60 : undefined
-        })
+        }),
+        visibility: mappedVisibility
       }
     });
 

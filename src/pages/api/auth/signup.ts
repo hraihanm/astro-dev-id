@@ -3,7 +3,7 @@ import { createUser, getUserByEmail } from '../../../lib/users';
 
 export const prerender = false;
 
-export const POST: APIRoute = async ({ request, redirect }) => {
+export const POST: APIRoute = async ({ request, redirect, cookies }) => {
   try {
     let email: string | undefined;
     let password: string | undefined;
@@ -33,8 +33,17 @@ export const POST: APIRoute = async ({ request, redirect }) => {
       school = formData.get('school')?.toString();
     }
 
+    const isEmailValid = email ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) : false;
+
     if (!email || !password || !fullName || !nickname || !grade || !school) {
       return new Response(JSON.stringify({ error: 'All fields are required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (!isEmailValid) {
+      return new Response(JSON.stringify({ error: 'Email is not valid' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -50,17 +59,29 @@ export const POST: APIRoute = async ({ request, redirect }) => {
     }
 
     // Create new user
-    await createUser({ email, password, fullName, nickname, grade, school });
+    const newUser = await createUser({ email, password, fullName, nickname, grade, school });
+
+    // Automatically sign in by setting the same session cookie used by /api/auth/signin
+    cookies.set('user_id', newUser.id.toString(), {
+      path: '/',
+      httpOnly: true,
+      secure: import.meta.env.PROD,
+      maxAge: 60 * 60 * 24 * 7 // 7 days
+    });
 
     // Return success response for JSON requests, redirect for form submissions
     if (contentType.includes('application/json')) {
-      return new Response(JSON.stringify({ success: true, message: 'Account created successfully' }), {
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Account created successfully',
+        user: { id: newUser.id, email: newUser.email, role: newUser.role }
+      }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    return redirect('/auth/signin');
+    return redirect('/dashboard');
   } catch (error) {
     console.error('Signup error:', error);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {

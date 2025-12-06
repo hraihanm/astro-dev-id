@@ -80,12 +80,14 @@ export const POST: APIRoute = async ({ request, redirect, cookies }) => {
     let description: string | undefined;
     let slug: string | undefined;
     let chapters: string[] = [];
+    let visibility: string | undefined;
 
     if (isJson) {
       const body = await request.json();
       title = body.title?.toString();
       description = body.description?.toString();
       slug = body.slug?.toString();
+      visibility = body.visibility?.toString().toUpperCase();
       if (Array.isArray(body.chapters)) {
         chapters = body.chapters.map((c: any) => c?.toString()).filter(Boolean);
       }
@@ -95,6 +97,7 @@ export const POST: APIRoute = async ({ request, redirect, cookies }) => {
       description = formData.get('description')?.toString();
       slug = formData.get('slug')?.toString();
       chapters = formData.getAll('chapters[]').map((c) => c.toString());
+      visibility = formData.get('visibility')?.toString().toUpperCase();
     }
 
     if (!title || !slug) {
@@ -118,6 +121,7 @@ export const POST: APIRoute = async ({ request, redirect, cookies }) => {
       title,
       description,
       slug,
+      visibility: visibility === 'PRIVATE' ? 'PRIVATE' : 'PUBLIC',
       createdBy: parseInt(auth.userId || 0)
     });
 

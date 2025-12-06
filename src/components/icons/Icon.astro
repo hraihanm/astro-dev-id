@@ -1,0 +1,355 @@
+---
+type PathDef = {
+  d: string;
+  strokeLinecap?: 'round' | 'butt' | 'square';
+  strokeLinejoin?: 'round' | 'miter' | 'bevel';
+  fillRule?: 'evenodd' | 'nonzero';
+  clipRule?: 'evenodd' | 'nonzero';
+  fill?: string;
+};
+
+type CircleDef = {
+  cx: number;
+  cy: number;
+  r: number;
+};
+
+type IconDef = {
+  viewBox: string;
+  paths: PathDef[];
+  circles?: CircleDef[];
+  defaultStrokeWidth?: number;
+};
+
+const icons = {
+  'book-stack': {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M12 6.253v13' },
+      { d: 'M12 6.253C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253' },
+      { d: 'M12 6.253C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' }
+    ]
+  },
+  classroom: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M12 14l9-5-9-5-9 5 9 5z' },
+      { d: 'M12 14v7' }
+    ]
+  },
+  puzzle: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M20 13v-2a2 2 0 00-2-2h-1V7a2 2 0 00-2-2h-2a2 2 0 11-4 0H7a2 2 0 00-2 2v2h1a2 2 0 110 4H5v2a2 2 0 002 2h2v-1a2 2 0 114 0v1h2a2 2 0 002-2v-2h1a2 2 0 002-2z' }
+    ]
+  },
+  clipboard: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2' },
+      { d: 'M9 5a2 2 0 002 2h2a2 2 0 002-2' },
+      { d: 'M9 5a2 2 0 012-2h2a2 2 0 012 2' }
+    ]
+  },
+  note: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M7 3a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V9.414a2 2 0 00-.586-1.414l-4.414-4.414A2 2 0 0012.586 3H7z' },
+      { d: 'M13 3v4a1 1 0 001 1h4' },
+      { d: 'M9 13h6' },
+      { d: 'M9 17h6' }
+    ]
+  },
+  bookmark: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M7 3h10a2 2 0 012 2v14l-7-3-7 3V5a2 2 0 012-2z' }
+    ],
+    defaultStrokeWidth: 1.8
+  },
+  users: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M12 4.354a4 4 0 110 5.292' },
+      { d: 'M15 21H3v-1a6 6 0 0112 0v1z' },
+      { d: 'M15 21h6v-1a6 6 0 00-9-5.197' },
+      { d: 'M13 7a4 4 0 11-8 0 4 4 0 018 0z' }
+    ]
+  },
+  user: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M12 12a5 5 0 100-10 5 5 0 000 10z' },
+      { d: 'M5 20a7 7 0 0114 0' }
+    ]
+  },
+  dashboard: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M4 20V10' },
+      { d: 'M10 20V4' },
+      { d: 'M16 20v-8' },
+      { d: 'M3 20h18' }
+    ]
+  },
+  'settings-sliders': {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M4 6h16', strokeLinecap: 'round' },
+      { d: 'M4 12h16', strokeLinecap: 'round' },
+      { d: 'M4 18h16', strokeLinecap: 'round' }
+    ],
+    circles: [
+      { cx: 14, cy: 6, r: 2 },
+      { cx: 8, cy: 12, r: 2 },
+      { cx: 16, cy: 18, r: 2 }
+    ]
+  },
+  logout: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M15 12H3', strokeLinecap: 'round' },
+      { d: 'M11 8l4 4-4 4', strokeLinecap: 'round', strokeLinejoin: 'round' },
+      { d: 'M13 3h6a2 2 0 012 2v14a2 2 0 01-2 2h-6', strokeLinecap: 'round', strokeLinejoin: 'round' }
+    ]
+  },
+  pencil: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M4 20h4l10.5-10.5a2.828 2.828 0 10-4-4L4 16v4z' },
+      { d: 'M13.5 6.5l4 4' }
+    ]
+  },
+  lightbulb: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M9 18h6' },
+      { d: 'M10 22h4' },
+      { d: 'M12 2a7 7 0 017 7c0 2.3-1.2 4.3-3 5.5-.7.5-1 1.2-1 2v1h-6v-1c0-.8-.4-1.5-1-2A6.97 6.97 0 015 9a7 7 0 017-7z' }
+    ]
+  },
+  flag: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M5 5v16' },
+      { d: 'M5 5h10l-1.5 4L15 13H5' }
+    ]
+  },
+  rocket: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M5 14l-1 5 5-1 9-9a4 4 0 00-5.657-5.657L5 14z' },
+      { d: 'M14 9l1 1' },
+      { d: 'M9 15l-2-2' },
+      { d: 'M16 5l3 3' },
+      { d: 'M10 19s0 3 2 3 2-3 2-3' }
+    ]
+  },
+  'bar-chart': {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M4 20V8', strokeLinecap: 'round' },
+      { d: 'M10 20V4', strokeLinecap: 'round' },
+      { d: 'M16 20v-6', strokeLinecap: 'round' },
+      { d: 'M3 20h18', strokeLinecap: 'round' }
+    ]
+  },
+  document: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M7 3h7l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z' },
+      { d: 'M14 3v6h6' }
+    ]
+  },
+  globe: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M12 21a9 9 0 100-18 9 9 0 000 18z' },
+      { d: 'M2 12h20' },
+      { d: 'M12 3a15.3 15.3 0 010 18' },
+      { d: 'M12 3a15.3 15.3 0 000 18' }
+    ]
+  },
+  lock: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M7 10V7a5 5 0 0110 0v3' },
+      { d: 'M5 10h14v10H5z' }
+    ]
+  },
+  star: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z', fill: 'none' }
+    ],
+    defaultStrokeWidth: 1.6
+  },
+  'graduation-cap': {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M3 10l9-5 9 5-9 5-9-5z' },
+      { d: 'M7 12v5a5 5 0 0010 0v-5' },
+      { d: 'M12 15v6' }
+    ]
+  },
+  target: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M12 6a6 6 0 100 12 6 6 0 000-12z' },
+      { d: 'M12 10a2 2 0 100 4 2 2 0 000-4z' },
+      { d: 'M12 2v2' },
+      { d: 'M12 20v2' },
+      { d: 'M4.93 4.93l1.41 1.41' },
+      { d: 'M17.66 17.66l1.41 1.41' },
+      { d: 'M2 12h2' },
+      { d: 'M20 12h2' },
+      { d: 'M4.93 19.07l1.41-1.41' },
+      { d: 'M17.66 6.34l1.41-1.41' }
+    ],
+    defaultStrokeWidth: 1.6
+  },
+  trophy: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M8 21h8' },
+      { d: 'M12 17a6 6 0 006-6V4H6v7a6 6 0 006 6z' },
+      { d: 'M8 4V2h8v2' },
+      { d: 'M6 9H4a2 2 0 01-2-2V5h4' },
+      { d: 'M18 9h2a2 2 0 002-2V5h-4' }
+    ]
+  },
+  map: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M9 20l-5-2V6l5 2 6-2 5 2v12l-5-2-6 2z' },
+      { d: 'M9 8v12' },
+      { d: 'M15 6v12' }
+    ]
+  },
+  monitor: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M4 5h16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V7a2 2 0 012-2z' },
+      { d: 'M8 21h8' },
+      { d: 'M12 17v4' }
+    ]
+  },
+  refresh: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M21 12a9 9 0 11-9-9', strokeLinecap: 'round', strokeLinejoin: 'round' },
+      { d: 'M21 3v9h-9', strokeLinecap: 'round', strokeLinejoin: 'round' }
+    ]
+  },
+  clock: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M12 21a9 9 0 100-18 9 9 0 000 18z' },
+      { d: 'M12 7v5l3 3', strokeLinecap: 'round', strokeLinejoin: 'round' }
+    ]
+  },
+  calendar: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M7 3v2', strokeLinecap: 'round' },
+      { d: 'M17 3v2', strokeLinecap: 'round' },
+      { d: 'M5 8h14' },
+      { d: 'M6 5h12a2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2z' }
+    ]
+  },
+  'arrow-left': {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M5 12h14', strokeLinecap: 'round', strokeLinejoin: 'round' },
+      { d: 'M9 8l-4 4 4 4', strokeLinecap: 'round', strokeLinejoin: 'round' }
+    ]
+  },
+  'arrow-right': {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M19 12H5', strokeLinecap: 'round', strokeLinejoin: 'round' },
+      { d: 'M15 8l4 4-4 4', strokeLinecap: 'round', strokeLinejoin: 'round' }
+    ]
+  },
+  filter: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M4 6h16', strokeLinecap: 'round' },
+      { d: 'M7 12h10', strokeLinecap: 'round' },
+      { d: 'M10 18h4', strokeLinecap: 'round' }
+    ]
+  },
+  search: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M11 5a6 6 0 100 12 6 6 0 000-12z' },
+      { d: 'M21 21l-4.35-4.35', strokeLinecap: 'round' }
+    ]
+  },
+  menu: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M4 6h16', strokeLinecap: 'round' },
+      { d: 'M4 12h16', strokeLinecap: 'round' },
+      { d: 'M4 18h16', strokeLinecap: 'round' }
+    ]
+  }
+} as const satisfies Record<string, IconDef>;
+
+type IconName = keyof typeof icons;
+
+export interface Props {
+  name: IconName;
+  size?: number | string;
+  class?: string;
+  strokeWidth?: number;
+  ariaLabel?: string;
+}
+
+const {
+  name,
+  size = 20,
+  class: className = '',
+  strokeWidth,
+  ariaLabel
+} = Astro.props;
+
+const icon: IconDef = icons[name];
+
+if (!icon) {
+  throw new Error(`Icon "${name}" is not registered.`);
+}
+
+const resolvedSize = typeof size === 'number' ? `${size}` : size;
+const resolvedStrokeWidth = strokeWidth ?? icon.defaultStrokeWidth ?? 2;
+---
+
+<svg
+  class={className}
+  width={resolvedSize}
+  height={resolvedSize}
+  viewBox={icon.viewBox}
+  fill="none"
+  stroke="currentColor"
+  stroke-width={resolvedStrokeWidth}
+  aria-hidden={ariaLabel ? undefined : 'true'}
+  aria-label={ariaLabel}
+  role="img"
+>
+  {icon.paths.map((path: PathDef) => (
+    <path
+      {...path}
+      stroke-linecap={path.strokeLinecap ?? 'round'}
+      stroke-linejoin={path.strokeLinejoin ?? 'round'}
+      fill={path.fill ?? 'none'}
+      fill-rule={path.fillRule}
+      clip-rule={path.clipRule}
+    />
+  ))}
+  {icon.circles?.map((circle: CircleDef) => (
+    <circle
+      {...circle}
+    />
+  ))}
+</svg>
+

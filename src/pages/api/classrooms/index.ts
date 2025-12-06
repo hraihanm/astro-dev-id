@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { prisma } from '../../../../lib/db';
+import { prisma } from '../../../lib/db';
 
 export const prerender = false;
 
@@ -22,7 +22,18 @@ export const GET: APIRoute = async ({ cookies }) => {
       });
     }
 
+    const where =
+      user.role === 'admin'
+        ? {}
+        : {
+            OR: [
+              { isPrivate: false },
+              { memberships: { some: { userId: user.id } } }
+            ]
+          };
+
     const classes = await prisma.classroom.findMany({
+      where,
       orderBy: { createdAt: 'desc' },
       include: {
         memberships: {

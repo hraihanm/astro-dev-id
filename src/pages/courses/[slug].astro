@@ -3,6 +3,8 @@ export const prerender = false;
 
 import CourseLayout from '../../layouts/CourseLayout.astro';
 import { getCourseContent } from '../../lib/student';
+import { getSessionUser } from '../../lib/auth-guard';
+import { prisma } from '../../lib/db';
 
 const { slug } = Astro.params;
 
@@ -10,7 +12,21 @@ if (!slug) {
   return Astro.redirect('/courses');
 }
 
-const course = await getCourseContent(slug);
+const user = await getSessionUser(Astro.cookies);
+let classroomIds: number[] = [];
+if (user) {
+  const memberships = await prisma.classroomMembership.findMany({
+    where: { userId: user.id, status: 'ACTIVE' },
+    select: { classroomId: true }
+  });
+  classroomIds = memberships.map((m) => m.classroomId);
+}
+
+const course = await getCourseContent(slug, {
+  userId: user?.id,
+  role: user?.role,
+  classroomIds
+});
 
 if (!course) {
   return Astro.redirect('/courses');

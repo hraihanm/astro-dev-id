@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import Layout from '../../../components/Layout.astro';
+import Icon from '../../../components/icons/Icon.astro';
 ---
 
 <Layout title="Create Standalone Quiz">
@@ -11,7 +12,10 @@ import Layout from '../../../components/Layout.astro';
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
           <div class="flex items-center">
-            <a href="/admin/quizzes" class="text-gray-700 hover:text-blue-600 mr-4">← Kembali ke Kuis</a>
+            <a href="/admin/quizzes" class="inline-flex items-center gap-2 text-gray-700 hover:text-blue-600 mr-4">
+              <Icon name="arrow-left" class="w-4 h-4" />
+              Kembali ke Kuis
+            </a>
             <h1 class="text-2xl font-bold text-gray-900">Buat Kuis Mandiri</h1>
           </div>
         </div>
@@ -227,6 +231,45 @@ import Layout from '../../../components/Layout.astro';
               ></textarea>
             </div>
 
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label for="quizScope" class="block text-sm font-medium text-gray-700">
+                  Keterkaitan Kuis
+                </label>
+                <select
+                  id="quizScope"
+                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                >
+                  <option value="standalone">Mandiri</option>
+                  <option value="course">Terhubung ke Kursus</option>
+                  <option value="chapter">Terhubung ke Bab</option>
+                </select>
+                <p class="mt-1 text-xs text-gray-500">Pilih apakah kuis berdiri sendiri atau terkait kursus/bab.</p>
+              </div>
+              <div>
+                <label for="courseSelect" class="block text-sm font-medium text-gray-700">
+                  Kursus (opsional)
+                </label>
+                <select
+                  id="courseSelect"
+                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                >
+                  <option value="">Pilih kursus</option>
+                </select>
+              </div>
+              <div id="chapter-select-wrapper" class="hidden">
+                <label for="chapterSelect" class="block text-sm font-medium text-gray-700">
+                  Bab (opsional)
+                </label>
+                <select
+                  id="chapterSelect"
+                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                >
+                  <option value="">Pilih bab</option>
+                </select>
+              </div>
+            </div>
+
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <label for="timeLimit" class="block text-sm font-medium text-gray-700">
@@ -367,6 +410,109 @@ import Layout from '../../../components/Layout.astro';
       const questionTemplate = document.getElementById('question-template');
       const addQuestionBtn = document.getElementById('add-question-btn');
       const quizForm = document.getElementById('quiz-form');
+      const quizScopeSelect = document.getElementById('quizScope');
+      const courseSelect = document.getElementById('courseSelect');
+      const chapterSelect = document.getElementById('chapterSelect');
+      const chapterWrapper = document.getElementById('chapter-select-wrapper');
+      const importScopeSelect = document.getElementById('import-quiz-scope');
+      const importCourseSelect = document.getElementById('import-course-select');
+      const importChapterSelect = document.getElementById('import-chapter-select');
+      const importChapterWrapper = document.getElementById('import-chapter-wrapper');
+      let coursesData = [];
+      let coursesLoaded = false;
+
+      async function loadCourses() {
+        if (coursesLoaded) return;
+        try {
+          const res = await fetch('/api/admin/courses?includeChapters=true');
+          if (!res.ok) return;
+          const data = await res.json();
+          coursesData = data?.courses || [];
+          renderCourseOptions();
+        } catch (err) {
+          console.error('Gagal memuat kursus', err);
+        } finally {
+          coursesLoaded = true;
+        }
+      }
+
+      function renderCourseOptions() {
+        if (courseSelect) {
+          courseSelect.innerHTML = '<option value=\"\">Pilih kursus</option>';
+        }
+        if (importCourseSelect) {
+          importCourseSelect.innerHTML = '<option value=\"\">Pilih kursus</option>';
+        }
+
+        coursesData.forEach((course) => {
+          const option = document.createElement('option');
+          option.value = course.id;
+          option.textContent = course.title;
+          courseSelect?.appendChild(option.cloneNode(true));
+          importCourseSelect?.appendChild(option);
+        });
+      }
+
+      function renderChapterOptions(courseId, target) {
+        const selectEl = target === 'import' ? importChapterSelect : chapterSelect;
+        if (!selectEl) return;
+        selectEl.innerHTML = '<option value=\"\">Pilih bab</option>';
+        const course = coursesData.find((c) => String(c.id) === String(courseId));
+        const chapters = course?.chapters || [];
+        chapters.forEach((ch) => {
+          const option = document.createElement('option');
+          option.value = ch.id;
+          option.textContent = `${ch.order}. ${ch.title}`;
+          selectEl.appendChild(option);
+        });
+      }
+
+      quizScopeSelect?.addEventListener('change', () => {
+        const scope = quizScopeSelect.value;
+        if (scope === 'standalone') {
+          chapterWrapper?.classList.add('hidden');
+          courseSelect && (courseSelect.value = '');
+          chapterSelect && (chapterSelect.value = '');
+        } else if (scope === 'course') {
+          chapterWrapper?.classList.add('hidden');
+          chapterSelect && (chapterSelect.value = '');
+          loadCourses();
+        } else if (scope === 'chapter') {
+          chapterWrapper?.classList.remove('hidden');
+          loadCourses();
+        }
+      });
+
+      courseSelect?.addEventListener('change', () => {
+        if (quizScopeSelect?.value === 'chapter') {
+          renderChapterOptions(courseSelect.value, 'manual');
+        }
+      });
+
+      importScopeSelect?.addEventListener('change', () => {
+        const scope = importScopeSelect.value;
+        if (scope === 'standalone') {
+          importChapterWrapper?.classList.add('hidden');
+          importCourseSelect && (importCourseSelect.value = '');
+          importChapterSelect && (importChapterSelect.value = '');
+        } else if (scope === 'course') {
+          importChapterWrapper?.classList.add('hidden');
+          importChapterSelect && (importChapterSelect.value = '');
+          loadCourses();
+        } else if (scope === 'chapter') {
+          importChapterWrapper?.classList.remove('hidden');
+          loadCourses();
+        }
+      });
+
+      importCourseSelect?.addEventListener('change', () => {
+        if (importScopeSelect?.value === 'chapter') {
+          renderChapterOptions(importCourseSelect.value, 'import');
+        }
+      });
+
+      // Load courses lazily when the page starts (non-blocking)
+      loadCourses();
 
       // Add question
       addQuestionBtn?.addEventListener('click', () => {
@@ -461,6 +607,25 @@ import Layout from '../../../components/Layout.astro';
         const description = (document.getElementById('description') as HTMLTextAreaElement)?.value;
         const timeLimit = (document.getElementById('timeLimit') as HTMLInputElement)?.value;
         const maxAttempts = (document.getElementById('maxAttempts') as HTMLInputElement)?.value;
+        const scope = quizScopeSelect?.value || 'standalone';
+        let courseId = null;
+        let chapterId = null;
+
+        if (scope === 'course' || scope === 'chapter') {
+          courseId = courseSelect?.value ? parseInt(courseSelect.value) : null;
+          if (!courseId) {
+            alert('Pilih kursus untuk kuis ini.');
+            return;
+          }
+        }
+
+        if (scope === 'chapter') {
+          chapterId = chapterSelect?.value ? parseInt(chapterSelect.value) : null;
+          if (!chapterId) {
+            alert('Pilih bab untuk kuis bab.');
+            return;
+          }
+        }
 
         if (!title) {
           alert('Quiz title is required');
@@ -511,7 +676,7 @@ import Layout from '../../../components/Layout.astro';
         });
 
         try {
-          const response = await fetch('/api/admin/quiz/create-standalone', {
+          const response = await fetch('/api/admin/quiz/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -519,7 +684,9 @@ import Layout from '../../../components/Layout.astro';
               description,
               timeLimit: timeLimit ? parseInt(timeLimit) : undefined,
               maxAttempts: maxAttempts ? parseInt(maxAttempts) : undefined,
-              questions
+              questions,
+              courseId,
+              chapterId
             })
           });
 
@@ -559,6 +726,38 @@ import Layout from '../../../components/Layout.astro';
                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Misalnya, Kuis Latihan Matematika"
                 />
+              </div>
+              
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label for="import-quiz-scope" class="block text-sm font-medium text-gray-700">Keterkaitan</label>
+                  <select
+                    id="import-quiz-scope"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="standalone">Mandiri</option>
+                    <option value="course">Kursus</option>
+                    <option value="chapter">Bab</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="import-course-select" class="block text-sm font-medium text-gray-700">Kursus (opsional)</label>
+                  <select
+                    id="import-course-select"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Pilih kursus</option>
+                  </select>
+                </div>
+                <div id="import-chapter-wrapper" class="hidden">
+                  <label for="import-chapter-select" class="block text-sm font-medium text-gray-700">Bab (opsional)</label>
+                  <select
+                    id="import-chapter-select"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Pilih bab</option>
+                  </select>
+                </div>
               </div>
               
               <div class="grid grid-cols-2 gap-3">
@@ -674,6 +873,29 @@ import Layout from '../../../components/Layout.astro';
         
         const title = (form.querySelector('#standalone-quiz-title') as HTMLInputElement)?.value;
         const file = (form.querySelector('#standalone-quiz-file') as HTMLInputElement)?.files?.[0];
+        const scope = importScopeSelect?.value || 'standalone';
+        let courseId = null;
+        let chapterId = null;
+
+        if (scope === 'course' || scope === 'chapter') {
+          courseId = importCourseSelect?.value ? parseInt(importCourseSelect.value) : null;
+          if (!courseId) {
+            statusDiv!.className = 'mt-3 p-3 bg-red-50 border border-red-200 rounded text-red-700';
+            statusDiv!.textContent = '❌ Pilih kursus untuk impor kuis.';
+            statusDiv!.classList.remove('hidden');
+            return;
+          }
+        }
+
+        if (scope === 'chapter') {
+          chapterId = importChapterSelect?.value ? parseInt(importChapterSelect.value) : null;
+          if (!chapterId) {
+            statusDiv!.className = 'mt-3 p-3 bg-red-50 border border-red-200 rounded text-red-700';
+            statusDiv!.textContent = '❌ Pilih bab untuk impor kuis bab.';
+            statusDiv!.classList.remove('hidden');
+            return;
+          }
+        }
         
         if (!title || !file) {
           if (statusDiv) {
@@ -692,9 +914,12 @@ import Layout from '../../../components/Layout.astro';
         statusDiv!.classList.remove('hidden');
         
         const formData = new FormData(form);
+        if (courseId !== null) formData.set('courseId', String(courseId));
+        if (chapterId !== null) formData.set('chapterId', String(chapterId));
         
         try {
-          const response = await fetch('/api/admin/quiz/import-standalone', {
+          const endpoint = scope === 'standalone' ? '/api/admin/quiz/import-standalone' : '/api/admin/quiz/import';
+          const response = await fetch(endpoint, {
             method: 'POST',
             body: formData
           });

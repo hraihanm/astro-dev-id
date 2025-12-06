@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import Layout from '../../../../components/Layout.astro';
+import Icon from '../../../../components/icons/Icon.astro';
 import { prisma } from '../../../../lib/db';
 
 const { id } = Astro.params;
@@ -64,7 +65,7 @@ if (!course) {
           <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
             <div class="px-6 py-4 border-b border-slate-100 bg-slate-50">
               <h2 class="font-bold text-slate-900 flex items-center gap-2">
-                <span>📝</span>
+                <Icon name="pencil" class="w-4 h-4" />
                 <span>Informasi Kursus</span>
               </h2>
             </div>
@@ -116,6 +117,23 @@ if (!course) {
                   placeholder="Deskripsi singkat tentang kursus ini..."
                 >{course.description}</textarea>
               </div>
+
+              <div>
+                <label for="visibility" class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Visibilitas
+                </label>
+                <select
+                  id="visibility"
+                  name="visibility"
+                  class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                >
+                  <option value="PUBLIC" selected={course.visibility !== 'PRIVATE'}>Publik (semua pengguna)</option>
+                  <option value="PRIVATE" selected={course.visibility === 'PRIVATE'}>Privat (admin & kelas terkait)</option>
+                </select>
+                <p class="text-xs text-slate-500 mt-1">
+                  Privat: hanya admin atau anggota kelas yang menautkan kursus ini. Publik: semua pengguna dapat mengakses.
+                </p>
+              </div>
             </form>
           </div>
 
@@ -123,7 +141,7 @@ if (!course) {
           <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
             <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
               <h2 class="font-bold text-slate-900 flex items-center gap-2">
-                <span>📚</span>
+                <Icon name="book-stack" class="w-4 h-4" />
                 <span>Struktur Kursus</span>
               </h2>
               <a
@@ -136,8 +154,12 @@ if (!course) {
                 <span>Tambah Bab</span>
               </a>
             </div>
+            <div class="px-6 py-2 border-b border-slate-100 bg-slate-50 flex items-center justify-between text-sm text-slate-600">
+              <span>Seret pegangan untuk mengubah urutan bab.</span>
+              <span id="chapter-order-status" class="hidden font-medium"></span>
+            </div>
             
-            <div class="divide-y divide-slate-100">
+            <div class="divide-y divide-slate-100" id="chapter-list">
               {course.chapters.length === 0 ? (
                 <div class="p-8 text-center">
                   <div class="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
@@ -158,9 +180,13 @@ if (!course) {
                 </div>
               ) : (
                 course.chapters.map((chapter) => (
-                  <div class="group flex items-center gap-4 px-6 py-4 hover:bg-slate-50 transition-colors">
+                  <div
+                    class="chapter-item group flex items-center gap-4 px-6 py-4 hover:bg-slate-50 transition-colors cursor-grab"
+                    draggable="true"
+                    data-chapter-id={chapter.id}
+                  >
                     <!-- Chapter Number -->
-                    <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
+                    <div class="chapter-order-badge flex-shrink-0 w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
                       {chapter.order}
                     </div>
                     
@@ -197,7 +223,7 @@ if (!course) {
                     </div>
                     
                     <!-- Drag Handle (for future) -->
-                    <div class="flex-shrink-0 text-slate-300">
+                    <div class="chapter-drag-handle flex-shrink-0 text-slate-400 cursor-grab" title="Geser untuk mengurutkan">
                       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16" />
                       </svg>
@@ -230,7 +256,7 @@ if (!course) {
           <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
             <div class="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
               <h3 class="font-bold text-slate-900 flex items-center gap-2">
-                <span>📝</span>
+                <Icon name="pencil" class="w-4 h-4" />
                 <span>Kuis</span>
               </h3>
             </div>
@@ -364,7 +390,8 @@ if (!course) {
     const courseData = {
       title: formData.get('title'),
       slug: formData.get('slug'),
-      description: formData.get('description')
+      description: formData.get('description'),
+      visibility: formData.get('visibility')
     };
     
     try {
@@ -478,4 +505,139 @@ if (!course) {
       }
     });
   });
+
+  // Chapter drag-and-drop ordering
+  const chapterList = document.getElementById('chapter-list');
+  const chapterOrderStatus = document.getElementById('chapter-order-status');
+
+  if (chapterList) {
+    let draggedItem = null;
+    let initialOrder = [];
+
+    const items = Array.from(chapterList.querySelectorAll('.chapter-item'));
+    items.forEach((item) => attachDragHandlers(item));
+
+    function attachDragHandlers(item) {
+      item.addEventListener('dragstart', (e) => {
+        draggedItem = item;
+        initialOrder = Array.from(chapterList.querySelectorAll('.chapter-item')).map((el) => el.dataset.chapterId || '');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', item.dataset.chapterId || '');
+        item.classList.add('opacity-60', 'ring-2', 'ring-blue-200', 'cursor-grabbing');
+      });
+
+      item.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        if (item !== draggedItem) {
+          item.classList.add('bg-slate-50');
+        }
+      });
+
+      item.addEventListener('dragover', (e) => e.preventDefault());
+
+      item.addEventListener('dragleave', () => {
+        item.classList.remove('bg-slate-50');
+      });
+
+      item.addEventListener('drop', (e) => {
+        e.preventDefault();
+        item.classList.remove('bg-slate-50');
+
+        if (!draggedItem || draggedItem === item) {
+          return;
+        }
+
+        const rect = item.getBoundingClientRect();
+        const placeAfter = (e.clientY - rect.top) > rect.height / 2;
+
+        if (placeAfter) {
+          item.after(draggedItem);
+        } else {
+          item.before(draggedItem);
+        }
+
+        finalizeOrderChange(initialOrder);
+      });
+
+      item.addEventListener('dragend', () => {
+        item.classList.remove('opacity-60', 'ring-2', 'ring-blue-200', 'cursor-grabbing', 'bg-slate-50');
+        draggedItem = null;
+      });
+    }
+
+    function updateOrderBadges() {
+      chapterList.querySelectorAll('.chapter-item').forEach((item, index) => {
+        const badge = item.querySelector('.chapter-order-badge');
+        if (badge) {
+          badge.textContent = String(index + 1);
+        }
+      });
+    }
+
+    function showOrderStatus(message, type = 'info') {
+      if (!chapterOrderStatus) return;
+
+      chapterOrderStatus.classList.remove('hidden', 'text-emerald-600', 'text-red-600', 'text-slate-600');
+
+      if (type === 'success') {
+        chapterOrderStatus.classList.add('text-emerald-600');
+      } else if (type === 'error') {
+        chapterOrderStatus.classList.add('text-red-600');
+      } else {
+        chapterOrderStatus.classList.add('text-slate-600');
+      }
+
+      chapterOrderStatus.textContent = message;
+    }
+
+    function restoreOrder(orderIds) {
+      const lookup = new Map(
+        Array.from(chapterList.querySelectorAll('.chapter-item')).map((el) => [el.dataset.chapterId || '', el])
+      );
+
+      chapterList.innerHTML = '';
+      orderIds.forEach((id) => {
+        const el = lookup.get(id);
+        if (el) {
+          chapterList.appendChild(el);
+        }
+      });
+
+      updateOrderBadges();
+    }
+
+    async function persistOrder(previousOrder, nextOrder) {
+      try {
+        showOrderStatus('Menyimpan urutan...', 'info');
+
+        const response = await fetch(`/api/admin/courses/${courseId}/chapters`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chapterIds: nextOrder.map((cid) => Number(cid)) })
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => null);
+          throw new Error(error?.error || 'Gagal menyimpan urutan');
+        }
+
+        showOrderStatus('Urutan tersimpan', 'success');
+      } catch (error) {
+        restoreOrder(previousOrder);
+        showOrderStatus(error?.message || 'Gagal menyimpan urutan', 'error');
+      }
+    }
+
+    function finalizeOrderChange(previousOrder) {
+      const nextOrder = Array.from(chapterList.querySelectorAll('.chapter-item')).map((el) => el.dataset.chapterId || '');
+
+      if (nextOrder.join(',') === previousOrder.join(',')) {
+        updateOrderBadges();
+        return;
+      }
+
+      updateOrderBadges();
+      persistOrder(previousOrder, nextOrder);
+    }
+  }
 </script>

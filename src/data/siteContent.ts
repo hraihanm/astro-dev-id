@@ -20,7 +20,7 @@ export const siteContent = {
         continue: "Lanjutkan"
     },
     nav: {
-        myLearningPortal: "Astro Learning",
+        myLearningPortal: "Astro Dev ID",
         courses: "Kursus",
         admin: "Admin",
         signIn: "Masuk",

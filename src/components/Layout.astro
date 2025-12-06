@@ -1,6 +1,7 @@
 ---
 import { siteContent } from '../data/siteContent';
 import { getSessionUser, getDisplayName, getUserInitials } from '../lib/auth-guard';
+import Icon from './icons/Icon.astro';
 
 export interface Props {
   title: string;
@@ -63,9 +64,7 @@ const colors = {
         <div class="hidden lg:flex flex-1 max-w-md mx-8">
           <div class="relative w-full">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-4 w-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
-              </svg>
+              <Icon name="search" class="h-4 w-4 text-slate-400" />
             </div>
             <input
               type="text"
@@ -96,23 +95,23 @@ const colors = {
                     <p class="text-xs text-slate-400 truncate">{user.email}</p>
                   </div>
                   <a href="/dashboard" class="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
-                    <span class="text-base">📊</span>
+                    <Icon name="dashboard" class="w-4 h-4 text-slate-500" />
                     Dashboard
                   </a>
                   {user.role === 'admin' && (
                     <a href="/admin" class="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
-                      <span class="text-base">⚙️</span>
+                      <Icon name="settings-sliders" class="w-4 h-4 text-slate-500" />
                       {siteContent.nav.admin}
                     </a>
                   )}
                   <a href="/profile" class="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
-                    <span class="text-base">👤</span>
+                    <Icon name="user" class="w-4 h-4 text-slate-500" />
                     {siteContent.nav.profile}
                   </a>
                   <hr class="my-2 border-slate-100" />
                   <form action="/api/auth/signout" method="POST">
                     <button type="submit" class="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50">
-                      <span class="text-base">🚪</span>
+                      <Icon name="logout" class="w-4 h-4 text-red-500" />
                       {siteContent.nav.signOut}
                     </button>
                   </form>
@@ -143,15 +142,18 @@ const colors = {
     <!-- Mobile Menu -->
     <div id="mobile-menu" class="hidden md:hidden border-t border-slate-100 bg-white">
       <div class="px-4 py-3 space-y-1">
-        <a href="/courses" class="block px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
-          📚 Kursus
+        <a href="/courses" class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
+          <Icon name="book-stack" class="w-4 h-4" />
+          <span>Kursus</span>
         </a>
-        <a href="/quizzes" class="block px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
-          📝 Kuis Latihan
+        <a href="/quizzes" class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
+          <Icon name="pencil" class="w-4 h-4" />
+          <span>Kuis Latihan</span>
         </a>
         {user && (
-          <a href="/dashboard" class="block px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
-            📊 Dashboard
+          <a href="/dashboard" class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
+            <Icon name="bar-chart" class="w-4 h-4" />
+            <span>Dashboard</span>
           </a>
         )}
       </div>

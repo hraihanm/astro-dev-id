@@ -236,6 +236,7 @@ export async function saveQuizResult(data: {
   result: QuizResult;
   timeSpent: number;
   scoreReleasedAt?: Date | null;
+  endReason?: 'manual' | 'time_up';
 }) {
   return await prisma.quizAttempt.create({
     data: {
@@ -248,7 +249,8 @@ export async function saveQuizResult(data: {
       percentage: data.result.percentage,
       timeSpent: data.timeSpent,
       detailedResults: JSON.stringify(data.result.detailedResults),
-      scoreReleasedAt: data.scoreReleasedAt || null
+      scoreReleasedAt: data.scoreReleasedAt || null,
+      endReason: data.endReason || 'manual'
     }
   });
 }

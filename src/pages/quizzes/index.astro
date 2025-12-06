@@ -9,8 +9,21 @@ export const prerender = false;
 // Get logged in user
 const user = await getSessionUser(Astro.cookies);
 
+let classroomIds: number[] = [];
+if (user) {
+  const memberships = await prisma.classroomMembership.findMany({
+    where: { userId: user.id, status: 'ACTIVE' },
+    select: { classroomId: true }
+  });
+  classroomIds = memberships.map((m) => m.classroomId);
+}
+
 // Fetch standalone quizzes from the database
-const rawQuizzes = await getStandaloneQuizzes();
+const rawQuizzes = await getStandaloneQuizzes({
+  userId: user?.id,
+  role: user?.role,
+  classroomIds
+});
 
 // Get user's attempt counts if logged in
 let userAttempts: Record<number, number> = {};
@@ -47,124 +60,162 @@ const quizzes = rawQuizzes.map(quiz => {
 ---
 
 <Layout title="Kuis Latihan">
-  <div class="min-h-screen bg-gray-50">
-    <!-- Header -->
-    <div class="bg-white shadow mb-8">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-          <div class="flex items-center">
-            <h1 class="text-2xl font-bold text-gray-900">Kuis Latihan</h1>
+  <div class="min-h-screen bg-gradient-to-b from-slate-50 via-white to-white">
+    <div class="border-b bg-white/80 backdrop-blur">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div class="space-y-2">
+            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-blue-600">Latihan Mandiri</p>
+            <div class="flex items-center gap-3">
+              <h1 class="text-3xl font-bold text-slate-900">Kuis Latihan</h1>
+              <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                {quizzes.length} kuis siap dikerjakan
+              </span>
+            </div>
+            <p class="max-w-2xl text-sm text-slate-600">
+              Pilih kuis singkat untuk menguji pemahamanmu tanpa perlu mendaftar kursus.
+              Detail percobaan dan batas waktu diringkas di setiap kartu, jadi kamu bisa langsung mulai.
+            </p>
           </div>
-          <div class="flex items-center space-x-4">
-            <a href="/quizzes/history" class="text-gray-700 hover:text-blue-600 flex items-center gap-1">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <a
+              href="/quizzes/history"
+              class="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:text-blue-700 hover:shadow-md"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
               </svg>
               Riwayat
             </a>
-            <a href="/" class="text-gray-700 hover:text-blue-600">Beranda</a>
+            <a
+              href="/"
+              class="inline-flex items-center justify-center gap-2 rounded-full border border-transparent bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md"
+            >
+              Beranda
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7-7l7 7-7 7"></path>
+              </svg>
+            </a>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Quizzes Grid -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <p class="text-gray-600 mb-6">
-        Latih kemampuanmu dengan kuis-kuis berikut. Tidak perlu mendaftar kursus!
-      </p>
-
-      {quizzes.length === 0 ? (
-        <div class="bg-white rounded-lg shadow p-8 text-center">
-          <div class="text-gray-400 text-6xl mb-4">📝</div>
-          <h3 class="text-xl font-semibold text-gray-900 mb-2">Belum Ada Kuis Latihan</h3>
-          <p class="text-gray-600">Belum ada kuis latihan mandiri yang tersedia saat ini.</p>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+{quizzes.length === 0 ? (
+        <div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-10 text-center shadow-sm">
+          <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-2xl">📝</div>
+          <h3 class="text-xl font-semibold text-slate-900">Belum Ada Kuis Latihan</h3>
+          <p class="mt-2 text-sm text-slate-600">Belum ada kuis latihan mandiri yang tersedia saat ini.</p>
         </div>
       ) : (
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
           {quizzes.map((quiz) => {
             const isLimitReached = quiz.attemptLimit && quiz.userAttempts >= quiz.attemptLimit;
             const remainingAttempts = quiz.attemptLimit ? quiz.attemptLimit - quiz.userAttempts : null;
-            
+
             return (
               <a
                 href={isLimitReached ? '#' : `/quizzes/${quiz.id}`}
-                class={`bg-white rounded-xl shadow-sm border hover:shadow-md transition-all p-6 block ${isLimitReached ? 'opacity-75 cursor-not-allowed' : ''}`}
+                class={`group relative flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-lg ${isLimitReached ? 'pointer-events-none opacity-70' : ''}`}
                 onclick={isLimitReached ? 'event.preventDefault(); alert("Kamu sudah mencapai batas percobaan untuk kuis ini.")' : ''}
               >
-                <div class="flex items-start justify-between mb-3">
-                  <div class="flex-1">
-                    <div class="flex items-center gap-2 mb-2">
-                      <h3 class="text-lg font-semibold text-gray-900">{quiz.title}</h3>
-                      {quiz.quizType === 'tryout' ? (
-                        <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-800">
-                          Try Out
-                        </span>
-                      ) : (
-                        <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                          Latihan
+                <div class="flex items-start gap-3">
+                  <div class="flex-1 space-y-2">
+                    <div class="flex flex-wrap items-center gap-2 text-xs font-semibold text-blue-700">
+                      <span class={`inline-flex items-center gap-1 rounded-full px-2 py-1 ${
+                        quiz.quizType === 'tryout'
+                          ? 'bg-amber-50 text-amber-700'
+                          : 'bg-blue-50 text-blue-700'
+                      }`}>
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        {quiz.quizType === 'tryout' ? 'Try Out' : 'Latihan'}
+                      </span>
+                      {quiz.isEssay && (
+                        <span class="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2 py-1 text-purple-700">
+                          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 20h9"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4L4 7v6c0 5 4 8 8 8s8-3 8-8V7l-8-3z"></path>
+                          </svg>
+                          Essay
                         </span>
                       )}
                     </div>
-                    {quiz.description && (
-                      <p class="text-sm text-gray-600 mb-3 line-clamp-2">{quiz.description}</p>
-                    )}
-                    {quiz.isEssay && (
-                      <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 mb-2">
-                        Soal Essay
-                      </span>
-                    )}
-                  </div>
-                </div>
-                
-                <div class="flex items-center justify-between text-sm text-gray-500 mb-3">
-                  <div class="flex items-center gap-3">
-                    <span class="flex items-center gap-1">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                      </svg>
-                      {quiz.questionCount} soal
-                    </span>
-                    {quiz.timeLimit && (
-                      <span class="flex items-center gap-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        {quiz.timeLimit} menit
-                      </span>
-                    )}
+                    <h3 class="text-lg font-semibold text-slate-900">{quiz.title}</h3>
+                    <p class="text-sm leading-relaxed text-slate-600 line-clamp-2">
+                      {quiz.description || 'Kuis singkat untuk menguji pemahamanmu. Mulai saat kamu siap.'}
+                    </p>
                   </div>
                 </div>
 
-                {/* Attempt info */}
-                {quiz.attemptLimit ? (
-                  <div class={`flex items-center justify-between text-xs px-3 py-2 rounded-lg ${
-                    isLimitReached 
-                      ? 'bg-red-50 text-red-700' 
-                      : remainingAttempts && remainingAttempts <= 1
-                        ? 'bg-amber-50 text-amber-700'
-                        : 'bg-slate-50 text-slate-600'
-                  }`}>
-                    <span class="flex items-center gap-1">
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="mt-4 flex flex-wrap gap-2 text-xs font-medium text-slate-600">
+                  <span class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                    {quiz.questionCount} soal
+                  </span>
+
+                  {quiz.timeLimit && (
+                    <span class="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-blue-700">
+                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                      {quiz.timeLimit} menit
+                    </span>
+                  )}
+
+                  <span class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2m-4 0h4m-4 0H7m6 0V6a2 2 0 012-2h4M9 20H7a2 2 0 01-2-2v-6a2 2 0 012-2h2"></path>
+                    </svg>
+                    {quiz.type === 'essay' ? 'Essay' : 'Pilihan Ganda'}
+                  </span>
+                </div>
+
+                <div class="mt-auto pt-5 flex items-center justify-between gap-3 border-t border-slate-100">
+                  {quiz.attemptLimit ? (
+                    <div
+                      class={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
+                        isLimitReached
+                          ? 'bg-red-50 text-red-700'
+                          : remainingAttempts && remainingAttempts <= 1
+                            ? 'bg-amber-50 text-amber-700'
+                            : 'bg-emerald-50 text-emerald-700'
+                      }`}
+                    >
+                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                       </svg>
                       {isLimitReached ? (
-                        <span>Batas tercapai</span>
+                        <span>Batas percobaan tercapai</span>
                       ) : (
-                        <span>Sisa: {remainingAttempts} percobaan</span>
+                        <span>Sisa {remainingAttempts} percobaan</span>
                       )}
+                      <span class="rounded-full bg-white/70 px-2 py-0.5 text-[11px] text-slate-700">
+                        {quiz.userAttempts}/{quiz.attemptLimit}
+                      </span>
+                    </div>
+                  ) : (
+                    <div class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                      </svg>
+                      Percobaan tak terbatas
+                    </div>
+                  )}
+
+                  <div class="flex items-center gap-2 text-sm font-semibold text-blue-700">
+                    <span>{isLimitReached ? 'Terkunci' : 'Mulai sekarang'}</span>
+                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-700 transition group-hover:translate-x-1">
+                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7-7l7 7-7 7"></path>
+                      </svg>
                     </span>
-                    <span>{quiz.userAttempts}/{quiz.attemptLimit}</span>
                   </div>
-                ) : (
-                  <div class="text-xs text-green-600 flex items-center gap-1">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                    </svg>
-                    Percobaan tak terbatas
-                  </div>
-                )}
+                </div>
               </a>
             );
           })}

@@ -96,6 +96,8 @@ export const PUT: APIRoute = async ({ params, request, cookies }) => {
 
     const body = await request.json();
     const { title, slug, description } = body;
+    const visibilityRaw = body.visibility?.toString().toUpperCase();
+    const mappedVisibility = visibilityRaw === 'PRIVATE' ? 'PRIVATE' : 'PUBLIC';
 
     if (!title || !slug) {
       return new Response(JSON.stringify({ error: 'Title and slug are required' }), {
@@ -121,7 +123,8 @@ export const PUT: APIRoute = async ({ params, request, cookies }) => {
       data: {
         title,
         slug,
-        description
+        description,
+        visibility: mappedVisibility
       }
     });
 

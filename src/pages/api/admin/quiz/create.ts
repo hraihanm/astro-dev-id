@@ -1,6 +1,7 @@
 import type { APIRoute} from 'astro';
 import { createQuiz } from '../../../../lib/quizzes';
 import { requireAdminAuth } from '../../../../lib/auth';
+import { prisma } from '../../../../lib/db';
 
 export const prerender = false;
 
@@ -46,7 +47,19 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     const body = await request.json();
-    const { courseId, title, description, timeLimit, maxAttempts, questions, quizType, scoreReleaseMode, attemptLimit } = body;
+    const {
+      courseId: rawCourseId,
+      chapterId: rawChapterId,
+      title,
+      description,
+      timeLimit,
+      maxAttempts,
+      questions,
+      quizType,
+      scoreReleaseMode,
+      attemptLimit,
+      visibility
+    } = body;
 
     if (!title || !questions || questions.length === 0) {
       return new Response(JSON.stringify({ error: 'Title and questions are required' }), {
@@ -63,8 +76,49 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
+    const parsedCourseId = rawCourseId !== undefined && rawCourseId !== null ? parseInt(rawCourseId) : null;
+    const parsedChapterId = rawChapterId !== undefined && rawChapterId !== null ? parseInt(rawChapterId) : null;
+
+    let courseId: number | null = Number.isFinite(parsedCourseId as any) ? (parsedCourseId as number) : null;
+    let chapterId: number | null = Number.isFinite(parsedChapterId as any) ? (parsedChapterId as number) : null;
+
+    if (chapterId !== null) {
+      const chapter = await prisma.chapter.findUnique({
+        where: { id: chapterId },
+        select: { id: true, courseId: true }
+      });
+
+      if (!chapter) {
+        return new Response(JSON.stringify({ error: 'Invalid chapterId' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // If courseId is not provided, derive from chapter
+      if (courseId === null) {
+        courseId = chapter.courseId;
+      } else if (courseId !== chapter.courseId) {
+        return new Response(JSON.stringify({ error: 'chapterId does not belong to courseId' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    if (courseId !== null) {
+      const courseExists = await prisma.course.findUnique({ where: { id: courseId } });
+      if (!courseExists) {
+        return new Response(JSON.stringify({ error: 'Invalid courseId' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     const quiz = await createQuiz({
       courseId,
+      chapterId,
       title,
       quizType: quizType || 'latihan',
       questions,
@@ -76,7 +130,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         scoreReleaseMode: scoreReleaseMode || 'immediate'
       },
       attemptLimit: attemptLimit ?? maxAttempts ?? null,
-      scoreReleaseMode: scoreReleaseMode || 'immediate'
+      scoreReleaseMode: scoreReleaseMode || 'immediate',
+      visibility: visibility?.toString().toUpperCase() === 'PRIVATE' ? 'PRIVATE' : 'PUBLIC'
     });
 
     return new Response(JSON.stringify({

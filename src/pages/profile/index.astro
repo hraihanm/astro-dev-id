@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import Layout from '../../components/Layout.astro';
+import Icon from '../../components/icons/Icon.astro';
 import { getUserProfile, getUserLearningStats, getUserAchievements } from '../../lib/profile';
 import { getSessionUser } from '../../lib/auth-guard';
 
@@ -59,12 +60,14 @@ function getScoreColor(percentage: number): string {
             </h1>
             <p class="text-blue-100 mb-2">{profile?.email}</p>
             <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-sm">
-              <span class="px-3 py-1 bg-white/20 rounded-full">
-                📅 Bergabung {formatDate(profile?.createdAt)}
+              <span class="px-3 py-1 bg-white/20 rounded-full inline-flex items-center gap-1.5">
+                <Icon name="calendar" class="w-4 h-4 text-white" />
+                Bergabung {formatDate(profile?.createdAt)}
               </span>
               {profile?.role === 'admin' && (
-                <span class="px-3 py-1 bg-amber-500 text-white rounded-full font-medium">
-                  ⭐ Admin
+                <span class="px-3 py-1 bg-amber-500 text-white rounded-full font-medium inline-flex items-center gap-1.5">
+                  <Icon name="star" class="w-4 h-4 text-white" />
+                  Admin
                 </span>
               )}
             </div>
@@ -87,7 +90,7 @@ function getScoreColor(percentage: number): string {
         <div class="bg-white rounded-xl border border-slate-200 shadow-lg p-6">
           <div class="flex items-center gap-4">
             <div class="w-14 h-14 rounded-xl bg-blue-100 flex items-center justify-center">
-              <span class="text-2xl">📝</span>
+              <Icon name="pencil" class="w-6 h-6 text-blue-600" />
             </div>
             <div>
               <p class="text-sm text-slate-500 font-medium">Total Ujian</p>
@@ -99,7 +102,7 @@ function getScoreColor(percentage: number): string {
         <div class="bg-white rounded-xl border border-slate-200 shadow-lg p-6">
           <div class="flex items-center gap-4">
             <div class="w-14 h-14 rounded-xl bg-emerald-100 flex items-center justify-center">
-              <span class="text-2xl">📊</span>
+              <Icon name="bar-chart" class="w-6 h-6 text-emerald-600" />
             </div>
             <div>
               <p class="text-sm text-slate-500 font-medium">Rata-rata Skor</p>
@@ -111,7 +114,7 @@ function getScoreColor(percentage: number): string {
         <div class="bg-white rounded-xl border border-slate-200 shadow-lg p-6">
           <div class="flex items-center gap-4">
             <div class="w-14 h-14 rounded-xl bg-purple-100 flex items-center justify-center">
-              <span class="text-2xl">📚</span>
+              <Icon name="book-stack" class="w-6 h-6 text-purple-600" />
             </div>
             <div>
               <p class="text-sm text-slate-500 font-medium">Kursus</p>
@@ -127,7 +130,7 @@ function getScoreColor(percentage: number): string {
           <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 bg-slate-50">
               <h2 class="font-bold text-slate-900 flex items-center gap-2">
-                <span>🏆</span>
+                <Icon name="trophy" class="w-5 h-5 text-amber-600" />
                 <span>Pencapaian</span>
               </h2>
             </div>
@@ -135,7 +138,7 @@ function getScoreColor(percentage: number): string {
               {achievements.length === 0 ? (
                 <div class="text-center py-8">
                   <div class="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
-                    <span class="text-3xl">🎯</span>
+                    <Icon name="target" class="w-7 h-7 text-slate-400" />
                   </div>
                   <p class="text-slate-500 text-sm">Selesaikan ujian untuk mendapatkan pencapaian!</p>
                 </div>
@@ -143,7 +146,9 @@ function getScoreColor(percentage: number): string {
                 <div class="space-y-3">
                   {achievements.map((achievement) => (
                     <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-                      <span class="text-2xl">{achievement.icon}</span>
+                      <div class="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
+                        <Icon name="star" class="w-5 h-5 text-amber-500" />
+                      </div>
                       <div>
                         <h4 class="font-medium text-slate-900 text-sm">{achievement.title}</h4>
                         <p class="text-xs text-slate-500">{achievement.description}</p>
@@ -160,15 +165,15 @@ function getScoreColor(percentage: number): string {
             <h3 class="font-bold text-slate-900 mb-4">Aksi Cepat</h3>
             <div class="space-y-2">
               <a href="/courses" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
-                <span class="text-xl">📚</span>
+                <Icon name="book-stack" class="w-5 h-5 text-slate-500" />
                 <span class="text-sm font-medium text-slate-700">Jelajahi Kursus</span>
               </a>
               <a href="/quizzes/history" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
-                <span class="text-xl">📋</span>
+                <Icon name="clipboard" class="w-5 h-5 text-slate-500" />
                 <span class="text-sm font-medium text-slate-700">Riwayat Ujian</span>
               </a>
               <a href="/dashboard" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
-                <span class="text-xl">📊</span>
+                <Icon name="bar-chart" class="w-5 h-5 text-slate-500" />
                 <span class="text-sm font-medium text-slate-700">Dashboard</span>
               </a>
             </div>
@@ -180,7 +185,7 @@ function getScoreColor(percentage: number): string {
           <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
               <h2 class="font-bold text-slate-900 flex items-center gap-2">
-                <span>⏱️</span>
+                <Icon name="clock" class="w-5 h-5 text-slate-600" />
                 <span>Aktivitas Terbaru</span>
               </h2>
               <a href="/quizzes/history" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
@@ -191,7 +196,7 @@ function getScoreColor(percentage: number): string {
               {stats.recentActivity.length === 0 ? (
                 <div class="p-12 text-center">
                   <div class="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
-                    <span class="text-3xl">📝</span>
+                    <Icon name="pencil" class="w-7 h-7 text-slate-400" />
                   </div>
                   <p class="text-slate-500 mb-4">Belum ada aktivitas ujian</p>
                   <a href="/courses" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">

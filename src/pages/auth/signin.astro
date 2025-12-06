@@ -16,6 +16,22 @@ import Layout from '../../components/Layout.astro';
           <p class="text-slate-500 mt-2">Masuk untuk melanjutkan pembelajaran</p>
         </div>
         
+        <!-- OAuth -->
+        <div class="space-y-3 mb-8">
+          <a
+            href="/api/oauth/signin/google"
+            class="w-full inline-flex items-center justify-center gap-3 py-3 px-4 border border-slate-300 rounded-xl text-slate-700 hover:border-blue-500 hover:text-blue-700 transition-colors shadow-sm"
+          >
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" class="w-5 h-5" loading="lazy" />
+            <span class="font-semibold">Lanjutkan dengan Google</span>
+          </a>
+          <div class="flex items-center">
+            <div class="flex-1 border-t border-slate-200"></div>
+            <span class="px-4 text-sm text-slate-400">atau masuk dengan email</span>
+            <div class="flex-1 border-t border-slate-200"></div>
+          </div>
+        </div>
+
         <!-- Form -->
         <form id="signin-form" class="space-y-6">
           <!-- Error Message -->
@@ -88,7 +104,7 @@ import Layout from '../../components/Layout.astro';
               />
               <span class="text-sm text-slate-600">Ingat saya</span>
             </label>
-            <a href="#" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
+            <a href="/auth/reset" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
               Lupa kata sandi?
             </a>
           </div>

@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import Layout from '../../../../../../components/Layout.astro';
+import Icon from '../../../../../../components/icons/Icon.astro';
 import { prisma } from '../../../../../../lib/db';
 
 const { courseId, chapterId } = Astro.params;
@@ -82,7 +83,7 @@ const allChapters = await prisma.chapter.findMany({
           </div>
           <div class="flex items-center gap-3">
             <a href="/admin/tutorial" target="_blank" class="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 px-2 py-1 hover:bg-blue-50 rounded transition-colors">
-              <span>📚</span>
+              <Icon name="book-stack" class="w-4 h-4" />
               <span>Tutorial Formatting</span>
             </a>
           </div>
@@ -341,7 +342,7 @@ const allChapters = await prisma.chapter.findMany({
             title="Sisipkan Blok Definisi"
           >
             <div class="w-10 h-10 bg-blue-100 group-hover:bg-blue-200 rounded-lg flex items-center justify-center mr-3 transition-colors">
-              <span class="text-xl">📘</span>
+              <Icon name="book-stack" class="w-5 h-5 text-blue-700" />
             </div>
             <span class="text-sm font-medium text-blue-800">Definisi</span>
           </button>
@@ -365,7 +366,7 @@ const allChapters = await prisma.chapter.findMany({
             title="Sisipkan Blok Contoh"
           >
             <div class="w-10 h-10 bg-amber-100 group-hover:bg-amber-200 rounded-lg flex items-center justify-center mr-3 transition-colors">
-              <span class="text-xl">📝</span>
+              <Icon name="pencil" class="w-5 h-5 text-amber-700" />
             </div>
             <span class="text-sm font-medium text-amber-800">Contoh</span>
           </button>
@@ -761,7 +762,7 @@ const allChapters = await prisma.chapter.findMany({
       const editor = monacoEditor || document.getElementById('content') || document.getElementById('content-fallback');
       if (editor) {
         const template = `<div class="definition-block">
-  <div class="definition-header">📘 Definisi: [Judul Definisi]</div>
+  <div class="definition-header">Definisi: [Judul Definisi]</div>
   <div class="definition-content">
     [Konten definisi di sini]
   </div>
@@ -793,7 +794,7 @@ const allChapters = await prisma.chapter.findMany({
       const editor = monacoEditor || document.getElementById('content') || document.getElementById('content-fallback');
       if (editor) {
         const template = `<div class="example-block">
-  <div class="example-header">📝 Contoh [nomor]</div>
+  <div class="example-header">Contoh [nomor]</div>
   <div class="example-problem">
     [Permasalahan atau soal]
   </div>

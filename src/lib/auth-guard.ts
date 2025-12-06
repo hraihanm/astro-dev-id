@@ -1,13 +1,36 @@
 import { prisma } from './db';
 import type { AstroCookies } from 'astro';
+import { decode } from 'next-auth/jwt';
 
 export async function getSessionUser(cookies: AstroCookies) {
     const userId = cookies.get('user_id')?.value;
-    if (!userId) return null;
+    const nextAuthToken =
+        cookies.get('__Secure-next-auth.session-token')?.value ||
+        cookies.get('next-auth.session-token')?.value;
+
+    let resolvedUserId: number | null = null;
+
+    if (userId) {
+        resolvedUserId = parseInt(userId);
+    } else if (nextAuthToken && import.meta.env.AUTH_SECRET) {
+        try {
+            const token = await decode({
+                token: nextAuthToken,
+                secret: import.meta.env.AUTH_SECRET
+            });
+            if (token?.sub) {
+                resolvedUserId = parseInt(token.sub);
+            }
+        } catch (error) {
+            console.error('Error decoding Auth.js token:', error);
+        }
+    }
+
+    if (!resolvedUserId) return null;
 
     try {
         const user = await prisma.user.findUnique({
-            where: { id: parseInt(userId) },
+            where: { id: resolvedUserId },
             include: { profile: true }
         });
         return user;

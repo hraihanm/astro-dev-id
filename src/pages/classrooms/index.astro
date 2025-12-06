@@ -1,12 +1,24 @@
 ---
 import Layout from '../../components/Layout.astro';
+import Icon from '../../components/icons/Icon.astro';
 import { prisma } from '../../lib/db';
 import { getSessionUser } from '../../lib/auth-guard';
+
+export const prerender = false;
 
 const user = await getSessionUser(Astro.cookies);
 
 const classrooms = user
   ? await prisma.classroom.findMany({
+      where:
+        user.role === 'admin'
+          ? {}
+          : {
+              OR: [
+                { isPrivate: false },
+                { memberships: { some: { userId: user.id } } }
+              ]
+            },
       orderBy: { createdAt: 'desc' },
       include: {
         memberships: {
@@ -66,9 +78,18 @@ const classrooms = user
                     )}
                   </div>
                   <div class="flex items-center gap-4 text-xs text-slate-500">
-                    <span>👥 {cls._count.memberships} anggota</span>
-                    <span>📝 {cls._count.posts} post</span>
-                    <span>📌 {cls._count.resources} resource</span>
+                    <span class="inline-flex items-center gap-1">
+                      <Icon name="users" class="w-4 h-4" />
+                      {cls._count.memberships} anggota
+                    </span>
+                    <span class="inline-flex items-center gap-1">
+                      <Icon name="pencil" class="w-4 h-4" />
+                      {cls._count.posts} post
+                    </span>
+                    <span class="inline-flex items-center gap-1">
+                      <Icon name="bookmark" class="w-4 h-4" />
+                      {cls._count.resources} resource
+                    </span>
                   </div>
                   <div class="flex items-center gap-2">
                     <a

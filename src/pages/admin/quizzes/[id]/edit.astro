@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import Layout from '../../../../components/Layout.astro';
+import Icon from '../../../../components/icons/Icon.astro';
 import { getQuiz } from '../../../../lib/quizzes';
 
 const { id } = Astro.params;
@@ -10,7 +11,7 @@ if (!id) {
   return Astro.redirect('/admin/quizzes');
 }
 
-const quiz = await getQuiz(parseInt(id));
+const quiz = await getQuiz(parseInt(id), { role: 'admin', classroomIds: [] });
 
 if (!quiz) {
   return Astro.redirect('/admin/quizzes');
@@ -83,7 +84,10 @@ const normalizedQuestions = Array.isArray(questions)
     <!-- Header -->
     <div class="bg-white shadow-sm px-6 py-4 border-b flex items-center justify-between">
       <div class="flex items-center space-x-4">
-        <a href="/admin/quizzes" class="text-gray-700 hover:text-blue-600">← Kembali ke Kuis</a>
+        <a href="/admin/quizzes" class="inline-flex items-center gap-2 text-gray-700 hover:text-blue-600">
+          <Icon name="arrow-left" class="w-4 h-4" />
+          Kembali ke Kuis
+        </a>
         <h1 class="text-xl font-bold text-gray-900">{quiz.title}</h1>
         <div id="unsaved-indicator" class="hidden items-center space-x-2 text-amber-600 bg-amber-50 px-3 py-1 rounded-full text-sm">
           <span class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
@@ -91,17 +95,15 @@ const normalizedQuestions = Array.isArray(questions)
         </div>
       </div>
       <div class="flex items-center space-x-3">
-        {isTryout && (
-          <a
-            href={`/admin/quizzes/${quiz.id}/submissions`}
-            class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600 transition-colors shadow-sm"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Panel Try Out
-          </a>
-        )}
+        <a
+          href={`/admin/quizzes/${quiz.id}/submissions`}
+          class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600 transition-colors shadow-sm"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Panel Submission
+        </a>
         <button
           id="save-quiz-btn"
           class="save-quiz-btn"
@@ -168,6 +170,57 @@ const normalizedQuestions = Array.isArray(questions)
               <option value="tryout" selected={quiz.quizType === 'tryout'}>📝 Try Out (Terbatas)</option>
             </select>
             <p class="text-xs text-gray-500 mt-1">Latihan = unlimited, Try Out = batas percobaan</p>
+          </div>
+          <div>
+            <label for="quizScope" class="block text-sm font-medium text-gray-700 mb-1">
+              Keterkaitan Kuis
+            </label>
+            <select
+              id="quizScope"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+            >
+              <option value="standalone">📄 Mandiri</option>
+              <option value="course">📚 Terhubung ke Kursus</option>
+              <option value="chapter">🔖 Terhubung ke Bab</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1">Pilih apakah kuis berdiri sendiri, milik kursus, atau bab.</p>
+          </div>
+          <div id="course-select-wrapper">
+            <label for="courseSelect" class="block text-sm font-medium text-gray-700 mb-1">
+              Kursus (opsional)
+            </label>
+            <select
+              id="courseSelect"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+            >
+              <option value="">Pilih kursus</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1">Pilih kursus jika kuis terkait kursus/bab.</p>
+          </div>
+          <div id="chapter-select-wrapper" class="hidden">
+            <label for="chapterSelect" class="block text-sm font-medium text-gray-700 mb-1">
+              Bab (opsional)
+            </label>
+            <select
+              id="chapterSelect"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+            >
+              <option value="">Pilih bab</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1">Hanya tampil jika memilih keterkaitan Bab.</p>
+          </div>
+          <div>
+            <label for="visibility" class="block text-sm font-medium text-gray-700 mb-1">
+              Visibilitas
+            </label>
+            <select
+              id="visibility"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+            >
+              <option value="PUBLIC" selected={!quiz.visibility || quiz.visibility === 'PUBLIC'}>🌍 Publik</option>
+              <option value="PRIVATE" selected={quiz.visibility === 'PRIVATE'}>🔒 Privat (hanya admin/kelas)</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1">Publik = semua user; Privat = hanya admin atau melalui kelas.</p>
           </div>
           <div>
             <label for="timeLimit" class="block text-sm font-medium text-gray-700 mb-1">
@@ -939,7 +992,7 @@ const normalizedQuestions = Array.isArray(questions)
     }
   </style>
 
-  <script define:vars={{questions: normalizedQuestions, quizId: id}}>
+  <script define:vars={{questions: normalizedQuestions, quizId: id, currentCourseId: quiz.course?.id ?? null, currentChapterId: quiz.chapter?.id ?? null}}>
     const STORAGE_KEY = `quiz_editor_${quizId}`;
     
     // Load from localStorage or use server data
@@ -1039,6 +1092,114 @@ const normalizedQuestions = Array.isArray(questions)
     const attemptLimitInput = document.getElementById('attemptLimit');
     const scoreReleaseModeSelect = document.getElementById('scoreReleaseMode');
     const quizTypeBadge = document.getElementById('quiz-type-badge');
+    const quizScopeSelect = document.getElementById('quizScope');
+    const courseSelect = document.getElementById('courseSelect');
+    const chapterSelect = document.getElementById('chapterSelect');
+    const chapterWrapper = document.getElementById('chapter-select-wrapper');
+    let coursesData = [];
+    let isLoadingCourses = false;
+
+    function renderCourseOptions(selectedId) {
+      if (!courseSelect) return;
+      courseSelect.innerHTML = '<option value=\"\">Pilih kursus</option>';
+      coursesData.forEach((course) => {
+        const option = document.createElement('option');
+        option.value = course.id;
+        option.textContent = course.title;
+        if (selectedId && String(selectedId) === String(course.id)) {
+          option.selected = true;
+        }
+        courseSelect.appendChild(option);
+      });
+    }
+
+    function renderChapterOptions(courseId, selectedChapterId) {
+      if (!chapterSelect) return;
+      chapterSelect.innerHTML = '<option value=\"\">Pilih bab</option>';
+      const course = coursesData.find((c) => String(c.id) === String(courseId));
+      const chapters = course?.chapters || [];
+      chapters.forEach((ch) => {
+        const option = document.createElement('option');
+        option.value = ch.id;
+        option.textContent = `${ch.order}. ${ch.title}`;
+        if (selectedChapterId && String(selectedChapterId) === String(ch.id)) {
+          option.selected = true;
+        }
+        chapterSelect.appendChild(option);
+      });
+    }
+
+    function setScope(scope) {
+      if (!quizScopeSelect) return;
+      quizScopeSelect.value = scope;
+      if (scope === 'chapter') {
+        chapterWrapper?.classList.remove('hidden');
+      } else {
+        chapterWrapper?.classList.add('hidden');
+        chapterSelect && (chapterSelect.value = '');
+      }
+      if (scope === 'standalone') {
+        courseSelect && (courseSelect.value = '');
+      }
+    }
+
+    async function loadCourses(initialCourseId, initialChapterId) {
+      if (isLoadingCourses) return;
+      isLoadingCourses = true;
+      try {
+        const res = await fetch('/api/admin/courses?includeChapters=true');
+        if (!res.ok) return;
+        const data = await res.json();
+        coursesData = data?.courses || [];
+        renderCourseOptions(initialCourseId);
+        if (initialCourseId) {
+          renderChapterOptions(initialCourseId, initialChapterId);
+        }
+      } catch (err) {
+        console.error('Gagal memuat daftar kursus', err);
+      } finally {
+        isLoadingCourses = false;
+      }
+    }
+
+    // Initialize scope selectors
+    const initialScope = currentChapterId ? 'chapter' : currentCourseId ? 'course' : 'standalone';
+    setScope(initialScope);
+    loadCourses(currentCourseId, currentChapterId);
+
+    quizScopeSelect?.addEventListener('change', () => {
+      const scope = quizScopeSelect.value;
+      if (scope === 'standalone') {
+        courseSelect && (courseSelect.value = '');
+        chapterSelect && (chapterSelect.value = '');
+        chapterWrapper?.classList.add('hidden');
+      } else if (scope === 'course') {
+        chapterWrapper?.classList.add('hidden');
+        chapterSelect && (chapterSelect.value = '');
+      } else if (scope === 'chapter') {
+        chapterWrapper?.classList.remove('hidden');
+        const selectedCourse = courseSelect?.value;
+        if (selectedCourse) {
+          renderChapterOptions(selectedCourse, null);
+        }
+      }
+      hasUnsavedChanges = true;
+      updateUnsavedIndicator();
+    });
+
+    courseSelect?.addEventListener('change', () => {
+      const courseId = courseSelect.value;
+      if (quizScopeSelect?.value === 'chapter') {
+        renderChapterOptions(courseId, null);
+      }
+      hasUnsavedChanges = true;
+      updateUnsavedIndicator();
+    });
+
+    chapterSelect?.addEventListener('change', () => {
+      hasUnsavedChanges = true;
+      updateUnsavedIndicator();
+    });
 
     function updateQuizTypeBadge() {
       if (!quizTypeBadge) return;
@@ -1386,10 +1547,11 @@ const normalizedQuestions = Array.isArray(questions)
         <button
           type="button"
           id="prev-btn"
-          class="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           ${currentQuestionIndex === 0 ? 'disabled' : ''}
         >
-          ← Sebelumnya
+          ${arrowLeftSvg}
+          <span>Sebelumnya</span>
         </button>
         <span class="text-gray-700 font-medium">
           Soal ${current} dari ${total}
@@ -1397,10 +1559,11 @@ const normalizedQuestions = Array.isArray(questions)
         <button
           type="button"
           id="next-btn"
-          class="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           ${currentQuestionIndex >= total - 1 ? 'disabled' : ''}
         >
-          Selanjutnya →
+          <span>Selanjutnya</span>
+          ${arrowRightSvg}
         </button>
       `;
 
@@ -2058,6 +2221,26 @@ const normalizedQuestions = Array.isArray(questions)
       const attemptLimitValue = document.getElementById('attemptLimit')?.value;
       const attemptLimit = attemptLimitValue ? parseInt(attemptLimitValue) : null;
       const scoreReleaseMode = document.getElementById('scoreReleaseMode')?.value || 'immediate';
+      const scope = quizScopeSelect?.value || 'standalone';
+
+      let courseId = null;
+      let chapterId = null;
+
+      if (scope === 'course' || scope === 'chapter') {
+        courseId = courseSelect?.value ? parseInt(courseSelect.value) : null;
+        if (!courseId) {
+          alert('Pilih kursus untuk kuis ini.');
+          return;
+        }
+      }
+
+      if (scope === 'chapter') {
+        chapterId = chapterSelect?.value ? parseInt(chapterSelect.value) : null;
+        if (!chapterId) {
+          alert('Pilih bab untuk kuis bab.');
+          return;
+        }
+      }
 
       const formData = {
         title: document.getElementById('title').value,
@@ -2066,7 +2249,10 @@ const normalizedQuestions = Array.isArray(questions)
         quizType: quizType,
         attemptLimit: attemptLimit,
         scoreReleaseMode: scoreReleaseMode,
-        questions: questionsData
+        visibility: document.getElementById('visibility')?.value || 'PUBLIC',
+        questions: questionsData,
+        courseId,
+        chapterId
       };
 
       try {
@@ -2080,13 +2266,13 @@ const normalizedQuestions = Array.isArray(questions)
 
         if (response.ok) {
           clearStorage(); // Clear localStorage after successful save
-          alert('Quiz saved successfully!');
+          alert('Kuis berhasil disimpan!');
         } else {
-          alert('Error: ' + (result.error || 'Failed to save'));
+          alert('Error: ' + (result.error || 'Gagal menyimpan'));
         }
       } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred while saving');
+        alert('Terjadi kesalahan saat menyimpan');
       }
     }
 
@@ -2106,14 +2292,14 @@ const normalizedQuestions = Array.isArray(questions)
         const result = await response.json();
 
         if (response.ok) {
-          alert('Quiz deleted!');
+          alert('Kuis berhasil dihapus!');
           window.location.href = '/admin/quizzes';
         } else {
-          alert('Error: ' + (result.error || 'Failed to delete'));
+          alert('Error: ' + (result.error || 'Gagal menghapus'));
         }
       } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred');
+        alert('Terjadi kesalahan');
       }
     });
 

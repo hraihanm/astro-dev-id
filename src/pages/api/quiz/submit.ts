@@ -16,7 +16,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     }
 
     const body = await request.json();
-    const { quizId, answers, timeSpent } = body;
+    const { quizId, answers, timeSpent, endReason } = body;
 
     if (!quizId || !answers) {
       return new Response(JSON.stringify({ error: 'Quiz ID and answers are required' }), {
@@ -49,7 +49,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       answers,
       result,
       timeSpent: result.timeSpent,
-      scoreReleasedAt
+      scoreReleasedAt,
+      endReason: endReason === 'time_up' ? 'time_up' : 'manual'
     });
 
     return new Response(JSON.stringify({

@@ -1,5 +1,6 @@
 ---
 import Layout from '../../../components/Layout.astro';
+import Icon from '../../../components/icons/Icon.astro';
 import { getQuiz } from '../../../lib/quizzes';
 import { getQuizResults } from '../../../lib/scoring';
 import { prisma } from '../../../lib/db';
@@ -45,24 +46,32 @@ try {
         orderBy: { completedAt: 'desc' }
       });
       
-      allAttempts = attempts.map(a => ({
-        id: a.id,
-        score: a.score,
-        percentage: a.percentage,
-        correctAnswers: a.correctAnswers,
-        totalQuestions: a.totalQuestions,
-        timeSpent: a.timeSpent,
-        completedAt: a.completedAt.toISOString(),
-        scoreReleasedAt: a.scoreReleasedAt?.toISOString() || null
-      }));
+      const toPublicAttempt = (a: any) => {
+        const isReleased = !!a.scoreReleasedAt;
+        return {
+          id: a.id,
+          score: isReleased ? a.score : null,
+          percentage: isReleased ? a.percentage : null,
+          correctAnswers: isReleased ? a.correctAnswers : null,
+          totalQuestions: a.totalQuestions,
+          timeSpent: isReleased ? a.timeSpent : null,
+          completedAt: a.completedAt.toISOString(),
+          scoreReleasedAt: a.scoreReleasedAt?.toISOString() || null,
+          endReason: a.endReason || 'manual'
+        };
+      };
+
+      allAttempts = attempts.map(toPublicAttempt);
       
       if (attempts.length > 0) {
         const latestAttempt = attempts[0];
+        const isReleased = !!latestAttempt.scoreReleasedAt;
         attempt = {
           ...latestAttempt,
-          answers: JSON.parse(latestAttempt.answers),
-          detailedResults: JSON.parse(latestAttempt.detailedResults),
-          scoreReleasedAt: latestAttempt.scoreReleasedAt
+          answers: isReleased ? JSON.parse(latestAttempt.answers) : [],
+          detailedResults: isReleased ? JSON.parse(latestAttempt.detailedResults) : [],
+          scoreReleasedAt: latestAttempt.scoreReleasedAt,
+          endReason: latestAttempt.endReason || 'manual'
         };
       }
     }
@@ -92,10 +101,22 @@ function getScoreColor(percentage: number): string {
   return 'red';
 }
 
-const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
+function getEncouragement(percentage: number): string {
+  if (percentage >= 90) return 'Keren! Kamu menguasai materi ini. Pertahankan ya.';
+  if (percentage >= 70) return 'Mantap, tinggal sedikit lagi untuk sempurna. Teruskan!';
+  if (percentage >= 50) return 'Sudah bagus, sedikit review akan membantu naik lebih tinggi.';
+  return 'Tidak apa-apa, ini kesempatan belajar. Coba lagi setelah membaca pembahasan.';
+}
+
+const scoreColor = attempt && attempt.percentage != null ? getScoreColor(attempt.percentage) : 'slate';
+const endReasonLabel = attempt?.endReason === 'time_up' ? 'Waktu habis' : 'Diselesaikan manual';
+const encouragement = attempt?.scoreReleasedAt
+  ? getEncouragement(attempt.percentage)
+  : 'Terima kasih sudah menyelesaikan kuis ini. Skor dan ringkasan detail akan dirilis oleh admin.';
 ---
 
 <Layout title={`Hasil - ${quiz?.title || 'Quiz'}`}>
+  <link rel="stylesheet" href="/src/styles/quiz-shared.css">
   <link rel="stylesheet" href="/src/styles/quiz-shared.css">
   
   <div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -106,7 +127,8 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
           <h2 class="text-2xl font-bold text-slate-900 mb-2">{error}</h2>
           <p class="text-slate-600 mb-6">Hasil quiz yang Anda cari tidak ditemukan.</p>
           <a href="/quizzes" class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium">
-            ← Kembali ke Daftar Kuis
+            <Icon name="arrow-left" class="w-4 h-4" />
+            Kembali ke Daftar Kuis
           </a>
         </div>
       </div>
@@ -119,11 +141,11 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                  <span class="text-blue-600 text-xl">📊</span>
+                  <Icon name="bar-chart" class="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
                   <h1 class="text-lg sm:text-xl font-bold text-slate-900">{quiz.title}</h1>
-                  <p class="text-sm text-slate-500">Hasil Ujian</p>
+                  <p class="text-sm text-slate-500">Hasil kuis & catatan singkat untukmu</p>
                 </div>
               </div>
               
@@ -151,13 +173,49 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <div>
-                      <div class="text-lg font-bold text-amber-800">Menunggu Pelepasan Skor</div>
-                      <div class="text-xs text-amber-600">Admin akan melepaskan skor Anda segera</div>
+                      <div class="text-lg font-bold text-amber-800">Menunggu Rilis Skor</div>
+                      <div class="text-xs text-amber-600">Admin akan merilis skor Anda setelah peninjauan</div>
                     </div>
                   </div>
                 </div>
               )}
             </div>
+            
+            {attempt && (
+              <div class="mt-2 text-sm text-slate-600">
+                Alasan selesai: <span class="font-semibold">{endReasonLabel}</span>
+              </div>
+            )}
+            
+            {attempt && (
+              <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div class={`p-4 rounded-xl border bg-${attempt?.scoreReleasedAt ? `${scoreColor}-50` : 'slate-50'} border-${attempt?.scoreReleasedAt ? `${scoreColor}-200` : 'slate-200'}`}>
+                  <p class="text-xs uppercase tracking-wider text-slate-500 mb-1">Ringkasan</p>
+                  <p class="text-sm text-slate-700 leading-snug">{encouragement}</p>
+                </div>
+                <div class="p-4 rounded-xl border border-slate-200 bg-white">
+                  <p class="text-xs uppercase tracking-wider text-slate-500 mb-1">Status Skor</p>
+                  <p class="text-sm font-semibold text-slate-800">
+                    {attempt?.scoreReleasedAt ? 'Skor sudah dirilis' : 'Menunggu rilis admin'}
+                  </p>
+                  {attempt?.scoreReleasedAt && (
+                    <p class="text-xs text-slate-500 mt-1">
+                      Dirilis pada {new Date(attempt.scoreReleasedAt).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  )}
+                </div>
+                <div class="p-4 rounded-xl border border-slate-200 bg-white">
+                  <p class="text-xs uppercase tracking-wider text-slate-500 mb-1">Waktu Pengerjaan</p>
+                  <p class="text-lg font-mono font-bold text-slate-800">{formatTime(attempt?.timeSpent || 0)}</p>
+                </div>
+                <div class="p-4 rounded-xl border border-slate-200 bg-white">
+                  <p class="text-xs uppercase tracking-wider text-slate-500 mb-1">Riwayat Percobaan</p>
+                  <p class="text-sm font-semibold text-slate-800">
+                    {allAttempts.length || 1}x percobaan • kamu melihat hasil percobaan terbaru
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -171,7 +229,7 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
                 </svg>
                 <div>
                   <p class="text-sm font-medium text-amber-800">Skor Anda sedang ditinjau oleh admin</p>
-                  <p class="text-xs text-amber-600 mt-1">Detail jawaban dan skor akan ditampilkan setelah admin melepaskan hasil. Silakan cek kembali nanti.</p>
+                  <p class="text-xs text-amber-600 mt-1">Detail jawaban dan skor akan ditampilkan setelah admin merilis hasil. Silakan cek kembali nanti.</p>
                 </div>
               </div>
             </div>
@@ -223,7 +281,7 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
             <!-- Question Grid -->
             <div class="p-4 sm:p-5">
               <h3 class="font-bold text-slate-700 text-xs mb-4 uppercase tracking-wider flex items-center gap-2">
-                <span>📋</span>
+                <Icon name="clipboard" class="w-4 h-4" />
                 <span>Nomor Soal</span>
               </h3>
               <div id="question-grid" class="grid grid-cols-5 gap-2 sm:gap-2.5 overflow-y-auto scroll-smooth p-1 max-h-[360px]">
@@ -260,7 +318,7 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
             {allAttempts.length > 1 && (
               <div class="p-4 sm:p-5 border-t border-slate-100">
                 <h3 class="font-bold text-slate-700 text-xs mb-3 uppercase tracking-wider flex items-center gap-2">
-                  <span>📜</span>
+                  <Icon name="note" class="w-4 h-4" />
                   <span>Riwayat Percobaan</span>
                 </h3>
                 <div class="space-y-2 max-h-40 overflow-y-auto">
@@ -271,8 +329,12 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
                         <span class="text-slate-400 text-xs">{new Date(a.completedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
                       </div>
                       <div class="flex items-center gap-2">
-                        <span class={`font-bold ${a.percentage >= 70 ? 'text-emerald-600' : a.percentage >= 50 ? 'text-amber-600' : 'text-red-600'}`}>{a.percentage}%</span>
-                        <span class="text-slate-400 text-xs">{a.correctAnswers}/{a.totalQuestions}</span>
+                        <span class={`font-bold ${a.percentage != null && a.percentage >= 70 ? 'text-emerald-600' : a.percentage != null && a.percentage >= 50 ? 'text-amber-600' : 'text-slate-500'}`}>
+                          {a.percentage != null ? `${a.percentage}%` : '—'}
+                        </span>
+                        <span class="text-slate-400 text-xs">
+                          {a.correctAnswers != null ? `${a.correctAnswers}/${a.totalQuestions}` : `—/${a.totalQuestions}`}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -309,14 +371,16 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
         
         <!-- Mobile Bottom Nav -->
         <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 flex items-center justify-between gap-2 z-20">
-          <button id="mobile-prev-btn" class="flex-1 py-2.5 px-3 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm font-semibold text-slate-700 disabled:opacity-50">
-            ← Prev
+          <button id="mobile-prev-btn" class="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-3 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm font-semibold text-slate-700 disabled:opacity-50">
+            <Icon name="arrow-left" class="w-4 h-4" />
+            <span>Prev</span>
           </button>
           <button id="mobile-sidebar-toggle" class="py-2.5 px-4 bg-slate-100 rounded-lg text-slate-700">
             📊
           </button>
-          <button id="mobile-next-btn" class="flex-1 py-2.5 px-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold text-white">
-            Next →
+          <button id="mobile-next-btn" class="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold text-white">
+            <span>Next</span>
+            <Icon name="arrow-right" class="w-4 h-4" />
           </button>
         </div>
         </>
@@ -326,8 +390,8 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
               <svg class="w-16 h-16 text-amber-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <h2 class="text-xl font-bold text-slate-900 mb-2">Skor Belum Dilepaskan</h2>
-              <p class="text-slate-600 mb-6">Admin sedang meninjau submission Anda. Detail jawaban dan skor akan ditampilkan setelah admin melepaskan hasil.</p>
+              <h2 class="text-xl font-bold text-slate-900 mb-2">Skor Belum Dirilis</h2>
+              <p class="text-slate-600 mb-6">Admin sedang meninjau submission Anda. Detail jawaban dan skor akan ditampilkan setelah admin merilis hasil.</p>
               <a href="/quizzes" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                 Kembali ke Daftar Kuis
               </a>
@@ -391,6 +455,10 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
     if (!quiz || !attempt) {
       document.body.innerHTML = '<div class="text-center py-20"><p class="text-xl text-slate-600">Loading...</p></div>';
     } else {
+      const arrowLeftSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>';
+      const arrowRightSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>';
+      const lightbulbSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 18h6" /><path d="M10 22h4" /><path d="M12 2a7 7 0 017 7c0 2.3-1.2 4.3-3 5.5-.7.5-1 1.2-1 2v1h-6v-1c0-.8-.4-1.5-1-2A6.97 6.97 0 015 9a7 7 0 017-7z" /></svg>';
+
       // Escape HTML for safe attribute embedding
       function escapeHtml(text) {
         if (!text) return '';
@@ -531,12 +599,14 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
         
         // Nav
         navContainer.innerHTML = `
-          <button type="button" id="prev-btn-main" class="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" ${currentQuestionIndex === 0 ? 'disabled' : ''}>
-            ← Sebelumnya
+          <button type="button" id="prev-btn-main" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" ${currentQuestionIndex === 0 ? 'disabled' : ''}>
+            ${arrowLeftSvg}
+            <span>Sebelumnya</span>
           </button>
           <span class="text-gray-700 font-medium">Soal ${currentQuestionIndex + 1} dari ${questions.length}</span>
-          <button type="button" id="next-btn-main" class="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" ${currentQuestionIndex === questions.length - 1 ? 'disabled' : ''}>
-            Selanjutnya →
+          <button type="button" id="next-btn-main" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" ${currentQuestionIndex === questions.length - 1 ? 'disabled' : ''}>
+            <span>Selanjutnya</span>
+            ${arrowRightSvg}
           </button>
         `;
 
@@ -569,7 +639,10 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
 
               ${solutionHtml ? `
                 <details class="solution-panel" open>
-                  <summary><span class="text-lg">💡</span><span>Pembahasan</span></summary>
+                  <summary class="inline-flex items-center gap-2 text-slate-700">
+                    ${lightbulbSvg}
+                    <span>Pembahasan</span>
+                  </summary>
                   <div class="solution-content prose max-w-none">
                     ${solutionHtml}
                     ${question.metadata?.solutionImages?.length > 0 ? `
@@ -607,7 +680,10 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
         const prevBtn = document.getElementById('mobile-prev-btn');
         const nextBtn = document.getElementById('mobile-next-btn');
         if (prevBtn) prevBtn.disabled = currentQuestionIndex === 0;
-        if (nextBtn) nextBtn.textContent = currentQuestionIndex === questions.length - 1 ? 'Selesai ✓' : 'Next →';
+        if (nextBtn) {
+          const span = nextBtn.querySelector('span');
+          if (span) span.textContent = currentQuestionIndex === questions.length - 1 ? 'Selesai' : 'Next';
+        }
       }
 
       // Initialize
@@ -721,4 +797,6 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
     }
   </style>
 </Layout>
+
+
 

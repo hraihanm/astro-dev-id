@@ -30,9 +30,14 @@ export async function createCourse(data: {
   description?: string;
   slug: string;
   createdBy: number;
+  visibility?: string;
 }) {
+  const visibility = data.visibility?.toUpperCase() === 'PRIVATE' ? 'PRIVATE' : 'PUBLIC';
   return await prisma.course.create({
-    data
+    data: {
+      ...data,
+      visibility
+    }
   });
 }
 

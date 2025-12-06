@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { randomBytes } from 'crypto';
+import { decode } from 'next-auth/jwt';
 import { prisma } from './db';
 
 type AuthResult =
@@ -43,13 +44,32 @@ export async function requireAdminAuth(request: Request, cookies: APIRoute['cook
     return { ok: true, userId: null, method: 'api-key' };
   }
 
-  const userId = cookies.get('user_id')?.value;
-  if (!userId) {
+  const userIdCookie = cookies.get('user_id')?.value;
+  const nextAuthToken =
+    cookies.get('__Secure-next-auth.session-token')?.value ||
+    cookies.get('next-auth.session-token')?.value;
+
+  let resolvedUserId: number | null = null;
+
+  if (userIdCookie) {
+    resolvedUserId = parseInt(userIdCookie);
+  } else if (nextAuthToken && process.env.AUTH_SECRET) {
+    try {
+      const token = await decode({ token: nextAuthToken, secret: process.env.AUTH_SECRET });
+      if (token?.sub) {
+        resolvedUserId = parseInt(token.sub);
+      }
+    } catch (error) {
+      console.error('Error decoding Auth.js token:', error);
+    }
+  }
+
+  if (!resolvedUserId) {
     return { ok: false, status: 401, message: 'Authentication required' };
   }
 
   const user = await prisma.user.findUnique({
-    where: { id: parseInt(userId) },
+    where: { id: resolvedUserId },
     select: { id: true, email: true, role: true }
   });
 

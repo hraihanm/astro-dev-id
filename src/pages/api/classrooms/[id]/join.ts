@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { prisma } from '../../../../../lib/db';
+import { prisma } from '../../../../lib/db';
 
 export const prerender = false;
 
@@ -26,6 +26,18 @@ export const POST: APIRoute = async ({ params, cookies }) => {
       });
     }
 
+    const classroom = await prisma.classroom.findUnique({
+      where: { id: classroomId },
+      select: { isPrivate: true }
+    });
+
+    if (!classroom) {
+      return new Response(JSON.stringify({ error: 'Classroom not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     const existing = await prisma.classroomMembership.findFirst({
       where: { classroomId, userId }
     });
@@ -40,10 +52,13 @@ export const POST: APIRoute = async ({ params, cookies }) => {
 
       const updated = await prisma.classroomMembership.update({
         where: { id: existing.id },
-        data: { status: 'PENDING' }
+        data: { status: classroom.isPrivate ? 'PENDING' : 'ACTIVE' }
       });
 
-      return new Response(JSON.stringify({ message: 'Join request refreshed', membership: updated }), {
+      return new Response(JSON.stringify({
+        message: classroom.isPrivate ? 'Join request refreshed' : 'Joined classroom',
+        membership: updated
+      }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -54,11 +69,14 @@ export const POST: APIRoute = async ({ params, cookies }) => {
         classroomId,
         userId,
         role: 'STUDENT',
-        status: 'PENDING'
+        status: classroom.isPrivate ? 'PENDING' : 'ACTIVE'
       }
     });
 
-    return new Response(JSON.stringify({ message: 'Join request submitted', membership }), {
+    return new Response(JSON.stringify({
+      message: classroom.isPrivate ? 'Join request submitted' : 'Joined classroom',
+      membership
+    }), {
       status: 201,
       headers: { 'Content-Type': 'application/json' }
     });

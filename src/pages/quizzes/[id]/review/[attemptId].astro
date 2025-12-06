@@ -1,5 +1,7 @@
 ---
 import Layout from '../../../../components/Layout.astro';
+import Icon from '../../../../components/icons/Icon.astro';
+import Icon from '../../../../components/icons/Icon.astro';
 import { getQuiz } from '../../../../lib/quizzes';
 import { prisma } from '../../../../lib/db';
 
@@ -46,10 +48,12 @@ try {
       });
       
       if (foundAttempt) {
+        const isReleased = !!foundAttempt.scoreReleasedAt;
         attempt = {
           ...foundAttempt,
           answers: JSON.parse(foundAttempt.answers),
-          detailedResults: JSON.parse(foundAttempt.detailedResults)
+          detailedResults: isReleased ? JSON.parse(foundAttempt.detailedResults) : [],
+          scoreReleasedAt: foundAttempt.scoreReleasedAt
         };
       }
     }
@@ -89,7 +93,8 @@ function getScoreColor(percentage: number): string {
   return 'red';
 }
 
-const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
+const scoreColor = attempt && attempt.percentage != null ? getScoreColor(attempt.percentage) : 'slate';
+const endReasonLabel = attempt?.endReason === 'time_up' ? 'Waktu habis' : 'Diselesaikan manual';
 ---
 
 <Layout title={`Tinjau - ${quiz?.title || 'Quiz'}`}>
@@ -111,13 +116,11 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
           <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div class="flex items-center gap-4">
               <a href="/quizzes/history" class="p-2 rounded-lg hover:bg-slate-100 transition-colors">
-                <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
+                <Icon name="arrow-left" class="w-5 h-5 text-slate-600" />
               </a>
               <div class="flex items-center gap-3">
-                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-                  <span class="text-2xl">📊</span>
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white">
+                  <Icon name="bar-chart" class="w-6 h-6" />
                 </div>
                 <div>
                   <h1 class="text-xl font-bold text-slate-900">{quiz.title}</h1>
@@ -127,20 +130,28 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
             </div>
             
             <div class="flex items-center gap-4">
-              <div class={`px-4 py-2 rounded-xl bg-${scoreColor}-50 border border-${scoreColor}-200`}>
-                <div class="flex items-center gap-4">
-                  <div class="text-center">
-                    <div class={`text-2xl font-bold text-${scoreColor}-600`}>{attempt.percentage}%</div>
-                    <div class="text-xs text-slate-500 uppercase tracking-wider">Skor</div>
-                  </div>
-                  <div class="w-px h-8 bg-slate-200"></div>
-                  <div class="text-center">
-                    <div class="text-lg font-bold text-slate-900">{attempt.correctAnswers}/{attempt.totalQuestions}</div>
-                    <div class="text-xs text-slate-500 uppercase tracking-wider">Benar</div>
+              {attempt?.scoreReleasedAt ? (
+                <div class={`px-4 py-2 rounded-xl bg-${scoreColor}-50 border border-${scoreColor}-200`}>
+                  <div class="flex items-center gap-4">
+                    <div class="text-center">
+                      <div class={`text-2xl font-bold text-${scoreColor}-600`}>{attempt.percentage}%</div>
+                      <div class="text-xs text-slate-500 uppercase tracking-wider">Skor</div>
+                    </div>
+                    <div class="w-px h-8 bg-slate-200"></div>
+                    <div class="text-center">
+                      <div class="text-lg font-bold text-slate-900">{attempt.correctAnswers}/{attempt.totalQuestions}</div>
+                      <div class="text-xs text-slate-500 uppercase tracking-wider">Benar</div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div class="px-4 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold flex items-center gap-2">
+                  <Icon name="clock" class="w-4 h-4" />
+                  Skor belum dirilis oleh admin
+                </div>
+              )}
             </div>
+            <p class="text-sm text-slate-600 mt-1">Alasan selesai: <span class="font-semibold">{endReasonLabel}</span></p>
           </div>
         </div>
 
@@ -184,30 +195,35 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
             </div>
 
             <!-- Question Grid -->
-            <div class="p-4">
-              <h3 class="font-semibold text-slate-700 text-sm tracking-wide mb-3 flex items-center gap-2">
-                <span>📋</span>
-                <span>NOMOR SOAL</span>
+            <div class="p-4 sm:p-5">
+              <h3 class="font-bold text-slate-700 text-xs mb-4 uppercase tracking-wider flex items-center gap-2">
+                <Icon name="clipboard" class="w-4 h-4" />
+                <span>Nomor Soal</span>
               </h3>
-              <div id="question-grid" class="grid grid-cols-5 gap-2 max-h-[360px] overflow-y-auto pr-1">
+              <div id="question-grid" class="grid grid-cols-5 gap-2 sm:gap-2.5 overflow-y-auto scroll-smooth p-1 max-h-[360px]">
                 <!-- Question numbers will be rendered here -->
               </div>
-            </div>
-            
-            <!-- Status Legend -->
-            <div class="p-4 border-t border-slate-100">
-              <div class="space-y-2 text-sm">
-                <div class="flex items-center gap-2">
-                  <div class="w-6 h-6 rounded-lg bg-emerald-500"></div>
-                  <span class="text-slate-600">Benar</span>
+              <div class="status-legend mt-4">
+                <div class="status-legend-item correct-item">
+                  <div class="status-legend-label">
+                    <div class="status-legend-icon bg-emerald-100 border-emerald-400 text-emerald-600">✓</div>
+                    <span class="status-legend-text">Benar</span>
+                  </div>
+                  <span id="correct-count" class="status-legend-count text-emerald-600">0</span>
                 </div>
-                <div class="flex items-center gap-2">
-                  <div class="w-6 h-6 rounded-lg bg-red-500"></div>
-                  <span class="text-slate-600">Salah</span>
+                <div class="status-legend-item incorrect-item">
+                  <div class="status-legend-label">
+                    <div class="status-legend-icon bg-red-100 border-red-400 text-red-600">✗</div>
+                    <span class="status-legend-text">Salah</span>
+                  </div>
+                  <span id="incorrect-count" class="status-legend-count text-red-600">0</span>
                 </div>
-                <div class="flex items-center gap-2">
-                  <div class="w-6 h-6 rounded-lg bg-slate-300"></div>
-                  <span class="text-slate-600">Tidak Dijawab</span>
+                <div class="status-legend-item blank-item">
+                  <div class="status-legend-label">
+                    <div class="status-legend-icon bg-slate-100 border-slate-300">−</div>
+                    <span class="status-legend-text">Tidak Dijawab</span>
+                  </div>
+                  <span id="blank-count" class="status-legend-count text-slate-500">0</span>
                 </div>
               </div>
             </div>
@@ -218,7 +234,7 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
                 href={`/quizzes/${quiz.id}`}
                 class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-center flex items-center justify-center gap-2 transition-colors"
               >
-                <span>🔄</span>
+                <Icon name="refresh" class="w-4 h-4" />
                 <span>Coba Lagi</span>
               </a>
             </div>
@@ -260,9 +276,25 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
   const questions = quiz.questions;
   const detailedResults = attempt.detailedResults;
   const userAnswers = attempt.answers;
+  const isReleased = !!attempt.scoreReleasedAt;
   
   let currentQuestionIndex = 0;
+  const arrowLeftSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>';
+  const arrowRightSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>';
+  const lightbulbSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 18h6" /><path d="M10 22h4" /><path d="M12 2a7 7 0 017 7c0 2.3-1.2 4.3-3 5.5-.7.5-1 1.2-1 2v1h-6v-1c0-.8-.4-1.5-1-2A6.97 6.97 0 015 9a7 7 0 017-7z" /></svg>';
   
+  // Adjust legend for unreleased scores
+  if (!isReleased) {
+    requestAnimationFrame(() => {
+      const correctLabel = document.querySelector('.correct-item .status-legend-text');
+      const incorrectItem = document.querySelector('.incorrect-item');
+      const blankLabel = document.querySelector('.blank-item .status-legend-text');
+      if (correctLabel) correctLabel.textContent = 'Dijawab';
+      if (incorrectItem) incorrectItem.style.display = 'none';
+      if (blankLabel) blankLabel.textContent = 'Belum dijawab';
+    });
+  }
+
   function escapeHtml(text) {
     const div = document.createElement('div');
     div.appendChild(document.createTextNode(text));
@@ -323,18 +355,23 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
     
     grid.innerHTML = questions.map((q, index) => {
       const result = detailedResults[index];
+      const answered = userAnswers[index] !== undefined && userAnswers[index] !== null;
       let classes = ['question-number'];
       
       if (index === currentQuestionIndex) {
         classes.push('current');
       }
       
-      if (result?.isCorrect) {
-        classes.push('correct');
-      } else if (userAnswers[index] !== undefined && userAnswers[index] !== null) {
-        classes.push('incorrect');
+      if (isReleased) {
+        if (result?.isCorrect) {
+          classes.push('correct');
+        } else if (answered) {
+          classes.push('incorrect');
+        } else {
+          classes.push('unanswered');
+        }
       } else {
-        classes.push('unanswered');
+        classes.push(answered ? 'answered' : 'unanswered');
       }
       
       return `<button class="${classes.join(' ')}" data-index="${index}">${index + 1}</button>`;
@@ -348,6 +385,37 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
         closeSidebar();
       });
     });
+
+    updateCounts();
+  }
+
+  function updateCounts() {
+    const correctEl = document.getElementById('correct-count');
+    const incorrectEl = document.getElementById('incorrect-count');
+    const blankEl = document.getElementById('blank-count');
+
+    let correct = 0;
+    let incorrect = 0;
+    let blank = 0;
+
+    questions.forEach((_, idx) => {
+      const answer = userAnswers[idx];
+      if (isReleased && detailedResults[idx]?.isCorrect) {
+        correct++;
+      } else if (answer !== undefined && answer !== null) {
+        if (isReleased) {
+          incorrect++;
+        } else {
+          correct++; // count answered
+        }
+      } else {
+        blank++;
+      }
+    });
+
+    if (correctEl) correctEl.textContent = correct;
+    if (incorrectEl) incorrectEl.textContent = isReleased ? incorrect : 0;
+    if (blankEl) blankEl.textContent = blank;
   }
   
   function goToQuestion(index) {
@@ -376,12 +444,18 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
     const userAnswer = userAnswers[currentQuestionIndex];
     
     let statusBadge = '';
-    if (result?.isCorrect) {
-      statusBadge = '<span class="px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-medium rounded-lg">✓ Benar</span>';
-    } else if (userAnswer !== undefined && userAnswer !== null) {
-      statusBadge = '<span class="px-3 py-1 bg-red-100 text-red-700 text-sm font-medium rounded-lg">✗ Salah</span>';
+    if (isReleased) {
+      if (result?.isCorrect) {
+        statusBadge = '<span class="px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-medium rounded-lg">✓ Benar</span>';
+      } else if (userAnswer !== undefined && userAnswer !== null) {
+        statusBadge = '<span class="px-3 py-1 bg-red-100 text-red-700 text-sm font-medium rounded-lg">✗ Salah</span>';
+      } else {
+        statusBadge = '<span class="px-3 py-1 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg">− Tidak Dijawab</span>';
+      }
     } else {
-      statusBadge = '<span class="px-3 py-1 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg">− Tidak Dijawab</span>';
+      statusBadge = userAnswer !== undefined && userAnswer !== null
+        ? '<span class="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-lg">Jawaban disimpan</span>'
+        : '<span class="px-3 py-1 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg">Belum dijawab</span>';
     }
     
     let optionsHtml = '';
@@ -391,8 +465,8 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
         const isSelected = userAnswer === idx + 1 || (Array.isArray(userAnswer) && userAnswer.includes(idx + 1));
         
         let optionClass = 'option-label';
-        if (isCorrect) optionClass += ' correct';
-        if (isSelected && !isCorrect) optionClass += ' incorrect';
+        if (isReleased && isCorrect) optionClass += ' correct';
+        if (isReleased && isSelected && !isCorrect) optionClass += ' incorrect';
         if (isSelected) optionClass += ' selected';
         
         return `
@@ -421,9 +495,12 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
         </div>
       </div>
       
-      ${question.metadata?.solution ? `
+      ${isReleased && question.metadata?.solution ? `
         <details class="solution-panel">
-          <summary><span>💡</span><span>Pembahasan</span></summary>
+          <summary class="inline-flex items-center gap-2 text-slate-700">
+            ${lightbulbSvg}
+            <span>Pembahasan</span>
+          </summary>
           <div class="solution-content prose max-w-none">
             ${processMarkdownAndLatex(question.metadata.solution)}
           </div>
@@ -446,10 +523,11 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
       <button
         type="button"
         id="prev-btn"
-        class="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
         ${currentQuestionIndex === 0 ? 'disabled' : ''}
       >
-        ← Sebelumnya
+        ${arrowLeftSvg}
+        <span>Sebelumnya</span>
       </button>
       <span class="text-gray-700 font-medium">
         Soal ${current} dari ${total}
@@ -457,10 +535,11 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
       <button
         type="button"
         id="next-btn"
-        class="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
         ${currentQuestionIndex >= total - 1 ? 'disabled' : ''}
       >
-        Selanjutnya →
+        <span>Selanjutnya</span>
+        ${arrowRightSvg}
       </button>
     `;
     

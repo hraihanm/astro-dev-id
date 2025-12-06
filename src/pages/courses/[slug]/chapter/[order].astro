@@ -8,6 +8,8 @@ import { getChapterContent } from '../../../../lib/student';
 import { renderMarkdown } from '../../../../lib/latex';
 import { getCourseQuizzes, getChapterQuizzes } from '../../../../lib/quizzes';
 import { parseBlocks, splitContentAtMarkers, type InteractiveBlock } from '../../../../lib/blocks';
+import { getSessionUser } from '../../../../lib/auth-guard';
+import { prisma } from '../../../../lib/db';
 
 const { slug, order } = Astro.params;
 
@@ -17,11 +19,23 @@ if (!slug || !order) {
 
 const chapterOrder = parseInt(order);
 
-// Get userId from cookies for progress tracking
-const userIdCookie = Astro.cookies.get('user_id');
-const userId = userIdCookie ? parseInt(userIdCookie.value) : undefined;
+// Get user from cookies for progress tracking and access control
+const user = await getSessionUser(Astro.cookies);
+let classroomIds: number[] = [];
+if (user) {
+  const memberships = await prisma.classroomMembership.findMany({
+    where: { userId: user.id, status: 'ACTIVE' },
+    select: { classroomId: true }
+  });
+  classroomIds = memberships.map((m) => m.classroomId);
+}
 
-const courseData = await getChapterContent(slug, chapterOrder, userId);
+const userId = user?.id;
+
+const courseData = await getChapterContent(slug, chapterOrder, userId, {
+  role: user?.role,
+  classroomIds
+});
 
 if (!courseData || !courseData.chapter) {
   return Astro.redirect(`/courses/${slug}`);
@@ -328,7 +342,8 @@ const quizzes = chapterQuizzes.map(quiz => {
 
     // Load and render LaTeX after page loads
     function renderLatex() {
-      if (typeof window === 'undefined' || !window.katex) return;
+      const w = typeof window !== 'undefined' ? (window as any) : null;
+      if (!w || !w.katex) return;
       
       const mathElements = document.querySelectorAll('.math-display, .math-inline');
       mathElements.forEach((element) => {
@@ -336,7 +351,7 @@ const quizzes = chapterQuizzes.map(quiz => {
         const displayMode = element.classList.contains('math-display');
         
         try {
-          window.katex.render(latex, element, {
+          w.katex.render(latex, element as HTMLElement, {
             displayMode,
             throwOnError: false,
             trust: true,
@@ -344,25 +359,29 @@ const quizzes = chapterQuizzes.map(quiz => {
               '\\degree': '^{\\circ}'
             }
           });
-        } catch (err) {
+        } catch (err: any) {
           console.warn('KaTeX render error:', err);
-          element.innerHTML = `<span class="latex-error">LaTeX Error: ${err.message}</span>`;
+          (element as HTMLElement).innerHTML = `<span class="latex-error">LaTeX Error: ${err?.message || 'Unknown error'}</span>`;
         }
       });
     }
     
     // Highlight code blocks
     function highlightCode() {
-      if (typeof window === 'undefined' || !window.hljs) return;
+      const w = typeof window !== 'undefined' ? (window as any) : null;
+      if (!w || !w.hljs) return;
       
       const codeBlocks = document.querySelectorAll('pre code');
       codeBlocks.forEach((block) => {
-        window.hljs.highlightElement(block);
+        if (block instanceof HTMLElement) {
+          w.hljs.highlightElement(block);
+        }
       });
     }
 
     // Load dependencies and render
     if (typeof window !== 'undefined') {
+      const w = window as any;
       let scriptsLoaded = 0;
       const totalScripts = 2; // KaTeX + Highlight.js
       
@@ -375,12 +394,12 @@ const quizzes = chapterQuizzes.map(quiz => {
       }
       
       // Check if already loaded
-      if (window.katex && window.hljs) {
+      if (w.katex && w.hljs) {
         tryRender();
         tryRender();
       } else {
         // Load KaTeX
-        if (window.katex) {
+        if (w.katex) {
           tryRender();
         } else {
           const katexScript = document.createElement('script');
@@ -390,7 +409,7 @@ const quizzes = chapterQuizzes.map(quiz => {
         }
         
         // Load Highlight.js
-        if (window.hljs) {
+        if (w.hljs) {
           tryRender();
         } else {
           const hljsScript = document.createElement('script');

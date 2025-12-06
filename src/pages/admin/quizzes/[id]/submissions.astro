@@ -60,7 +60,7 @@ const pendingCount = attempts.filter(a => !a.scoreReleasedAt).length;
 const releasedCount = attempts.filter(a => a.scoreReleasedAt).length;
 ---
 
-<Layout title={`Panel Try Out - ${quiz.title}`}>
+<Layout title={`Panel Submission - ${quiz.title}`}>
   <div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
     <!-- Header -->
     <div class="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
@@ -73,7 +73,7 @@ const releasedCount = attempts.filter(a => a.scoreReleasedAt).length;
               </svg>
             </a>
             <div>
-              <h1 class="text-xl font-bold text-slate-900">Panel Try Out</h1>
+              <h1 class="text-xl font-bold text-slate-900">Panel Submission</h1>
               <p class="text-xs text-slate-500">{quiz.title}</p>
             </div>
           </div>
@@ -100,7 +100,7 @@ const releasedCount = attempts.filter(a => a.scoreReleasedAt).length;
         <div class="bg-white rounded-lg shadow-sm border border-amber-200 p-4">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm text-slate-600">Menunggu Pelepasan</p>
+              <p class="text-sm text-slate-600">Menunggu Rilis</p>
               <p class="text-2xl font-bold text-amber-600 mt-1">{pendingCount}</p>
             </div>
             <div class="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
@@ -113,7 +113,7 @@ const releasedCount = attempts.filter(a => a.scoreReleasedAt).length;
         <div class="bg-white rounded-lg shadow-sm border border-green-200 p-4">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm text-slate-600">Sudah Dilepaskan</p>
+              <p class="text-sm text-slate-600">Sudah Dirilis</p>
               <p class="text-2xl font-bold text-green-600 mt-1">{releasedCount}</p>
             </div>
             <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -140,19 +140,29 @@ const releasedCount = attempts.filter(a => a.scoreReleasedAt).length;
           </div>
         ) : (
           <div>
-            {pendingCount > 0 && (
-              <div class="px-6 py-3 bg-amber-50 border-b border-amber-200 flex items-center justify-between">
-                <span class="text-sm text-amber-800">
-                  Ada {pendingCount} submission yang menunggu pelepasan skor
-                </span>
-                <button
-                  onclick="releaseAllScores()"
-                  class="px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors"
-                >
-                  Lepaskan Semua
-                </button>
+            <div class="px-6 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div class="text-sm text-slate-700">
+                {pendingCount > 0
+                  ? `Ada ${pendingCount} submission menunggu rilis skor`
+                  : 'Semua skor sudah dirilis'}
               </div>
-            )}
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  data-release-all
+                  data-quiz-id={id}
+                  data-pending-count={pendingCount}
+                  class="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  class:list={[
+                    pendingCount > 0 ? 'bg-amber-600 hover:bg-amber-700' : 'bg-slate-300 text-slate-600 hover:bg-slate-300'
+                  ]}
+                  disabled={pendingCount === 0}
+                >
+                  Rilis semua skor
+                </button>
+                <span id="bulk-status" class="text-xs text-slate-500"></span>
+              </div>
+            </div>
             <div class="overflow-x-auto">
               <table class="w-full">
                 <thead class="bg-slate-50 border-b border-slate-200">
@@ -203,7 +213,7 @@ const releasedCount = attempts.filter(a => a.scoreReleasedAt).length;
                               <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
-                              Dilepaskan
+                              Dirilis
                             </span>
                           ) : (
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
@@ -214,8 +224,8 @@ const releasedCount = attempts.filter(a => a.scoreReleasedAt).length;
                             </span>
                           )}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div class="flex items-center justify-end gap-2">
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium align-middle min-w-[240px]">
+                          <div class="inline-flex items-center justify-end gap-2 whitespace-nowrap">
                             <a
                               href={`/quizzes/${id}/review/${attempt.id}`}
                               target="_blank"
@@ -223,14 +233,25 @@ const releasedCount = attempts.filter(a => a.scoreReleasedAt).length;
                             >
                               Review
                             </a>
-                            {!isReleased && (
-                              <button
-                                onclick={`releaseScore(${attempt.id})`}
-                                class="text-green-600 hover:text-green-800 transition-colors"
-                              >
-                                Lepaskan Skor
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              data-release={attempt.id}
+                              class={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors ${
+                                isReleased
+                                  ? 'border-green-100 text-green-600 bg-green-50 cursor-not-allowed opacity-70'
+                                  : 'border-green-200 text-green-700 hover:bg-green-50'
+                              }`}
+                              disabled={isReleased}
+                            >
+                              {isReleased ? 'Sudah dirilis' : 'Rilis skor'}
+                            </button>
+                            <button
+                              type="button"
+                              data-delete={attempt.id}
+                              class="px-3 py-1.5 rounded-lg border border-red-200 text-xs font-semibold text-red-700 hover:bg-red-50 transition-colors"
+                            >
+                              Hapus
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -246,62 +267,125 @@ const releasedCount = attempts.filter(a => a.scoreReleasedAt).length;
   </div>
 
   <script>
-    async function releaseScore(attemptId) {
-      if (!confirm('Lepaskan skor untuk submission ini? Siswa akan dapat melihat hasilnya.')) {
-        return;
-      }
+    // @ts-nocheck
+    (function () {
+      const releaseButtons = document.querySelectorAll('[data-release]');
+      const deleteButtons = document.querySelectorAll('[data-delete]');
+      const bulkButton = document.querySelector('[data-release-all]');
+      const bulkStatus = document.getElementById('bulk-status');
+      const pendingCountValue = bulkButton ? Number(bulkButton.getAttribute('data-pending-count') || 0) : 0;
 
-      try {
-        const response = await fetch(`/api/admin/quiz/attempt/${attemptId}/release`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-          alert('Skor berhasil dilepaskan!');
-          location.reload();
-        } else {
-          alert('Error: ' + (result.error || 'Gagal melepaskan skor'));
+      /**
+       * @param {string} attemptId
+       * @param {HTMLButtonElement} btn
+       */
+      async function releaseScore(attemptId, btn) {
+        if (!confirm('Rilis skor untuk submission ini? Siswa akan dapat melihat hasilnya.')) return;
+        btn.textContent = 'Memproses...';
+        btn.disabled = true;
+        try {
+          const res = await fetch(`/api/admin/quiz/attempt/${attemptId}/release`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+          const body = await res.json().catch(() => ({}));
+          if (res.ok) {
+            btn.textContent = 'Sudah dirilis';
+            btn.classList.remove('border-green-200', 'text-green-700', 'hover:bg-green-50');
+            btn.classList.add('border-green-100', 'text-green-600', 'bg-green-50');
+          } else {
+            alert(body.error || 'Gagal merilis skor');
+            btn.textContent = 'Rilis skor';
+            btn.disabled = false;
+          }
+        } catch (err) {
+          alert('Terjadi kesalahan saat merilis skor');
+          btn.textContent = 'Rilis skor';
+          btn.disabled = false;
         }
-      } catch (error) {
-        console.error('Error:', error);
-        alert('Terjadi kesalahan saat melepaskan skor');
-      }
-    }
-
-    // Bulk release function
-    async function releaseAllScores() {
-      const pending = {pendingCount};
-      
-      if (pending === 0) {
-        alert('Tidak ada skor yang perlu dilepaskan');
-        return;
       }
 
-      if (!confirm(`Lepaskan semua ${pending} skor yang menunggu?`)) {
-        return;
-      }
-
-      try {
-        const response = await fetch(`/api/admin/quiz/${id}/release-all`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-          alert(`Berhasil melepaskan ${result.released} skor!`);
-          location.reload();
-        } else {
-          alert('Error: ' + (result.error || 'Gagal melepaskan skor'));
+      /**
+       * @param {HTMLButtonElement} btn
+       */
+      async function releaseAllScores(btn) {
+        const pending = pendingCountValue;
+        const quizId = btn.getAttribute('data-quiz-id');
+        if (!quizId) {
+          alert('Quiz id tidak ditemukan');
+          return;
         }
-      } catch (error) {
-        console.error('Error:', error);
-        alert('Terjadi kesalahan saat melepaskan skor');
+        if (pending === 0) return;
+        if (!confirm(`Rilis semua ${pending} skor yang menunggu?`)) return;
+
+        const originalText = btn.textContent;
+        btn.textContent = 'Memproses...';
+        btn.disabled = true;
+        if (bulkStatus) {
+          bulkStatus.textContent = '';
+          bulkStatus.className = 'text-xs text-slate-500';
+        }
+        try {
+          const res = await fetch(`/api/admin/quiz/${quizId}/release-all`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+          const body = await res.json().catch(() => ({}));
+          if (res.ok) {
+            if (bulkStatus) {
+              bulkStatus.textContent = `Berhasil merilis ${body.released ?? pending} skor`;
+              bulkStatus.className = 'text-xs text-emerald-600';
+            }
+            setTimeout(() => location.reload(), 800);
+          } else {
+            if (bulkStatus) {
+              bulkStatus.textContent = body.error || 'Gagal merilis skor';
+              bulkStatus.className = 'text-xs text-red-600';
+            }
+            btn.textContent = originalText;
+            btn.disabled = false;
+          }
+        } catch (err) {
+          if (bulkStatus) {
+            bulkStatus.textContent = 'Terjadi kesalahan saat merilis skor';
+            bulkStatus.className = 'text-xs text-red-600';
+          }
+          btn.textContent = originalText;
+          btn.disabled = false;
+        }
       }
-    }
+
+      releaseButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-release');
+          if (!id) return;
+          releaseScore(id, btn);
+        });
+      });
+
+      deleteButtons.forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-delete');
+          if (!id) return;
+          if (!confirm('Hapus submission ini? Tindakan tidak bisa dibatalkan.')) return;
+          const originalText = btn.textContent;
+          btn.textContent = 'Menghapus...';
+          btn.disabled = true;
+          try {
+            const res = await fetch(`/api/admin/quiz/attempt/${id}/delete`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' } });
+            const body = await res.json().catch(() => ({}));
+            if (res.ok) {
+              location.reload();
+            } else {
+              alert(body.error || 'Gagal menghapus submission');
+              btn.textContent = originalText;
+              btn.disabled = false;
+            }
+          } catch (err) {
+            alert('Terjadi kesalahan saat menghapus submission');
+            btn.textContent = originalText;
+            btn.disabled = false;
+          }
+        });
+      });
+
+      if (bulkButton) {
+        bulkButton.addEventListener('click', () => releaseAllScores(bulkButton));
+      }
+    })();
   </script>
 </Layout>
