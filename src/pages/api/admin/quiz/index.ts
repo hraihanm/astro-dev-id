@@ -1,15 +1,15 @@
 import type { APIRoute } from 'astro';
 import { getCourseQuizzes } from '../../../../lib/quizzes';
+import { requireAdminAuth } from '../../../../lib/auth';
 
 export const prerender = false;
 
 export const GET: APIRoute = async ({ request, cookies, url }) => {
   try {
-    // Check if user is authenticated
-    const userId = cookies.get('user_id')?.value;
-    if (!userId) {
-      return new Response(JSON.stringify({ error: 'Autentikasi diperlukan' }), {
-        status: 401,
+    const auth = await requireAdminAuth(request, cookies);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.message }), {
+        status: auth.status,
         headers: { 'Content-Type': 'application/json' }
       });
     }

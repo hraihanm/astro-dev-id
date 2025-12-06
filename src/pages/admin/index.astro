@@ -39,8 +39,8 @@ if (tryoutQuizzes.length > 0) {
   tryoutQuizzesWithPending = tryoutQuizzes
     .filter(quiz => pendingCountsByQuizId[quiz.id] && pendingCountsByQuizId[quiz.id] > 0)
     .map(quiz => ({
-      id: quiz.id,
-      title: quiz.title,
+        id: quiz.id,
+        title: quiz.title,
       pendingCount: pendingCountsByQuizId[quiz.id] || 0
     }));
 }

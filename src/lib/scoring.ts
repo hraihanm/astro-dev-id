@@ -26,6 +26,18 @@ export interface QuestionResult {
   maxPoints: number;
 }
 
+function normalizeOption(val: any): number {
+  const n = parseInt(val);
+  if (Number.isNaN(n)) return 0;
+  // UI submits options as 1-based (1..N). Some quizzes may store 0-based.
+  // Normalize stored correct answers to 1-based for comparison.
+  return n <= 0 ? n + 1 : n;
+}
+
+function normalizeArrayOptions(arr: any[]): number[] {
+  return arr.map((v) => normalizeOption(v));
+}
+
 export function calculateScore(questions: any[], answers: QuizAnswer[]): QuizResult {
   let correctAnswers = 0;
   let totalPoints = 0;
@@ -77,19 +89,23 @@ function evaluateQuestion(question: any, userAnswer?: QuizAnswer): QuestionResul
   }
 
   switch (question.type) {
-    case 'multiple-choice':
-      isCorrect = userAnswer.answer[0] === parseInt(question.correctAnswer);
+    case 'multiple-choice': {
+      const userVal = normalizeOption(userAnswer.answer[0]);
+      const correctVal = normalizeOption(question.correctAnswer);
+      isCorrect = userVal === correctVal;
       points = isCorrect ? maxPoints : 0;
       break;
+    }
       
-    case 'multiple-select':
-      const userSelections = userAnswer.answer.sort();
+    case 'multiple-select': {
+      const userSelections = normalizeArrayOptions(userAnswer.answer).sort();
       const correctSelections = Array.isArray(question.correctAnswer) 
-        ? question.correctAnswer.sort() 
-        : [question.correctAnswer];
+        ? normalizeArrayOptions(question.correctAnswer).sort()
+        : normalizeArrayOptions([question.correctAnswer]).sort();
       isCorrect = JSON.stringify(userSelections) === JSON.stringify(correctSelections);
       points = isCorrect ? maxPoints : 0;
       break;
+    }
       
     case 'complex-multiple-choice':
       points = evaluateComplexMultipleChoice(question, userAnswer);
@@ -152,8 +168,8 @@ function evaluateComplexMultipleChoice(question: any, userAnswer: QuizAnswer): n
   if (N === 0) return 0;
   
   // Convert to sorted number arrays for comparison
-  const userSelections = userAnswer.answer.map((a: any) => parseInt(a)).sort();
-  const correctSelections = correctAnswers.map((a: any) => parseInt(a)).sort();
+  const userSelections = userAnswer.answer.map((a: any) => normalizeOption(a)).sort();
+  const correctSelections = correctAnswers.map((a: any) => normalizeOption(a)).sort();
   
   // Count correct and incorrect selections
   let correctCount = 0;

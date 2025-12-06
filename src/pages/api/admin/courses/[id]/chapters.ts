@@ -4,7 +4,7 @@ import { requireAdminAuth } from '../../../../../lib/auth';
 
 export const prerender = false;
 
-export const DELETE: APIRoute = async ({ params, cookies, request }) => {
+export const GET: APIRoute = async ({ params, cookies, request }) => {
   try {
     const auth = await requireAdminAuth(request, cookies);
     if (!auth.ok) {
@@ -16,46 +16,55 @@ export const DELETE: APIRoute = async ({ params, cookies, request }) => {
 
     const { id } = params;
     if (!id) {
-      return new Response(JSON.stringify({ error: 'Quiz ID is required' }), {
+      return new Response(JSON.stringify({ error: 'Course ID required' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    // Check if quiz exists
-    const quiz = await prisma.quiz.findUnique({
-      where: { id: parseInt(id) }
+    // Verify course exists
+    const course = await prisma.course.findUnique({
+      where: { id: parseInt(id) },
+      select: { id: true, title: true }
     });
 
-    if (!quiz) {
-      return new Response(JSON.stringify({ error: 'Quiz not found' }), {
+    if (!course) {
+      return new Response(JSON.stringify({ error: 'Course not found' }), {
         status: 404,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    // Delete quiz attempts first (cascade)
-    await prisma.quizAttempt.deleteMany({
-      where: { quizId: parseInt(id) }
-    });
-
-    // Delete quiz
-    await prisma.quiz.delete({
-      where: { id: parseInt(id) }
+    const chapters = await prisma.chapter.findMany({
+      where: { courseId: parseInt(id) },
+      orderBy: { order: 'asc' },
+      include: {
+        quizzes: {
+          select: {
+            id: true,
+            title: true,
+            quizType: true
+          }
+        }
+      }
     });
 
     return new Response(JSON.stringify({
-      message: 'Quiz deleted successfully'
+      course: {
+        id: course.id,
+        title: course.title
+      },
+      chapters,
+      count: chapters.length
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error) {
-    console.error('Quiz delete error:', error);
+    console.error('Chapters fetch error:', error);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });
   }
 };
-

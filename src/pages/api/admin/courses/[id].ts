@@ -1,15 +1,87 @@
 import type { APIRoute } from 'astro';
 import { prisma } from '../../../../lib/db';
+import { requireAdminAuth } from '../../../../lib/auth';
 
 export const prerender = false;
 
+export const GET: APIRoute = async ({ params, cookies, request }) => {
+  try {
+    const auth = await requireAdminAuth(request, cookies);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.message }), {
+        status: auth.status,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const { id } = params;
+    if (!id) {
+      return new Response(JSON.stringify({ error: 'Course ID required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const course = await prisma.course.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        chapters: {
+          orderBy: { order: 'asc' },
+          select: {
+            id: true,
+            title: true,
+            order: true,
+            content: true,
+            blocks: true,
+            createdAt: true
+          }
+        },
+        quizzes: {
+          orderBy: { id: 'desc' },
+          select: {
+            id: true,
+            title: true,
+            quizType: true,
+            createdAt: true
+          }
+        },
+        creator: {
+          select: {
+            id: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    if (!course) {
+      return new Response(JSON.stringify({ error: 'Course not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    return new Response(JSON.stringify({
+      course
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (error) {
+    console.error('Course fetch error:', error);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+};
+
 export const PUT: APIRoute = async ({ params, request, cookies }) => {
   try {
-    // Check if user is authenticated and is admin
-    const userId = cookies.get('user_id')?.value;
-    if (!userId) {
-      return new Response(JSON.stringify({ error: 'Authentication required' }), {
-        status: 401,
+    const auth = await requireAdminAuth(request, cookies);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.message }), {
+        status: auth.status,
         headers: { 'Content-Type': 'application/json' }
       });
     }
@@ -69,13 +141,12 @@ export const PUT: APIRoute = async ({ params, request, cookies }) => {
   }
 };
 
-export const DELETE: APIRoute = async ({ params, cookies }) => {
+export const DELETE: APIRoute = async ({ params, cookies, request }) => {
   try {
-    // Check if user is authenticated and is admin
-    const userId = cookies.get('user_id')?.value;
-    if (!userId) {
-      return new Response(JSON.stringify({ error: 'Authentication required' }), {
-        status: 401,
+    const auth = await requireAdminAuth(request, cookies);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.message }), {
+        status: auth.status,
         headers: { 'Content-Type': 'application/json' }
       });
     }

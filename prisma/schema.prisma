@@ -12,6 +12,7 @@ model User {
   email         String         @unique
   password      String
   role          String         @default("student")
+  apiKey        String?        @unique
   createdAt     DateTime       @default(now())
   courses       Course[]
   attempts      QuizAttempt[]
@@ -113,4 +114,97 @@ model BlockProgress {
   
   @@unique([userId, chapterId, blockId])
   @@index([userId, chapterId])
+}
+
+enum ClassroomRole {
+  TEACHER
+  STUDENT
+}
+
+enum MembershipStatus {
+  ACTIVE
+  PENDING
+}
+
+model Classroom {
+  id          Int                   @id @default(autoincrement())
+  title       String
+  description String?
+  isPrivate   Boolean               @default(true)
+  createdBy   Int
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  creator     User                  @relation(fields: [createdBy], references: [id])
+  memberships ClassroomMembership[]
+  posts       ClassroomPost[]
+  resources   ClassroomResource[]
+
+  @@index([createdBy])
+}
+
+model ClassroomMembership {
+  id          Int             @id @default(autoincrement())
+  classroomId Int
+  userId      Int
+  role        ClassroomRole   @default(STUDENT)
+  status      MembershipStatus @default(PENDING)
+  createdAt   DateTime        @default(now())
+
+  classroom   Classroom       @relation(fields: [classroomId], references: [id])
+  user        User            @relation(fields: [userId], references: [id])
+
+  @@unique([classroomId, userId])
+  @@index([userId])
+}
+
+model ClassroomPost {
+  id          Int       @id @default(autoincrement())
+  classroomId Int
+  authorId    Int
+  content     String
+  pinned      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  classroom   Classroom @relation(fields: [classroomId], references: [id])
+  author      User      @relation(fields: [authorId], references: [id])
+  comments    ClassroomComment[]
+
+  @@index([classroomId])
+  @@index([authorId])
+}
+
+model ClassroomComment {
+  id        Int       @id @default(autoincrement())
+  postId    Int
+  authorId  Int
+  content   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  post      ClassroomPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User          @relation(fields: [authorId], references: [id])
+
+  @@index([postId])
+  @@index([authorId])
+}
+
+model ClassroomResource {
+  id          Int        @id @default(autoincrement())
+  classroomId Int
+  courseId    Int?
+  quizId      Int?
+  pinnedAt    DateTime?  @default(now())
+  addedBy     Int
+
+  classroom   Classroom  @relation(fields: [classroomId], references: [id])
+  course      Course?    @relation(fields: [courseId], references: [id])
+  quiz        Quiz?      @relation(fields: [quizId], references: [id])
+  addedByUser User       @relation(fields: [addedBy], references: [id])
+
+  @@index([classroomId])
+  @@index([courseId])
+  @@index([quizId])
+  @@index([addedBy])
 }

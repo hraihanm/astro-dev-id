@@ -1,0 +1,339 @@
+---
+import Layout from '../../components/Layout.astro';
+import { prisma } from '../../lib/db';
+import { getSessionUser } from '../../lib/auth-guard';
+
+const idParam = Astro.params.id;
+const classroomId = idParam ? parseInt(idParam, 10) : NaN;
+const user = await getSessionUser(Astro.cookies);
+
+const classroom = Number.isNaN(classroomId)
+  ? null
+  : await prisma.classroom.findUnique({
+      where: { id: classroomId },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        isPrivate: true,
+        createdAt: true,
+        updatedAt: true,
+        createdBy: true
+      }
+    });
+
+let membership = null;
+let resources: any[] = [];
+let posts: any[] = [];
+let members: any[] = [];
+
+if (classroom && user) {
+  membership = await prisma.classroomMembership.findFirst({
+    where: { classroomId, userId: user.id }
+  });
+
+  const isActive = membership?.status === 'ACTIVE' || user.role === 'admin';
+  if (isActive) {
+    resources = await prisma.classroomResource.findMany({
+      where: { classroomId },
+      orderBy: { pinnedAt: 'desc' },
+      include: {
+        course: { select: { id: true, title: true, slug: true } },
+        quiz: { select: { id: true, title: true, quizType: true } }
+      }
+    });
+
+    posts = await prisma.classroomPost.findMany({
+      where: { classroomId },
+      orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }],
+      take: 20,
+      include: {
+        author: { select: { id: true, email: true } },
+        comments: {
+          orderBy: { createdAt: 'asc' },
+          include: { author: { select: { id: true, email: true } } }
+        }
+      }
+    });
+
+    members = await prisma.classroomMembership.findMany({
+      where: { classroomId, status: 'ACTIVE' },
+      include: { user: { select: { id: true, email: true, role: true } } },
+      orderBy: { createdAt: 'asc' }
+    });
+  }
+}
+---
+
+<Layout title={classroom ? classroom.title : 'Classroom'} description="Ruang kelas">
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    {!classroom && (
+      <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+        <p class="text-slate-700">Kelas tidak ditemukan.</p>
+      </div>
+    )}
+
+    {classroom && (
+      <>
+        <header class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-3">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <p class="text-xs uppercase tracking-wide text-slate-500">Classroom</p>
+              <h1 class="text-2xl font-bold text-slate-900">{classroom.title}</h1>
+              {classroom.description && <p class="text-slate-600 mt-1">{classroom.description}</p>}
+            </div>
+            {membership ? (
+              <span class="text-xs font-semibold px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                {membership.role} · {membership.status}
+              </span>
+            ) : (
+              <span class="text-xs font-semibold px-3 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-200">
+                Belum bergabung
+              </span>
+            )}
+          </div>
+
+          {!user && (
+            <div class="flex items-center gap-2 text-sm text-slate-600">
+              <a href="/auth/signin" class="inline-flex items-center px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors">
+                Masuk untuk bergabung
+              </a>
+            </div>
+          )}
+
+          {user && !membership && (
+            <div class="flex items-center gap-3">
+              <button
+                type="button"
+                class="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
+                id="join-btn"
+                data-classroom={classroom.id}
+              >
+                Minta bergabung
+              </button>
+              <p class="text-sm text-slate-600">Kelas ini privat; permintaan akan disetujui guru/admin.</p>
+            </div>
+          )}
+
+          {membership && membership.status === 'PENDING' && (
+            <p class="text-sm text-amber-700 bg-amber-50 border border-amber-100 px-3 py-2 rounded-lg">
+              Permintaan bergabung menunggu persetujuan.
+            </p>
+          )}
+        </header>
+
+        {user && (membership?.status === 'ACTIVE' || user.role === 'admin') ? (
+          <div class="grid gap-6 lg:grid-cols-3">
+            <section class="lg:col-span-2 space-y-4">
+              <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                <h2 class="text-sm font-semibold text-slate-800 mb-3">Buat Post</h2>
+                <textarea
+                  id="post-content"
+                  class="w-full border border-slate-200 rounded-lg p-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  placeholder="Bagikan pengumuman atau diskusi..."
+                  rows="3"
+                ></textarea>
+                <div class="flex justify-end mt-3">
+                  <button
+                    type="button"
+                    id="post-submit"
+                    class="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
+                    data-classroom={classroom.id}
+                  >
+                    Post
+                  </button>
+                </div>
+              </div>
+
+              <div class="space-y-3">
+                {posts.length === 0 ? (
+                  <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm text-slate-700">
+                    Belum ada post di kelas ini.
+                  </div>
+                ) : (
+                  posts.map((post) => (
+                    <article class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
+                      <div class="flex items-center justify-between">
+                        <div class="text-sm text-slate-600">{post.author.email}</div>
+                        {post.pinned && <span class="text-xs px-2 py-1 bg-yellow-50 border border-yellow-100 text-yellow-700 rounded">Pinned</span>}
+                      </div>
+                      <p class="text-slate-800 whitespace-pre-wrap text-sm">{post.content}</p>
+                      <div class="text-xs text-slate-500">{new Date(post.createdAt).toLocaleString('id-ID')}</div>
+
+                      <div class="border-t border-slate-100 pt-3 space-y-2">
+                        {post.comments.map((c) => (
+                          <div class="text-sm">
+                            <span class="font-medium text-slate-800">{c.author.email}</span>{' '}
+                            <span class="text-slate-700">{c.content}</span>
+                          </div>
+                        ))}
+                        <div class="flex items-center gap-2">
+                          <input
+                            type="text"
+                            class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                            placeholder="Tulis komentar"
+                            data-comment-input={post.id}
+                          />
+                          <button
+                            type="button"
+                            class="px-3 py-2 rounded-lg bg-slate-800 text-white text-sm font-semibold hover:bg-slate-900 transition-colors"
+                            data-comment-submit={post.id}
+                            data-classroom={classroom.id}
+                          >
+                            Kirim
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  ))
+                )}
+              </div>
+            </section>
+
+            <aside class="space-y-4">
+              <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                <h3 class="text-sm font-semibold text-slate-800 mb-3">Resource terpin</h3>
+                {resources.length === 0 ? (
+                  <p class="text-sm text-slate-600">Belum ada resource.</p>
+                ) : (
+                  <ul class="space-y-2 text-sm">
+                    {resources.map((res) => (
+                      <li class="flex items-center gap-2">
+                        <span class="text-slate-500">📌</span>
+                        {res.course ? (
+                          <a class="text-blue-700 hover:underline" href={`/courses/${res.course.slug}`}>{res.course.title}</a>
+                        ) : res.quiz ? (
+                          <a class="text-blue-700 hover:underline" href={`/quizzes/${res.quiz.id}`}>{res.quiz.title}</a>
+                        ) : (
+                          <span class="text-slate-600">Resource</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                <h3 class="text-sm font-semibold text-slate-800 mb-3">Anggota</h3>
+                {members.length === 0 ? (
+                  <p class="text-sm text-slate-600">Belum ada anggota aktif.</p>
+                ) : (
+                  <ul class="space-y-1 text-sm text-slate-700">
+                    {members.map((m) => (
+                      <li>
+                        {m.user.email} <span class="text-slate-500">· {m.role}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </aside>
+          </div>
+        ) : (
+          user && (
+            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+              <p class="text-slate-700">Kamu belum menjadi anggota kelas ini.</p>
+              <button
+                type="button"
+                class="mt-3 inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
+                id="join-btn"
+                data-classroom={classroom.id}
+              >
+                Minta bergabung
+              </button>
+            </div>
+          )
+        )}
+      </>
+    )}
+  </main>
+
+  {user && (
+    <script type="module">
+      const joinBtn = document.querySelector('#join-btn');
+      if (joinBtn) {
+        joinBtn.addEventListener('click', async () => {
+          const id = joinBtn.getAttribute('data-classroom');
+          joinBtn.textContent = 'Meminta...';
+          joinBtn.disabled = true;
+          try {
+            const res = await fetch(`/api/classrooms/${id}/join`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+            if (res.ok) {
+              joinBtn.textContent = 'Diminta';
+            } else {
+              const data = await res.json().catch(() => ({}));
+              joinBtn.textContent = 'Gagal';
+              alert(data.error || 'Gagal meminta bergabung');
+            }
+          } catch (err) {
+            joinBtn.textContent = 'Gagal';
+            alert('Tidak dapat mengirim permintaan');
+          } finally {
+            setTimeout(() => {
+              joinBtn.textContent = 'Minta bergabung';
+              joinBtn.disabled = false;
+            }, 1500);
+          }
+        });
+      }
+
+      const postBtn = document.querySelector('#post-submit');
+      const postContent = document.querySelector('#post-content') as HTMLTextAreaElement | null;
+      if (postBtn && postContent) {
+        postBtn.addEventListener('click', async () => {
+          const id = postBtn.getAttribute('data-classroom');
+          const content = postContent.value.trim();
+          if (!content) return alert('Isi konten dulu.');
+          postBtn.textContent = 'Mengirim...';
+          postBtn.setAttribute('disabled', 'true');
+          try {
+            const res = await fetch(`/api/classrooms/${id}/posts`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ content })
+            });
+            if (res.ok) {
+              location.reload();
+            } else {
+              const data = await res.json().catch(() => ({}));
+              alert(data.error || 'Gagal membuat post');
+            }
+          } finally {
+            postBtn.textContent = 'Post';
+            postBtn.removeAttribute('disabled');
+          }
+        });
+      }
+
+      document.querySelectorAll('[data-comment-submit]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const postId = btn.getAttribute('data-comment-submit');
+          const classroomId = btn.getAttribute('data-classroom');
+          const input = document.querySelector(`[data-comment-input="${postId}"]`) as HTMLInputElement | null;
+          if (!input) return;
+          const content = input.value.trim();
+          if (!content) return;
+          btn.textContent = 'Mengirim...';
+          (btn as HTMLButtonElement).disabled = true;
+          try {
+            const res = await fetch(`/api/classrooms/${classroomId}/posts/${postId}/comments`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ content })
+            });
+            if (res.ok) {
+              location.reload();
+            } else {
+              const data = await res.json().catch(() => ({}));
+              alert(data.error || 'Gagal mengirim komentar');
+            }
+          } finally {
+            btn.textContent = 'Kirim';
+            (btn as HTMLButtonElement).disabled = false;
+          }
+        });
+      });
+    </script>
+  )}
+</Layout>
+

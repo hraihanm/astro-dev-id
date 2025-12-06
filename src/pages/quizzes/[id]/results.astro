@@ -339,6 +339,7 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
   </div>
 
   <script>
+    // @ts-nocheck
     // Preload KaTeX
     (function() {
       if (typeof window !== 'undefined' && !document.querySelector('link[href*="katex"]')) {
@@ -386,6 +387,7 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   
   <script define:vars={{ quiz, attempt }}>
+    // @ts-nocheck
     if (!quiz || !attempt) {
       document.body.innerHTML = '<div class="text-center py-20"><p class="text-xl text-slate-600">Loading...</p></div>';
     } else {
@@ -433,6 +435,13 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
       let currentQuestionIndex = 0;
       const detailedResults = attempt.detailedResults || [];
       const questions = quiz.questions || [];
+
+      function normalizeCorrect(val) {
+        if (typeof val === 'number') {
+          return val <= 0 ? val + 1 : val; // stored 0-based, UI uses 1-based
+        }
+        return val;
+      }
 
       function renderQuestionGrid() {
         const grid = document.getElementById('question-grid');
@@ -493,9 +502,10 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
         
         const questionHtml = processLatex(question.question || '');
         const userAnswers = result.userAnswer || [];
-        const correctAnswers = isComplex 
-          ? (Array.isArray(question.correctAnswers) ? question.correctAnswers : [question.correctAnswers])
+        const rawCorrect = isComplex 
+          ? (Array.isArray(question.correctAnswers) ? question.correctAnswers : [question.correctAnswers ?? question.correctAnswer])
           : [question.correctAnswer];
+        const correctAnswers = rawCorrect.filter((c) => c !== undefined && c !== null).map(normalizeCorrect);
         
         const optionsHtml = question.options.map((option, optIndex) => {
           const optionHtml = processLatex(option || '');
@@ -641,7 +651,6 @@ const scoreColor = attempt ? getScoreColor(attempt.percentage) : 'slate';
       } else {
         init();
       }
-    }
     }
   </script>
   

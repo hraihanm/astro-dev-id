@@ -1,19 +1,18 @@
 import type { APIRoute } from 'astro';
 import { prisma } from '../../../../lib/db';
+import { requireAdminAuth } from '../../../../lib/auth';
 
 export const prerender = false;
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
-    // TODO: Add proper authentication check
-    // For now, allow all requests for development
-    // const userId = cookies.get('user_id')?.value;
-    // if (!userId) {
-    //   return new Response(JSON.stringify({ error: 'Authentication required' }), {
-    //     status: 401,
-    //     headers: { 'Content-Type': 'application/json' }
-    //   });
-    // }
+    const auth = await requireAdminAuth(request, cookies);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.message }), {
+        status: auth.status,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
 
     const body = await request.json();
     const { courseId, title, order, content } = body;

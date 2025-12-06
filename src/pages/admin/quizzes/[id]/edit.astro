@@ -18,6 +18,7 @@ if (!quiz) {
 
 const settings = quiz.settings || {};
 const questions = quiz.questions || [];
+const isTryout = (quiz.quizType || settings.quizType || 'latihan') === 'tryout';
 
 // Normalize questions to ensure correct format
 function normalizeQuestion(q: any): any {
@@ -90,7 +91,7 @@ const normalizedQuestions = Array.isArray(questions)
         </div>
       </div>
       <div class="flex items-center space-x-3">
-        {quiz.quizType === 'tryout' && (
+        {isTryout && (
           <a
             href={`/admin/quizzes/${quiz.id}/submissions`}
             class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600 transition-colors shadow-sm"

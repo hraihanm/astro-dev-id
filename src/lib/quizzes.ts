@@ -86,6 +86,9 @@ export async function createQuiz(data: {
   title: string;
   questions: any[];
   settings?: any;
+  quizType?: string;
+  attemptLimit?: number | null;
+  scoreReleaseMode?: string;
 }) {
   const courseId = data.courseId === undefined ? null : data.courseId;
   const chapterId = data.chapterId === undefined ? null : data.chapterId;
@@ -96,7 +99,10 @@ export async function createQuiz(data: {
       chapterId: chapterId as any,
       title: data.title,
       questions: JSON.stringify(data.questions),
-      settings: data.settings ? JSON.stringify(data.settings) : null
+      settings: data.settings ? JSON.stringify(data.settings) : null,
+      quizType: data.quizType || 'latihan',
+      attemptLimit: data.attemptLimit ?? null,
+      scoreReleaseMode: data.scoreReleaseMode || 'immediate'
     }
   });
 }
