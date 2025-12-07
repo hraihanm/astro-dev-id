@@ -14,7 +14,7 @@
     "create-admin": "node scripts/create-admin.js"
   },
   "dependencies": {
-    "@astrojs/node": "^8.0.0",
+    "@astrojs/vercel": "^9.0.2",
     "@astrojs/tailwind": "^5.0.0",
     "@auth/core": "^0.34.2",
     "@auth/prisma-adapter": "^1.0.0",
