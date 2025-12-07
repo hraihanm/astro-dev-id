@@ -1,0 +1,271 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/postgres-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  email         String         @unique
+  password      String?
+  name          String?
+  image         String?
+  emailVerified DateTime?
+  role          String         @default("student")
+  apiKey        String?        @unique
+  createdAt     DateTime       @default(now())
+  courses       Course[]
+  attempts      QuizAttempt[]
+  profile       Profile?
+  blockProgress BlockProgress[]
+  accounts      Account[]
+  sessions      Session[]
+  passwordResetTokens PasswordResetToken[]
+  classroomsCreated Classroom[]           @relation("ClassroomCreator")
+  classroomMemberships ClassroomMembership[] @relation("UserClassroomMemberships")
+  classroomPosts     ClassroomPost[]        @relation("UserClassroomPosts")
+  classroomComments  ClassroomComment[]     @relation("UserClassroomComments")
+  classroomResourcesAdded ClassroomResource[] @relation("UserAddedResources")
+}
+
+model Course {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?
+  slug        String    @unique
+  visibility  String    @default("PUBLIC")
+  createdBy   Int
+  createdAt   DateTime  @default(now())
+  chapters    Chapter[]
+  quizzes     Quiz[]
+  creator     User      @relation(fields: [createdBy], references: [id])
+  classroomResources ClassroomResource[] @relation("CourseClassroomResources")
+}
+
+model Chapter {
+  id           Int            @id @default(autoincrement())
+  courseId     Int
+  title        String
+  order        Int
+  content      String?
+  blocks       String?
+  course       Course         @relation(fields: [courseId], references: [id])
+  quizzes      Quiz[]
+  blockProgress BlockProgress[]
+}
+
+model Quiz {
+  id           Int           @id @default(autoincrement())
+  courseId     Int?
+  chapterId    Int?
+  title        String
+  visibility   String        @default("PUBLIC")
+  questions    String
+  settings     String?
+  quizType     String        @default("latihan")
+  attemptLimit Int?
+  scoreReleaseMode String    @default("immediate")
+  createdAt    DateTime      @default(now())
+  course       Course?       @relation(fields: [courseId], references: [id])
+  chapter      Chapter?      @relation(fields: [chapterId], references: [id])
+  attempts     QuizAttempt[]
+  classroomResources ClassroomResource[] @relation("QuizClassroomResources")
+}
+
+model QuizAttempt {
+  id              Int       @id @default(autoincrement())
+  userId          Int
+  quizId          Int
+  answers         String
+  score           Int
+  totalQuestions  Int
+  correctAnswers  Int
+  percentage      Int
+  timeSpent       Int
+  detailedResults String
+  completedAt     DateTime  @default(now())
+  scoreReleasedAt DateTime?
+  endReason       String    @default("manual")
+  user            User      @relation(fields: [userId], references: [id])
+  quiz            Quiz      @relation(fields: [quizId], references: [id])
+}
+
+model Profile {
+  id            Int      @id @default(autoincrement())
+  userId        Int      @unique
+  fullName      String?
+  firstName     String?
+  lastName      String?
+  nickname      String?
+  headline      String?
+  jobTitle      String?
+  company       String?
+  grade         String?
+  school        String?
+  bio           String?
+  avatar        String?
+  website       String?
+  location      String?
+  phone         String?
+  linkedin      String?
+  github        String?
+  twitter       String?
+  preferences   String?
+  learningGoals String?
+  timezone      String?
+  language      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id])
+}
+
+model Account {
+  id                 Int     @id @default(autoincrement())
+  userId             Int
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?
+  access_token       String?
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+  user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           Int      @id @default(autoincrement())
+  sessionToken String   @unique
+  userId       Int
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model PasswordResetToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model BlockProgress {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  chapterId   Int
+  blockId     String
+  blockType   String
+  completed   Boolean @default(false)
+  score       Float?
+  attempts    Int     @default(0)
+  data        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chapter     Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, chapterId, blockId])
+  @@index([userId, chapterId])
+}
+
+model Classroom {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  isPrivate   Boolean  @default(true)
+  createdBy   Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  creator     User                  @relation("ClassroomCreator", fields: [createdBy], references: [id])
+  memberships ClassroomMembership[]
+  posts       ClassroomPost[]
+  resources   ClassroomResource[]
+
+  @@index([createdBy])
+}
+
+model ClassroomMembership {
+  id          Int      @id @default(autoincrement())
+  classroomId Int
+  userId      Int
+  role        String   @default("STUDENT")
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+
+  classroom   Classroom @relation(fields: [classroomId], references: [id])
+  user        User      @relation("UserClassroomMemberships", fields: [userId], references: [id])
+
+  @@unique([classroomId, userId])
+  @@index([userId])
+}
+
+model ClassroomPost {
+  id          Int      @id @default(autoincrement())
+  classroomId Int
+  authorId    Int
+  content     String
+  pinned      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  classroom   Classroom @relation(fields: [classroomId], references: [id])
+  author      User      @relation("UserClassroomPosts", fields: [authorId], references: [id])
+  comments    ClassroomComment[]
+
+  @@index([classroomId])
+  @@index([authorId])
+}
+
+model ClassroomComment {
+  id        Int      @id @default(autoincrement())
+  postId    Int
+  authorId  Int
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  post      ClassroomPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User          @relation("UserClassroomComments", fields: [authorId], references: [id])
+
+  @@index([postId])
+  @@index([authorId])
+}
+
+model ClassroomResource {
+  id          Int       @id @default(autoincrement())
+  classroomId Int
+  courseId    Int?
+  quizId      Int?
+  pinnedAt    DateTime? @default(now())
+  addedBy     Int
+
+  classroom   Classroom @relation(fields: [classroomId], references: [id])
+  course      Course?   @relation("CourseClassroomResources", fields: [courseId], references: [id])
+  quiz        Quiz?     @relation("QuizClassroomResources", fields: [quizId], references: [id])
+  addedByUser User      @relation("UserAddedResources", fields: [addedBy], references: [id])
+
+  @@index([classroomId])
+  @@index([courseId])
+  @@index([quizId])
+  @@index([addedBy])
+}
