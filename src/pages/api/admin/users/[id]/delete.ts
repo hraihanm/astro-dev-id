@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
-import { prisma } from '../../../../lib/db';
-import { requireAdminAuth } from '../../../../lib/auth';
+import { prisma } from '../../../../../lib/db';
+import { requireAdminAuth } from '../../../../../lib/auth';
 
 export const prerender = false;
 
