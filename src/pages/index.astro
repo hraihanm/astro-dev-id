@@ -5,8 +5,22 @@ import Layout from '../components/Layout.astro';
 import Icon from '../components/icons/Icon.astro';
 import { siteContent } from '../data/siteContent';
 import { getSessionUser } from '../lib/auth-guard';
+import { getUserProgress } from '../lib/scoring';
 
 const user = await getSessionUser(Astro.cookies);
+const progressData = user ? await getUserProgress(user.id) : null;
+
+const stats = progressData?.stats;
+const lastAttempt = progressData?.attempts?.[0];
+const progressPercent = Math.min(100, stats?.averageScore ?? 0);
+const completedQuizzes = stats?.totalAttempts ?? 0;
+const bestScore = stats?.bestScore ?? 0;
+const highlightTitle = lastAttempt?.quiz?.course?.title ?? 'Mulai belajar';
+const highlightSubtitle = lastAttempt?.quiz?.title ?? 'Belum ada aktivitas';
+const statusLabel = completedQuizzes > 0 ? 'On track' : 'Baru mulai';
+const tipText = completedQuizzes > 0
+  ? 'Lanjutkan latihan rutin untuk menjaga konsistensi.'
+  : 'Mulai satu kuis untuk melihat progres pertamamu.';
 ---
 
 <Layout title="Astro Dev ID - Home">
@@ -79,33 +93,34 @@ const user = await getSessionUser(Astro.cookies);
                   <Icon name="graduation-cap" class="w-6 h-6 text-blue-200" />
                 </div>
                 <div>
-                  <p class="text-sm text-slate-300">Sedang dipelajari</p>
-                  <p class="text-lg font-semibold text-white">Astrofisika Dasar</p>
+                  <p class="text-sm text-slate-300">{completedQuizzes > 0 ? 'Aktivitas terbaru' : 'Siap memulai'}</p>
+                  <p class="text-lg font-semibold text-white">{highlightTitle}</p>
+                  <p class="text-xs text-slate-400 mt-1 truncate">{highlightSubtitle}</p>
                 </div>
               </div>
-              <span class="text-xs rounded-full bg-emerald-500/15 text-emerald-200 px-3 py-1 border border-emerald-400/30">On track</span>
+              <span class="text-xs rounded-full bg-emerald-500/15 text-emerald-200 px-3 py-1 border border-emerald-400/30">{statusLabel}</span>
             </div>
             <div class="space-y-3">
               <div class="flex justify-between text-xs text-slate-300">
-                <span>Progress materi</span>
-                <span>76%</span>
+                <span>Rata-rata skor</span>
+                <span>{progressPercent}%</span>
               </div>
               <div class="h-2 rounded-full bg-slate-800 overflow-hidden">
-                <div class="h-full w-[76%] bg-gradient-to-r from-blue-400 to-emerald-400"></div>
+                <div class="h-full bg-gradient-to-r from-blue-400 to-emerald-400" style={`width: ${progressPercent}%`}></div>
               </div>
               <div class="grid grid-cols-2 gap-3 text-sm">
                 <div class="rounded-xl bg-white/5 border border-white/10 p-3">
                   <p class="text-slate-300">Kuis selesai</p>
-                  <p class="text-lg font-semibold text-white">18</p>
+                  <p class="text-lg font-semibold text-white">{completedQuizzes}</p>
                 </div>
                 <div class="rounded-xl bg-white/5 border border-white/10 p-3">
-                  <p class="text-slate-300">Tryout minggu ini</p>
-                  <p class="text-lg font-semibold text-white">2</p>
+                  <p class="text-slate-300">Skor terbaik</p>
+                  <p class="text-lg font-semibold text-white">{bestScore}%</p>
                 </div>
               </div>
               <div class="flex items-center gap-2 text-xs text-slate-200">
                 <Icon name="lightbulb" class="w-4 h-4" />
-                Latihan rutin 30 menit/hari meningkatkan skor rata-rata 15%.
+                {tipText}
               </div>
             </div>
           </div>

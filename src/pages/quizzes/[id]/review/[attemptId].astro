@@ -275,8 +275,31 @@ const endReasonLabel = attempt?.endReason === 'time_up' ? 'Waktu habis' : 'Disel
 <script define:vars={{ quiz, attempt }}>
   const questions = quiz.questions;
   const detailedResults = attempt.detailedResults;
-  const userAnswers = attempt.answers;
+  const rawAnswers = attempt.answers;
   const isReleased = !!attempt.scoreReleasedAt;
+  const flaggedRaw = attempt.flaggedQuestions || [];
+
+  // Normalize answers to a per-question array of numeric selections (1-based where applicable)
+  const userAnswers = questions.map((_, idx) => {
+    const entry = Array.isArray(rawAnswers)
+      ? rawAnswers.find(a =>
+          a &&
+          (a.questionId === idx ||
+           a.questionId === idx + 1 ||
+           a.questionId === questions[idx]?.id))
+      : null;
+    if (!entry || !entry.answer) return null;
+    const ansArr = Array.isArray(entry.answer) ? entry.answer : [entry.answer];
+    const normalized = ansArr
+      .map(v => parseInt(v, 10))
+      .filter(v => !Number.isNaN(v));
+    return normalized.length ? normalized : null;
+  });
+
+  // Normalize flagged (ragu-ragu) set
+  const flaggedQuestions = new Set(
+    (Array.isArray(flaggedRaw) ? flaggedRaw : []).map((v) => parseInt(v, 10)).filter((v) => !Number.isNaN(v))
+  );
   
   let currentQuestionIndex = 0;
   const arrowLeftSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>';
@@ -355,7 +378,9 @@ const endReasonLabel = attempt?.endReason === 'time_up' ? 'Waktu habis' : 'Disel
     
     grid.innerHTML = questions.map((q, index) => {
       const result = detailedResults[index];
-      const answered = userAnswers[index] !== undefined && userAnswers[index] !== null;
+      const ans = userAnswers[index];
+      const answered = Array.isArray(ans) ? ans.length > 0 : !!ans;
+      const flagged = flaggedQuestions.has(index);
       let classes = ['question-number'];
       
       if (index === currentQuestionIndex) {
@@ -373,6 +398,7 @@ const endReasonLabel = attempt?.endReason === 'time_up' ? 'Waktu habis' : 'Disel
       } else {
         classes.push(answered ? 'answered' : 'unanswered');
       }
+      if (flagged) classes.push('flagged');
       
       return `<button class="${classes.join(' ')}" data-index="${index}">${index + 1}</button>`;
     }).join('');
@@ -462,7 +488,7 @@ const endReasonLabel = attempt?.endReason === 'time_up' ? 'Waktu habis' : 'Disel
     if (question.options) {
       optionsHtml = question.options.map((opt, idx) => {
         const isCorrect = question.correctAnswer === idx + 1 || (question.correctAnswers && question.correctAnswers.includes(idx + 1));
-        const isSelected = userAnswer === idx + 1 || (Array.isArray(userAnswer) && userAnswer.includes(idx + 1));
+        const isSelected = Array.isArray(userAnswer) ? userAnswer.includes(idx + 1) : userAnswer === idx + 1;
         
         let optionClass = 'option-label';
         if (isReleased && isCorrect) optionClass += ' correct';

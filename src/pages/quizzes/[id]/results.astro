@@ -74,6 +74,8 @@ try {
           scoreReleasedAt: latestAttempt.scoreReleasedAt,
           endReason: latestAttempt.endReason || 'manual'
         };
+        // Redirect results page to unified review page
+        return Astro.redirect(`/quizzes/${quizId}/review/${latestAttempt.id}`);
       }
     }
     
