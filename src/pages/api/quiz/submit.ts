@@ -16,7 +16,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     }
 
     const body = await request.json();
-    const { quizId, answers, timeSpent, endReason } = body;
+    const { quizId, answers, timeSpent, endReason, sessionStartedAt } = body;
 
     if (!quizId || !answers) {
       return new Response(JSON.stringify({ error: 'Quiz ID and answers are required' }), {
@@ -32,6 +32,22 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
         status: 404,
         headers: { 'Content-Type': 'application/json' }
       });
+    }
+
+    // Enforce availability window
+    const now = new Date();
+    if (quiz.availableFrom && now < new Date(quiz.availableFrom)) {
+      return new Response(JSON.stringify({ error: 'Quiz not yet open' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (quiz.availableUntil && now > new Date(quiz.availableUntil)) {
+      return new Response(JSON.stringify({ error: 'Quiz has been closed' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (quiz.openDurationSeconds && sessionStartedAt) {
+      const started = new Date(sessionStartedAt);
+      const elapsed = Math.floor((now.getTime() - started.getTime()) / 1000);
+      if (elapsed > quiz.openDurationSeconds) {
+        return new Response(JSON.stringify({ error: 'Session window has expired' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+      }
     }
 
     // Calculate score

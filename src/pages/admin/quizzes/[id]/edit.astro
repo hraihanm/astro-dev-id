@@ -4,6 +4,7 @@ export const prerender = false;
 import Layout from '../../../../components/Layout.astro';
 import Icon from '../../../../components/icons/Icon.astro';
 import { getQuiz } from '../../../../lib/quizzes';
+import quizSharedStyles from '../../../../styles/quiz-shared.css?url';
 
 const { id } = Astro.params;
 
@@ -19,7 +20,13 @@ if (!quiz) {
 
 const settings = quiz.settings || {};
 const questions = quiz.questions || [];
-const isTryout = (quiz.quizType || settings.quizType || 'latihan') === 'tryout';
+const quizTypeRaw = quiz.quizType || settings.quizType || 'exercise';
+const quizType = quizTypeRaw === 'tryout' ? 'exam' : quizTypeRaw === 'latihan' ? 'exercise' : quizTypeRaw;
+const isExam = quizType === 'exam';
+const initialAvailableFrom = quiz.availableFrom ? new Date(quiz.availableFrom).toISOString().slice(0,16) : '';
+const initialAvailableUntil = quiz.availableUntil ? new Date(quiz.availableUntil).toISOString().slice(0,16) : '';
+const initialOpenDuration = quiz.openDurationSeconds ? Math.floor(quiz.openDurationSeconds / 60) : '';
+const initialScope = quiz.chapterId ? 'chapter' : quiz.courseId ? 'course' : 'standalone';
 
 // Normalize questions to ensure correct format
 function normalizeQuestion(q: any): any {
@@ -71,7 +78,7 @@ const normalizedQuestions = Array.isArray(questions)
 
 <Layout title={`Edit ${quiz.title}`}>
   <!-- Load shared styles -->
-  <link rel="stylesheet" href="/src/styles/quiz-shared.css">
+  <link rel="stylesheet" href={quizSharedStyles}>
   
   <!-- Load KaTeX for LaTeX rendering -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
@@ -80,7 +87,7 @@ const normalizedQuestions = Array.isArray(questions)
   <!-- Load Marked for Markdown rendering -->
   <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
 
-  <div class="flex flex-col h-screen bg-gray-100">
+  <div class="flex flex-col min-h-screen bg-gray-100 pb-16">
     <!-- Header -->
     <div class="bg-white shadow-sm px-6 py-4 border-b flex items-center justify-between">
       <div class="flex items-center space-x-4">
@@ -95,15 +102,15 @@ const normalizedQuestions = Array.isArray(questions)
         </div>
       </div>
       <div class="flex items-center space-x-3">
-        <a
-          href={`/admin/quizzes/${quiz.id}/submissions`}
-          class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600 transition-colors shadow-sm"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
+          <a
+            href={`/admin/quizzes/${quiz.id}/submissions`}
+            class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600 transition-colors shadow-sm"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
           Panel Submission
-        </a>
+          </a>
         <button
           id="save-quiz-btn"
           class="save-quiz-btn"
@@ -134,7 +141,7 @@ const normalizedQuestions = Array.isArray(questions)
         </svg>
       </button>
       <div id="settings-content" class="px-6 pb-4 hidden">
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-5xl">
+        <div class="space-y-6 max-w-5xl">
           <div>
             <label for="title" class="block text-sm font-medium text-gray-700 mb-1">
               Judul Kuis *
@@ -149,15 +156,29 @@ const normalizedQuestions = Array.isArray(questions)
           </div>
           <div>
             <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
-              Deskripsi
+              Deskripsi (Markdown didukung)
             </label>
-            <input
-              type="text"
+            <textarea
               id="description"
+              rows="3"
               value={settings.description || ''}
               class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-            />
+            ></textarea>
+            <p class="text-xs text-gray-500 mt-1">Gunakan deskripsi panjang untuk konteks atau instruksi.</p>
           </div>
+          <div>
+            <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">
+              Catatan / Peraturan (Markdown + LaTeX)
+            </label>
+            <textarea
+              id="notes"
+              rows="4"
+              value={settings.notes || ''}
+              placeholder="Tulis aturan, panduan, atau informasi penting. Markdown & LaTeX didukung."
+              class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+            ></textarea>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label for="quizType" class="block text-sm font-medium text-gray-700 mb-1">
               Tipe Kuis
@@ -166,28 +187,81 @@ const normalizedQuestions = Array.isArray(questions)
               id="quizType"
               class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
             >
-              <option value="latihan" selected={quiz.quizType === 'latihan' || !quiz.quizType}>📚 Latihan (Tak Terbatas)</option>
-              <option value="tryout" selected={quiz.quizType === 'tryout'}>📝 Try Out (Terbatas)</option>
+                <option value="exercise" selected={quizType === 'exercise'}>Latihan (Exercise - selalu terbuka)</option>
+                <option value="exam" selected={quizType === 'exam'}>Try Out (Exam - terjadwal)</option>
             </select>
-            <p class="text-xs text-gray-500 mt-1">Latihan = unlimited, Try Out = batas percobaan</p>
+              <p class="text-xs text-gray-500 mt-1">Exercise = selalu terbuka, Exam = dapat dijadwalkan & dibatasi percobaan.</p>
           </div>
+            <div>
+              <label for="visibility" class="block text-sm font-medium text-gray-700 mb-1">
+                Visibilitas
+              </label>
+              <select
+                id="visibility"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="PUBLIC" selected={!quiz.visibility || quiz.visibility === 'PUBLIC'}>Publik</option>
+                <option value="PRIVATE" selected={quiz.visibility === 'PRIVATE'}>Privat (hanya admin/kelas)</option>
+              </select>
+              <p class="text-xs text-gray-500 mt-1">Publik = semua user; Privat = hanya admin atau melalui kelas.</p>
+            </div>
+            <div>
+              <label for="timeLimit" class="block text-sm font-medium text-gray-700 mb-1">
+                Batas Waktu (menit)
+              </label>
+              <input
+                type="number"
+                id="timeLimit"
+                min="1"
+                value={settings.timeLimit ? Math.floor(settings.timeLimit / 60) : ''}
+                placeholder="Kosongkan jika tak terbatas"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+            <div>
+              <label for="scoreReleaseMode" class="block text-sm font-medium text-gray-700 mb-1">
+                Pelepasan Skor
+              </label>
+              <select
+                id="scoreReleaseMode"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="immediate" selected={quiz.scoreReleaseMode === 'immediate' || !quiz.scoreReleaseMode}>
+                  Langsung (Otomatis)
+                </option>
+                <option value="admin" selected={quiz.scoreReleaseMode === 'admin'}>
+                  Admin (Manual)
+                </option>
+              </select>
+              <p class="text-xs text-gray-500 mt-1">
+                Langsung = siswa langsung melihat skor, Admin = admin harus melepaskan skor terlebih dahulu
+              </p>
+            </div>
+          </div>
+
+        <!-- Keterkaitan Kuis Card -->
+        <div class="rounded-lg border border-slate-200 bg-white p-4 space-y-3 mt-4">
+          <div class="flex items-center justify-between">
+            <p class="text-sm font-semibold text-slate-800">Keterkaitan Kuis</p>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label for="quizScope" class="block text-sm font-medium text-gray-700 mb-1">
-              Keterkaitan Kuis
+                Mode Keterkaitan
             </label>
             <select
               id="quizScope"
               class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
             >
-              <option value="standalone">📄 Mandiri</option>
-              <option value="course">📚 Terhubung ke Kursus</option>
-              <option value="chapter">🔖 Terhubung ke Bab</option>
+                <option value="standalone">Mandiri</option>
+                <option value="course">Terhubung ke Kursus</option>
+                <option value="chapter">Terhubung ke Bab</option>
             </select>
             <p class="text-xs text-gray-500 mt-1">Pilih apakah kuis berdiri sendiri, milik kursus, atau bab.</p>
           </div>
-          <div id="course-select-wrapper">
+          <div id="course-select-wrapper" class={`w-full ${initialScope === 'standalone' ? 'hidden' : ''}`}>
             <label for="courseSelect" class="block text-sm font-medium text-gray-700 mb-1">
-              Kursus (opsional)
+                Kursus
             </label>
             <select
               id="courseSelect"
@@ -197,9 +271,9 @@ const normalizedQuestions = Array.isArray(questions)
             </select>
             <p class="text-xs text-gray-500 mt-1">Pilih kursus jika kuis terkait kursus/bab.</p>
           </div>
-          <div id="chapter-select-wrapper" class="hidden">
+          <div id="chapter-select-wrapper" class={`w-full ${initialScope === 'chapter' ? '' : 'hidden'}`}>
             <label for="chapterSelect" class="block text-sm font-medium text-gray-700 mb-1">
-              Bab (opsional)
+                Bab
             </label>
             <select
               id="chapterSelect"
@@ -207,66 +281,73 @@ const normalizedQuestions = Array.isArray(questions)
             >
               <option value="">Pilih bab</option>
             </select>
-            <p class="text-xs text-gray-500 mt-1">Hanya tampil jika memilih keterkaitan Bab.</p>
+              <p class="text-xs text-gray-500 mt-1">Bab yang terkait dengan kursus yang dipilih.</p>
           </div>
+          </div>
+        </div>
+        <div class={`col-span-2 md:col-span-3 ${quizType === 'exam' ? '' : 'hidden'}`} data-exam-only>
+            <div class="rounded-lg border border-amber-200 bg-amber-50/50 p-4 space-y-4">
+              <div class="flex items-center justify-between">
+                <p class="text-sm font-semibold text-amber-700">Pengaturan Exam</p>
+                <span class="text-xs text-amber-700">Khusus Try Out</span>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label for="visibility" class="block text-sm font-medium text-gray-700 mb-1">
-              Visibilitas
+                  <label for="attemptLimit" class="block text-sm font-medium text-gray-700 mb-1">
+                    Batas Percobaan
             </label>
-            <select
-              id="visibility"
+                  <input
+                    type="number"
+                    id="attemptLimit"
+                    min="1"
+                    value={quiz.attemptLimit || ''}
+                    placeholder="Kosongkan = unlimited"
               class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-            >
-              <option value="PUBLIC" selected={!quiz.visibility || quiz.visibility === 'PUBLIC'}>🌍 Publik</option>
-              <option value="PRIVATE" selected={quiz.visibility === 'PRIVATE'}>🔒 Privat (hanya admin/kelas)</option>
-            </select>
-            <p class="text-xs text-gray-500 mt-1">Publik = semua user; Privat = hanya admin atau melalui kelas.</p>
+                  />
+                  <p class="text-xs text-gray-500 mt-1">Kosongkan untuk tanpa batas.</p>
           </div>
           <div>
-            <label for="timeLimit" class="block text-sm font-medium text-gray-700 mb-1">
-              Batas Waktu (menit)
-            </label>
-            <input
-              type="number"
-              id="timeLimit"
-              min="1"
-              value={settings.timeLimit ? Math.floor(settings.timeLimit / 60) : ''}
-              placeholder="Kosongkan jika tak terbatas"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-            />
-          </div>
-          <div>
-            <label for="attemptLimit" class="block text-sm font-medium text-gray-700 mb-1">
-              Batas Percobaan
+                  <label for="openDuration" class="block text-sm font-medium text-gray-700 mb-1">
+                    Durasi Sesi (menit)
             </label>
             <input
               type="number"
-              id="attemptLimit"
+                    id="openDuration"
               min="1"
-              value={quiz.attemptLimit || ''}
-              placeholder="Kosongkan = unlimited"
+                    value={initialOpenDuration}
+                    placeholder="Kosongkan jika tidak dibatasi per sesi"
               class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
             />
-            <p class="text-xs text-gray-500 mt-1">Jumlah maksimal attempt per user</p>
+                  <p class="text-xs text-gray-500 mt-1">Lama sesi sejak pertama dibuka.</p>
+          </div>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+                  <label for="availableFrom" class="block text-sm font-medium text-gray-700 mb-1">
+                    Buka Mulai
+            </label>
+            <input
+                    type="datetime-local"
+                    id="availableFrom"
+                    value={initialAvailableFrom}
+              class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+            />
+                  <p class="text-xs text-gray-500 mt-1">Waktu mulai akses exam.</p>
           </div>
           <div>
-            <label for="scoreReleaseMode" class="block text-sm font-medium text-gray-700 mb-1">
-              Pelepasan Skor
+                  <label for="availableUntil" class="block text-sm font-medium text-gray-700 mb-1">
+                    Tutup Pada
             </label>
-            <select
-              id="scoreReleaseMode"
+                  <input
+                    type="datetime-local"
+                    id="availableUntil"
+                    value={initialAvailableUntil}
               class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-            >
-              <option value="immediate" selected={quiz.scoreReleaseMode === 'immediate' || !quiz.scoreReleaseMode}>
-                ⚡ Langsung (Otomatis)
-              </option>
-              <option value="admin" selected={quiz.scoreReleaseMode === 'admin'}>
-                👤 Admin (Manual)
-              </option>
-            </select>
-            <p class="text-xs text-gray-500 mt-1">
-              Langsung = siswa langsung melihat skor, Admin = admin harus melepaskan skor terlebih dahulu
-            </p>
+                  />
+                  <p class="text-xs text-gray-500 mt-1">Waktu akhir akses exam.</p>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="flex items-start">
             <div id="quiz-type-badge" class="px-3 py-2 rounded-lg text-sm font-medium">
@@ -280,7 +361,27 @@ const normalizedQuestions = Array.isArray(questions)
     <!-- Navigation Row -->
     <div class="flex border-b bg-white">
       <div id="nav-container" class="flex-1 px-6 py-4 flex items-center justify-between">
-        <!-- Navigation will be rendered here -->
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          <span>Sebelumnya</span>
+        </button>
+        <span class="text-gray-700 font-medium">
+          Soal 1 dari {normalizedQuestions.length || 1}
+        </span>
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition"
+        >
+          <span>Selanjutnya</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
       </div>
       <div class="w-80 border-l px-4 py-4 flex items-center justify-center">
         <select id="question-type-select" class="px-3 py-2 border border-gray-300 rounded-md text-sm mr-2">
@@ -992,8 +1093,10 @@ const normalizedQuestions = Array.isArray(questions)
     }
   </style>
 
-  <script define:vars={{questions: normalizedQuestions, quizId: id, currentCourseId: quiz.course?.id ?? null, currentChapterId: quiz.chapter?.id ?? null}}>
+  <script define:vars={{questions: normalizedQuestions, quizId: id, currentCourseId: quiz.courseId ?? null, currentChapterId: quiz.chapterId ?? null}}>
     const STORAGE_KEY = `quiz_editor_${quizId}`;
+    const arrowLeftSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>';
+    const arrowRightSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>';
     
     // Load from localStorage or use server data
     function loadFromStorage() {
@@ -1096,6 +1199,7 @@ const normalizedQuestions = Array.isArray(questions)
     const courseSelect = document.getElementById('courseSelect');
     const chapterSelect = document.getElementById('chapterSelect');
     const chapterWrapper = document.getElementById('chapter-select-wrapper');
+    const courseRow = document.getElementById('course-row');
     let coursesData = [];
     let isLoadingCourses = false;
 
@@ -1132,14 +1236,24 @@ const normalizedQuestions = Array.isArray(questions)
     function setScope(scope) {
       if (!quizScopeSelect) return;
       quizScopeSelect.value = scope;
+      const courseWrap = document.getElementById('course-select-wrapper');
+
+      if (scope === 'standalone') {
+        courseWrap?.classList.add('hidden');
+        courseSelect && (courseSelect.value = '');
+        chapterWrapper?.classList.add('hidden');
+        chapterSelect && (chapterSelect.value = '');
+        return;
+      }
+
+      // show course for course/chapter
+      courseWrap?.classList.remove('hidden');
+
       if (scope === 'chapter') {
         chapterWrapper?.classList.remove('hidden');
       } else {
         chapterWrapper?.classList.add('hidden');
         chapterSelect && (chapterSelect.value = '');
-      }
-      if (scope === 'standalone') {
-        courseSelect && (courseSelect.value = '');
       }
     }
 
@@ -1163,8 +1277,8 @@ const normalizedQuestions = Array.isArray(questions)
     }
 
     // Initialize scope selectors
-    const initialScope = currentChapterId ? 'chapter' : currentCourseId ? 'course' : 'standalone';
-    setScope(initialScope);
+    const initialScopeClient = currentChapterId ? 'chapter' : currentCourseId ? 'course' : 'standalone';
+    setScope(initialScopeClient);
     loadCourses(currentCourseId, currentChapterId);
 
     quizScopeSelect?.addEventListener('change', () => {
@@ -1203,24 +1317,36 @@ const normalizedQuestions = Array.isArray(questions)
 
     function updateQuizTypeBadge() {
       if (!quizTypeBadge) return;
-      const quizType = quizTypeSelect?.value || 'latihan';
+      const quizType = quizTypeSelect?.value || 'exercise';
       const attemptLimit = attemptLimitInput?.value;
       
-      if (quizType === 'tryout') {
+      if (quizType === 'exam') {
         quizTypeBadge.className = 'px-3 py-2 rounded-lg text-sm font-medium bg-amber-100 text-amber-800';
-        quizTypeBadge.innerHTML = `📝 Try Out ${attemptLimit ? `(${attemptLimit}x)` : ''}`;
+        quizTypeBadge.innerHTML = `Try Out (Exam) ${attemptLimit ? `(${attemptLimit}x)` : ''}`;
       } else {
         quizTypeBadge.className = 'px-3 py-2 rounded-lg text-sm font-medium bg-blue-100 text-blue-800';
-        quizTypeBadge.innerHTML = '📚 Latihan';
+        quizTypeBadge.innerHTML = 'Latihan (Exercise)';
       }
     }
 
     quizTypeSelect?.addEventListener('change', () => {
       const quizType = quizTypeSelect?.value;
       
-      // Auto-set attempt limit to 1 when switching to tryout
-      if (quizType === 'tryout' && !attemptLimitInput?.value) {
+      const scheduleFields = document.querySelectorAll('[data-exam-only]');
+      scheduleFields.forEach((el) => {
+        if (quizType === 'exam') {
+          el.classList.remove('hidden');
+        } else {
+          el.classList.add('hidden');
+        }
+      });
+
+      // Auto-set attempt limit to 1 when switching to exam
+      if (quizType === 'exam' && !attemptLimitInput?.value) {
         attemptLimitInput.value = '1';
+      }
+      if (quizType === 'exercise') {
+        attemptLimitInput && (attemptLimitInput.value = '');
       }
       
       updateQuizTypeBadge();
@@ -1239,8 +1365,19 @@ const normalizedQuestions = Array.isArray(questions)
       updateUnsavedIndicator();
     });
 
-    // Initialize badge
+    // Initialize badge and exam-only visibility
     updateQuizTypeBadge();
+    (() => {
+      const quizType = quizTypeSelect?.value || 'exercise';
+      const scheduleFields = document.querySelectorAll('[data-exam-only]');
+      scheduleFields.forEach((el) => {
+        if (quizType === 'exam') {
+          el.classList.remove('hidden');
+        } else {
+          el.classList.add('hidden');
+        }
+      });
+    })();
 
     // LaTeX rendering
     function renderLatex(container) {
@@ -1322,113 +1459,6 @@ const normalizedQuestions = Array.isArray(questions)
       return checked ? checked.value : 'shift';
     }
 
-    // Animate swap/shift with proper grid flow
-    function animateReorder(fromIndex, toIndex, mode) {
-      const buttons = Array.from(questionGrid.children);
-      const affectedMoves = [];
-      
-      // Store current positions BEFORE any changes
-      const positions = new Map();
-      buttons.forEach((btn, idx) => {
-        const rect = btn.getBoundingClientRect();
-        positions.set(idx, { x: rect.left, y: rect.top });
-      });
-      
-      // Determine which buttons are affected and their movements
-      if (mode === 'swap') {
-        // Swap: both buttons exchange positions
-        affectedMoves.push({ 
-          index: fromIndex, 
-          toIndex: toIndex
-        });
-        affectedMoves.push({ 
-          index: toIndex,
-          toIndex: fromIndex
-        });
-      } else {
-        // Shift: dragged item moves, others shift to fill the gap
-        affectedMoves.push({
-          index: fromIndex,
-          toIndex: toIndex
-        });
-        
-        if (toIndex > fromIndex) {
-          // Dragging down/right: items between shift up/left
-          for (let i = fromIndex + 1; i <= toIndex; i++) {
-            affectedMoves.push({
-              index: i,
-              toIndex: i - 1
-            });
-          }
-        } else {
-          // Dragging up/left: items between shift down/right
-          for (let i = toIndex; i < fromIndex; i++) {
-            affectedMoves.push({
-              index: i,
-              toIndex: i + 1
-            });
-          }
-        }
-      }
-
-      // Calculate where each button WOULD BE after the move (but keep original numbers)
-      const gridCols = 5;
-      const buttonWidth = 2.5; // rem  
-      const gap = 0.5; // rem
-      const totalUnit = buttonWidth + gap;
-      const remToPx = parseFloat(getComputedStyle(document.documentElement).fontSize);
-      
-      affectedMoves.forEach(({ index, toIndex: targetIdx }) => {
-        const btn = buttons[index];
-        if (!btn) return;
-        
-        const fromPos = positions.get(index);
-        const toPos = positions.get(targetIdx);
-        
-        if (!fromPos || !toPos) return;
-        
-        // Calculate pixel difference
-        const deltaX = toPos.x - fromPos.x;
-        const deltaY = toPos.y - fromPos.y;
-        
-        // Set initial position (no transform)
-        btn.style.transform = 'translate(0, 0)';
-        btn.style.transition = 'none';
-        btn.classList.add('swapping');
-        btn.style.zIndex = '100';
-      });
-
-      // Trigger animation on next frame
-      requestAnimationFrame(() => {
-        affectedMoves.forEach(({ index, toIndex: targetIdx }) => {
-          const btn = buttons[index];
-          if (!btn) return;
-          
-          const fromPos = positions.get(index);
-          const toPos = positions.get(targetIdx);
-          
-          if (!fromPos || !toPos) return;
-          
-          const deltaX = toPos.x - fromPos.x;
-          const deltaY = toPos.y - fromPos.y;
-          
-          // Apply transition and transform
-          btn.style.transition = 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
-          btn.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
-        });
-      });
-
-      // Clean up after animation
-      setTimeout(() => {
-        buttons.forEach(btn => {
-          btn.classList.remove('swapping');
-          btn.style.transform = '';
-          btn.style.transition = '';
-          btn.style.zIndex = '';
-        });
-      }, 500);
-    }
-
     // Render question grid
     function renderQuestionGrid() {
       questionGrid.innerHTML = '';
@@ -1447,6 +1477,7 @@ const normalizedQuestions = Array.isArray(questions)
         btn.textContent = index + 1;
         btn.draggable = true;
         btn.dataset.index = index;
+        btn.dataset.qid = q.id ? String(q.id) : String(index);
 
         // Click to navigate
         btn.addEventListener('click', () => {
@@ -1495,29 +1526,32 @@ const normalizedQuestions = Array.isArray(questions)
             // Save current question before reordering
             saveCurrentQuestion();
             
-            // Animate FIRST with original numbers
-            animateReorder(fromIndex, toIndex, mode);
-            
-            // Then reorder data and re-render AFTER animation
-            setTimeout(() => {
+            // Capture initial positions and displayed numbers keyed by question id for FLIP
+            const beforePositions = new Map();
+            const beforeNumbers = new Map();
+            Array.from(questionGrid.children).forEach((child, idx) => {
+              const id = child.dataset.qid || child.dataset.index;
+              if (!id) return;
+              const rect = child.getBoundingClientRect();
+              beforePositions.set(id, { x: rect.left, y: rect.top });
+              beforeNumbers.set(id, idx + 1);
+            });
+
+            // Reorder data
               if (mode === 'swap') {
-                // Swap: exchange positions
                 [questionsData[fromIndex], questionsData[toIndex]] = 
                   [questionsData[toIndex], questionsData[fromIndex]];
                 
-                // Update current index if needed
                 if (currentQuestionIndex === fromIndex) {
                   currentQuestionIndex = toIndex;
                 } else if (currentQuestionIndex === toIndex) {
                   currentQuestionIndex = fromIndex;
                 }
               } else {
-                // Shift: insert at new position
                 const draggedQuestion = questionsData[fromIndex];
                 questionsData.splice(fromIndex, 1);
                 questionsData.splice(toIndex, 0, draggedQuestion);
                 
-                // Adjust current index
                 if (currentQuestionIndex === fromIndex) {
                   currentQuestionIndex = toIndex;
                 } else if (currentQuestionIndex > fromIndex && currentQuestionIndex <= toIndex) {
@@ -1527,10 +1561,64 @@ const normalizedQuestions = Array.isArray(questions)
                 }
               }
               
-              // Re-render with new order
+            // Re-render grid (new order) and current question
               renderQuestionGrid();
               renderCurrentQuestion();
-            }, 500); // Match animation duration
+
+            // Prepare maps for after state
+            const afterButtons = Array.from(questionGrid.children);
+            const afterNumbers = new Map();
+            afterButtons.forEach((child, idx) => {
+              const id = child.dataset.qid || child.dataset.index;
+              if (!id) return;
+              afterNumbers.set(id, idx + 1);
+            });
+
+            // Apply FLIP animation from previous positions to new positions,
+            // delay updating the displayed number until the animation ends
+            afterButtons.forEach(child => {
+              const id = child.dataset.qid || child.dataset.index;
+              if (!id) return;
+              const prev = beforePositions.get(id);
+              if (!prev) return;
+              const rect = child.getBoundingClientRect();
+              const dx = prev.x - rect.x;
+              const dy = prev.y - rect.y;
+              const targetScale = child.classList.contains('current') ? 1.1 : 1;
+
+              // Show old number during animation
+              const oldNum = beforeNumbers.get(id);
+              if (oldNum) child.textContent = String(oldNum);
+
+              if (Math.abs(dx) < 1 && Math.abs(dy) < 1) {
+                // No movement; just ensure number is updated to new after state
+                const newNum = afterNumbers.get(id);
+                if (newNum) child.textContent = String(newNum);
+                return;
+              }
+
+              child.style.transition = 'none';
+              child.style.setProperty('transform', `translate(${dx}px, ${dy}px) scale(${targetScale})`, 'important');
+              child.style.zIndex = '100';
+              requestAnimationFrame(() => {
+                child.style.transition = 'transform 240ms cubic-bezier(0.4, 0, 0.2, 1)';
+                child.style.setProperty('transform', `scale(${targetScale})`, 'important');
+              });
+              child.addEventListener('transitionend', () => {
+                child.style.transition = '';
+                child.style.removeProperty('transform');
+                child.style.zIndex = '';
+                const newNum = afterNumbers.get(id);
+                if (newNum) child.textContent = String(newNum);
+              }, { once: true });
+            });
+
+            // Fallback: ensure numbers are correct after animation window
+            setTimeout(() => {
+              Array.from(questionGrid.children).forEach((child, idx) => {
+                child.textContent = String(idx + 1);
+              });
+            }, 260);
           }
         });
 
@@ -2217,9 +2305,15 @@ const normalizedQuestions = Array.isArray(questions)
         return;
       }
 
-      const quizType = document.getElementById('quizType')?.value || 'latihan';
+      const quizType = document.getElementById('quizType')?.value || 'exercise';
       const attemptLimitValue = document.getElementById('attemptLimit')?.value;
       const attemptLimit = attemptLimitValue ? parseInt(attemptLimitValue) : null;
+      const availableFromInput = document.getElementById('availableFrom');
+      const availableUntilInput = document.getElementById('availableUntil');
+      const openDurationInput = document.getElementById('openDuration');
+      const availableFromVal = availableFromInput && availableFromInput instanceof HTMLInputElement ? availableFromInput.value : null;
+      const availableUntilVal = availableUntilInput && availableUntilInput instanceof HTMLInputElement ? availableUntilInput.value : null;
+      const openDurationVal = openDurationInput && openDurationInput instanceof HTMLInputElement ? openDurationInput.value : null;
       const scoreReleaseMode = document.getElementById('scoreReleaseMode')?.value || 'immediate';
       const scope = quizScopeSelect?.value || 'standalone';
 
@@ -2245,9 +2339,13 @@ const normalizedQuestions = Array.isArray(questions)
       const formData = {
         title: document.getElementById('title').value,
         description: document.getElementById('description').value,
+        notes: document.getElementById('notes')?.value || '',
         timeLimit: parseInt(document.getElementById('timeLimit').value) || undefined,
         quizType: quizType,
         attemptLimit: attemptLimit,
+        availableFrom: availableFromVal ? new Date(availableFromVal).toISOString() : null,
+        availableUntil: availableUntilVal ? new Date(availableUntilVal).toISOString() : null,
+        openDurationSeconds: openDurationVal ? parseInt(openDurationVal) * 60 : null,
         scoreReleaseMode: scoreReleaseMode,
         visibility: document.getElementById('visibility')?.value || 'PUBLIC',
         questions: questionsData,

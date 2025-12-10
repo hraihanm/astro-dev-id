@@ -3,6 +3,7 @@ import Layout from '../../../../components/Layout.astro';
 import Icon from '../../../../components/icons/Icon.astro';
 import { getQuiz } from '../../../../lib/quizzes';
 import { prisma } from '../../../../lib/db';
+import quizSharedStyles from '../../../../styles/quiz-shared.css?url';
 
 export const prerender = false;
 
@@ -97,7 +98,7 @@ const endReasonLabel = attempt?.endReason === 'time_up' ? 'Waktu habis' : 'Disel
 ---
 
 <Layout title={`Tinjau - ${quiz?.title || 'Quiz'}`}>
-  <link rel="stylesheet" href="/src/styles/quiz-shared.css">
+  <link rel="stylesheet" href={quizSharedStyles}>
   
   <div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
     {error ? (

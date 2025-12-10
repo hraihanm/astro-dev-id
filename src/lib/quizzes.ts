@@ -36,28 +36,24 @@ export async function getChapterQuizzes(chapterId: number) {
 export async function getStandaloneQuizzes(options?: { userId?: number; role?: string; classroomIds?: number[] }) {
   const { role, classroomIds = [] } = options || {};
 
-  const baseWhere = { courseId: null as any };
-
-  const visibilityFilter =
+  const whereFilter =
     role === 'admin'
-      ? {}
-      : {
-          OR: [
-            { NOT: { visibility: 'PRIVATE' } },
-            {
-              visibility: 'PRIVATE',
-              classroomResources: classroomIds.length
-                ? { some: { classroomId: { in: classroomIds } } }
-                : { some: { classroomId: -1 } }
-            }
-          ]
-        };
+      ? { courseId: null }
+      : classroomIds.length > 0
+        ? {
+            courseId: null,
+            OR: [
+              { visibility: { not: 'PRIVATE' } } as any,
+              { visibility: 'PRIVATE', classroomResources: { some: { classroomId: { in: classroomIds } } } } as any
+            ]
+          }
+        : {
+            courseId: null,
+            visibility: { not: 'PRIVATE' } as any
+          };
 
   return await prisma.quiz.findMany({
-    where: {
-      ...baseWhere,
-      ...visibilityFilter
-    },
+    where: whereFilter as any,
     orderBy: { createdAt: 'desc' }
   });
 }
@@ -87,24 +83,34 @@ export async function getQuiz(quizId: number, options?: { role?: string; classro
       chapter: {
         select: { title: true, order: true }
       },
+      // Cast to any to accommodate generated client that may not yet include this relation
       classroomResources: {
         select: { classroomId: true }
-      }
-    }
+      } as any
+    } as any
   });
 
   if (!quiz) return null;
 
+  const visibility = (quiz as any).visibility;
+  const classroomResources = (quiz as any).classroomResources || [];
+  const availableFrom = (quiz as any).availableFrom ? new Date((quiz as any).availableFrom) : null;
+  const availableUntil = (quiz as any).availableUntil ? new Date((quiz as any).availableUntil) : null;
+  const openDurationSeconds = (quiz as any).openDurationSeconds ?? null;
+
   const canAccess =
-    quiz.visibility !== 'PRIVATE' ||
-    quiz.visibility === null ||
+    visibility !== 'PRIVATE' ||
+    visibility === null ||
     role === 'admin' ||
-    (classroomIds.length > 0 && quiz.classroomResources.some((r: any) => classroomIds.includes(r.classroomId)));
+    (classroomIds.length > 0 && classroomResources.some((r: any) => classroomIds.includes(r.classroomId)));
 
   if (!canAccess) return null;
 
   return {
     ...quiz,
+    availableFrom,
+    availableUntil,
+    openDurationSeconds,
     questions: JSON.parse(quiz.questions),
     settings: quiz.settings ? JSON.parse(quiz.settings) : {}
   };
@@ -120,10 +126,15 @@ export async function createQuiz(data: {
   attemptLimit?: number | null;
   scoreReleaseMode?: string;
   visibility?: string;
+  availableFrom?: Date | string | null;
+  availableUntil?: Date | string | null;
+  openDurationSeconds?: number | null;
 }) {
   const courseId = data.courseId === undefined ? null : data.courseId;
   const chapterId = data.chapterId === undefined ? null : data.chapterId;
   const visibility = data.visibility?.toUpperCase() === 'PRIVATE' ? 'PRIVATE' : 'PUBLIC';
+  const availableFrom = data.availableFrom ? new Date(data.availableFrom) : null;
+  const availableUntil = data.availableUntil ? new Date(data.availableUntil) : null;
 
   return await prisma.quiz.create({
     data: {
@@ -135,8 +146,11 @@ export async function createQuiz(data: {
       quizType: data.quizType || 'latihan',
       attemptLimit: data.attemptLimit ?? null,
       scoreReleaseMode: data.scoreReleaseMode || 'immediate',
-      visibility
-    }
+      visibility,
+      availableFrom: availableFrom as any,
+      availableUntil: availableUntil as any,
+      openDurationSeconds: data.openDurationSeconds ?? null
+    } as any
   });
 }
 

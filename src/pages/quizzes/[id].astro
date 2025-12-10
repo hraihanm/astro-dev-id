@@ -4,6 +4,7 @@ import Icon from '../../components/icons/Icon.astro';
 import { renderMarkdown } from '../../lib/latex';
 import { getSessionUser } from '../../lib/auth-guard';
 import { prisma } from '../../lib/db';
+import quizSharedStyles from '../../styles/quiz-shared.css?url';
 
 export const prerender = false;
 
@@ -52,19 +53,19 @@ try {
         : rawQuiz.settings
     };
     
-    // Check attempt limits for logged in users
-    if (user && quiz.attemptLimit) {
-      const attempts = await prisma.quizAttempt.count({
+    // Count attempts for this user (for display and limits)
+    if (user) {
+      userAttemptCount = await prisma.quizAttempt.count({
         where: {
           userId: user.id,
           quizId: quizId
         }
       });
-      userAttemptCount = attempts;
-      
-      if (attempts >= quiz.attemptLimit) {
-        attemptLimitReached = true;
-      }
+    }
+    quiz.userAttemptCount = userAttemptCount;
+    
+    if (quiz.attemptLimit && userAttemptCount >= quiz.attemptLimit) {
+      attemptLimitReached = true;
     }
     
     // Handle essay problem format
@@ -89,6 +90,7 @@ try {
         settings: quiz.settings,
         quizType: quiz.quizType || 'latihan',
         attemptLimit: quiz.attemptLimit,
+        userAttemptCount,
         userAttemptCount: userAttemptCount,
         isEssay: quiz.isEssay,
         questions: quiz.questions.map((q: any, idx: number) => ({
@@ -111,7 +113,7 @@ try {
 ---
 
 <Layout title={quiz?.title || 'Quiz Not Found'}>
-  <link rel="stylesheet" href="/src/styles/quiz-shared.css">
+  <link rel="stylesheet" href={quizSharedStyles}>
   <div class="min-h-screen bg-gray-50">
     {error ? (
       <div class="max-w-2xl mx-auto px-4 py-8">
@@ -227,8 +229,127 @@ try {
         </div>
       </div>
     ) : (
+      <>
+      <!-- Landing / pre-start -->
+      <div id="quiz-landing" class="max-w-5xl mx-auto px-4 py-10 hidden">
+        <div class="bg-white border border-slate-200 shadow-sm rounded-2xl p-6 sm:p-8 space-y-4">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="text-xs font-semibold uppercase text-blue-600 mb-1">{quiz.quizType === 'exam' ? 'Try Out (Exam)' : 'Latihan (Exercise)'}</p>
+              <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">{quiz.title}</h1>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p class="text-xs text-slate-500 uppercase tracking-wider mb-1">Jumlah Soal</p>
+              <p class="text-lg font-semibold text-slate-800">{quiz.questions?.length || 0} soal</p>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p class="text-xs text-slate-500 uppercase tracking-wider mb-1">Batas Waktu</p>
+              <p class="text-lg font-semibold text-slate-800">
+                {quiz.settings?.timeLimit ? `${Math.floor(quiz.settings.timeLimit / 60)} menit` : 'Tanpa batas'}
+              </p>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p class="text-xs text-slate-500 uppercase tracking-wider mb-1">Jumlah / Batas Percobaan</p>
+              <p class="text-lg font-semibold text-slate-800">
+                {quiz.attemptLimit
+                  ? `${quiz.userAttemptCount || 0} / ${quiz.attemptLimit}`
+                  : `${quiz.userAttemptCount || 0} / Tak terbatas`}
+              </p>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p class="text-xs text-slate-500 uppercase tracking-wider mb-1">Jenis Kuis</p>
+              <p class="text-lg font-semibold text-slate-800">
+                {quiz.quizType === 'tryout' || quiz.quizType === 'exam' ? 'Try Out (Exam)' : 'Latihan (Exercise)'}
+              </p>
+            </div>
+          </div>
+
+          {(quiz.settings?.description || quiz.settings?.notes) && (
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {quiz.settings?.description && (
+                <div class="rounded-xl border border-slate-200 bg-white px-4 py-4">
+                  <p class="text-xs text-slate-500 uppercase tracking-wider mb-2">Deskripsi</p>
+                  <div class="prose prose-sm max-w-none text-slate-800" set:html={renderMarkdown(quiz.settings.description)}></div>
+                </div>
+              )}
+              {quiz.settings?.notes && (
+                <div class="rounded-xl border border-slate-200 bg-white px-4 py-4">
+                  <p class="text-xs text-slate-500 uppercase tracking-wider mb-2">Catatan / Peraturan</p>
+                  <div class="prose prose-sm max-w-none text-slate-800" set:html={renderMarkdown(quiz.settings.notes)}></div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="rounded-xl border border-slate-200 bg-white px-4 py-4">
+              <p class="text-xs text-slate-500 uppercase tracking-wider mb-2">Jadwal Akses (Exam)</p>
+              <div class="space-y-2 text-sm text-slate-800">
+                <div class="flex items-start gap-2">
+                  <svg class="h-4 w-4 text-blue-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 7h8m-8 4h5m-9 3h14M7 4h10a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z" />
+                  </svg>
+                  <div>
+                    <p class="text-xs text-slate-500 uppercase tracking-wider">Mulai</p>
+                    <p class="font-semibold">
+                      {quiz.availableFrom ? new Date(quiz.availableFrom).toLocaleString('id-ID') : 'Tidak dijadwalkan'}
+                    </p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-2">
+                  <svg class="h-4 w-4 text-amber-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4l2 2m5-2a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <div>
+                    <p class="text-xs text-slate-500 uppercase tracking-wider">Tutup</p>
+                    <p class="font-semibold">
+                      {quiz.availableUntil ? new Date(quiz.availableUntil).toLocaleString('id-ID') : 'Tidak dijadwalkan'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-white px-4 py-4">
+              <p class="text-xs text-slate-500 uppercase tracking-wider mb-2">Catatan</p>
+              <ul class="text-sm text-slate-700 space-y-2.5">
+                <li class="flex items-start gap-3 leading-relaxed">
+                  <span class="mt-2 h-1.5 w-1.5 rounded-full bg-slate-400 flex-shrink-0"></span>
+                  <span>Gunakan tombol "Ragu-Ragu" untuk menandai soal.</span>
+                </li>
+                <li class="flex items-start gap-3 leading-relaxed">
+                  <span class="mt-2 h-1.5 w-1.5 rounded-full bg-slate-400 flex-shrink-0"></span>
+                  <span>Progress tersimpan otomatis; timer tetap berjalan saat Anda keluar.</span>
+                </li>
+                <li class="flex items-start gap-3 leading-relaxed">
+                  <span class="mt-2 h-1.5 w-1.5 rounded-full bg-slate-400 flex-shrink-0"></span>
+                  <span>Pastikan koneksi stabil sebelum memulai.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-3">
+            <button
+              id="start-quiz-btn"
+              class="inline-flex items-center justify-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow-sm transition"
+            >
+              Mulai Kuis
+            </button>
+            <a
+              href="/quizzes"
+              class="inline-flex items-center justify-center gap-2 px-5 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-semibold transition"
+            >
+              Kembali ke daftar
+            </a>
+          </div>
+        </div>
+      </div>
+
       <!-- Multiple Choice Quiz with Pagination - Mobile Friendly -->
-      <div class="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <div id="quiz-shell" class="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 hidden">
         <!-- Quiz Title Header - Clean and elegant -->
         <div class="bg-white shadow-sm px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200">
           <div class="flex items-center justify-between max-w-7xl mx-auto">
@@ -260,7 +381,10 @@ try {
           <!-- Timer - Fixed width to match sidebar -->
           <div class="lg:w-80 lg:border-l border-b lg:border-b-0 border-slate-200 px-4 py-2 sm:py-3 flex items-center justify-center">
             <div id="timer" class="flex items-center space-x-2 sm:space-x-3 bg-slate-50 border border-slate-200 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl">
-              <span class="text-slate-400 text-sm sm:text-base">⏱️</span>
+              <svg class="h-4 w-4 sm:h-5 sm:w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <circle cx="12" cy="12" r="9" stroke-width="1.8" />
+                <path stroke-width="1.8" stroke-linecap="round" d="M12 7v5l3 2" />
+              </svg>
               <span class="hidden sm:inline text-xs font-semibold text-slate-500 uppercase tracking-wider">Sisa Waktu</span>
               <span id="timer-display" class="text-lg sm:text-xl font-mono font-bold text-slate-800 tabular-nums">--:--:--</span>
             </div>
@@ -376,6 +500,7 @@ try {
           </button>
         </div>
       </div>
+      </>
     )}
   </div>
 
@@ -948,12 +1073,18 @@ try {
     const PROGRESS_KEY = `quiz_progress_${id}`;
     const arrowLeftSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>';
     const arrowRightSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>';
+    const availableFromTs = quiz.availableFrom ? new Date(quiz.availableFrom).getTime() : null;
+    const availableUntilTs = quiz.availableUntil ? new Date(quiz.availableUntil).getTime() : null;
+    const openDurationSeconds = quiz.openDurationSeconds || 0;
     let currentQuestionIndex = 0;
     let answers = new Array(quiz.questions.length).fill(null);
     let flaggedQuestions = new Set();
     let startTime = Date.now();
+    let openStartedAt = Date.now();
     let timerInterval = null;
     const totalTimeLimit = quiz.settings?.timeLimit || 0;
+    let quizSubmitted = false;
+    let hasStarted = false;
 
     // Load saved progress
     function loadProgress() {
@@ -964,12 +1095,16 @@ try {
           answers = progress.answers || answers;
           flaggedQuestions = new Set(progress.flaggedQuestions || []);
           currentQuestionIndex = progress.currentQuestionIndex || 0;
+          startTime = progress.startTime || startTime;
+          openStartedAt = progress.openStartedAt || openStartedAt;
+          hasStarted = progress.hasStarted || false;
           
           // Restore timer state
           if (quiz.settings?.timeLimit) {
             if (progress.remainingTime !== undefined) {
-              // Use saved remaining time
-              remainingTime = progress.remainingTime;
+              // Resume timer even if tab was closed: subtract elapsed since last save
+              const elapsedSinceSave = Math.floor((Date.now() - (progress.savedAt || Date.now())) / 1000);
+              remainingTime = Math.max(0, progress.remainingTime - elapsedSinceSave);
             } else if (progress.startTime) {
               // Calculate from start time (legacy support)
               const elapsed = Math.floor((Date.now() - progress.startTime) / 1000);
@@ -995,6 +1130,8 @@ try {
           currentQuestionIndex,
           remainingTime: quiz.settings?.timeLimit ? remainingTime : undefined,
           startTime: startTime,
+          openStartedAt,
+          hasStarted,
           savedAt: Date.now()
         };
         localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
@@ -1012,6 +1149,110 @@ try {
       }
     }
 
+    function enableLeaveConfirm() {
+      window.addEventListener('beforeunload', beforeUnloadHandler);
+    }
+
+    function disableLeaveConfirm() {
+      window.removeEventListener('beforeunload', beforeUnloadHandler);
+    }
+
+    function beforeUnloadHandler(event) {
+      if (quizSubmitted) return;
+      event.preventDefault();
+      const message = 'Anda yakin ingin meninggalkan halaman kuis? Progres belum dikirim.';
+      event.returnValue = message;
+      return message;
+    }
+
+    // Helper: format seconds to HH:MM:SS
+    function formatTime(totalSeconds) {
+      const safe = Math.max(0, Math.floor(totalSeconds));
+      const hours = Math.floor(safe / 3600);
+      const minutes = Math.floor((safe % 3600) / 60);
+      const seconds = safe % 60;
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds
+        .toString()
+        .padStart(2, '0')}`;
+    }
+
+    // Finish confirmation overlay (non-blocking)
+    let finishModal = null;
+    let finishModalTimerEl = null;
+    let finishModalMessageEl = null;
+    function ensureFinishModal() {
+      if (finishModal) return;
+      const overlay = document.createElement('div');
+      overlay.id = 'finish-confirm-overlay';
+      overlay.className = 'fixed inset-0 z-50 hidden opacity-0 transition-opacity';
+      overlay.innerHTML = `
+        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"></div>
+        <div class="absolute inset-0 flex items-center justify-center px-4">
+          <div class="max-w-md w-full bg-white border border-slate-200 shadow-2xl rounded-2xl p-6 space-y-4">
+            <div class="flex items-start gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-amber-50 text-amber-600 border border-amber-100">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 9v3m0 4h.01M4.93 4.93a10.5 10.5 0 1114.84 14.84A10.5 10.5 0 014.93 4.93z" />
+                </svg>
+              </div>
+              <div class="space-y-1">
+                <p class="text-sm font-semibold text-slate-900">Kirim jawaban sekarang?</p>
+                <p id="finish-modal-message" class="text-sm text-slate-600"></p>
+                <p class="text-xs font-semibold text-amber-700 inline-flex items-center gap-2 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-100">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4l2 2m5-2a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  Sisa waktu: <span id="finish-modal-timer"></span>
+                </p>
+              </div>
+            </div>
+            <div class="flex items-center justify-end gap-3">
+              <button id="finish-modal-cancel" type="button" class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Kembali</button>
+              <button id="finish-modal-confirm" type="button" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow-sm">Kirim</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      finishModal = overlay;
+      finishModalTimerEl = overlay.querySelector('#finish-modal-timer');
+      finishModalMessageEl = overlay.querySelector('#finish-modal-message');
+      const cancelBtn = overlay.querySelector('#finish-modal-cancel');
+      const confirmBtn = overlay.querySelector('#finish-modal-confirm');
+      cancelBtn?.addEventListener('click', hideFinishModal);
+      confirmBtn?.addEventListener('click', () => {
+        hideFinishModal();
+        submitQuiz('manual');
+      });
+    }
+
+    function showFinishModal(unansweredCount) {
+      ensureFinishModal();
+      if (finishModalMessageEl) {
+        finishModalMessageEl.textContent =
+          unansweredCount > 0
+            ? `Anda memiliki ${unansweredCount} soal yang belum dijawab.`
+            : 'Semua soal sudah terjawab. Kirim sekarang?';
+      }
+      updateFinishModalTimer();
+      if (finishModal) {
+        finishModal.classList.remove('hidden');
+        requestAnimationFrame(() => finishModal?.classList.remove('opacity-0'));
+      }
+    }
+
+    function hideFinishModal() {
+      if (!finishModal) return;
+      finishModal.classList.add('opacity-0');
+      setTimeout(() => finishModal?.classList.add('hidden'), 150);
+    }
+
+    function updateFinishModalTimer() {
+      if (finishModalTimerEl) {
+        finishModalTimerEl.textContent = formatTime(remainingTime);
+      }
+    }
+
     // Initialize timer variables
     let remainingTime = quiz.settings?.timeLimit || 0;
     
@@ -1023,20 +1264,56 @@ try {
       remainingTime = quiz.settings.timeLimit;
     }
 
+    // Apply open duration window (per-open)
+    if (openDurationSeconds > 0) {
+      if (!hasProgress) {
+        openStartedAt = Date.now();
+      }
+      const elapsedSinceOpen = Math.floor((Date.now() - openStartedAt) / 1000);
+      const openRemaining = Math.max(0, openDurationSeconds - elapsedSinceOpen);
+      remainingTime = remainingTime ? Math.min(remainingTime, openRemaining) : openRemaining;
+    }
+
+    function renderLockedState(title, message) {
+      const root = document.querySelector('.min-h-screen');
+      if (!root) return;
+      root.innerHTML = `
+        <div class="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-12">
+          <div class="max-w-lg w-full bg-white border border-slate-200 shadow-sm rounded-2xl p-8 text-center space-y-4">
+            <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+              <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 9v4l2.5 1.5" />
+                <circle cx="12" cy="12" r="9" stroke-width="1.8" />
+              </svg>
+            </div>
+            <h2 class="text-xl font-bold text-slate-900">${title}</h2>
+            <p class="text-sm text-slate-600">${message}</p>
+            <a href="/quizzes" class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 text-sm font-semibold">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+              </svg>
+              Kembali ke daftar kuis
+            </a>
+          </div>
+        </div>
+      `;
+    }
+
     // Timer initialization function (to be called after DOM is ready)
     function initializeTimer() {
       // Initialize timer if time limit exists
       if (quiz.settings?.timeLimit) {
+        // If already expired while away, submit immediately
+        if (remainingTime <= 0) {
+          submitQuiz('time_up');
+          return;
+        }
         // Update display immediately
         const updateTimerDisplay = () => {
-          const hours = Math.floor(remainingTime / 3600);
-          const minutes = Math.floor((remainingTime % 3600) / 60);
-          const seconds = remainingTime % 60;
           const timerDisplay = document.getElementById('timer-display');
           const timerWrapper = document.getElementById('timer');
           if (timerDisplay) {
-            timerDisplay.textContent = 
-              `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            timerDisplay.textContent = formatTime(remainingTime);
           }
           if (timerWrapper && totalTimeLimit > 0) {
             const critical = remainingTime <= 60 || remainingTime <= Math.ceil(totalTimeLimit * 0.1);
@@ -1047,21 +1324,30 @@ try {
             timerDisplay?.classList.toggle('text-rose-700', critical);
             timerDisplay?.classList.toggle('text-slate-800', !critical);
           }
+          updateFinishModalTimer();
         };
         
         updateTimerDisplay();
 
+        let lastTick = Date.now();
         timerInterval = setInterval(() => {
-          remainingTime--;
-          
+          const now = Date.now();
+          const elapsed = Math.floor((now - lastTick) / 1000);
+          if (elapsed <= 0) return;
+          lastTick = now;
+
+          remainingTime -= elapsed;
+
           if (remainingTime <= 0) {
+            remainingTime = 0;
+            updateTimerDisplay();
             clearInterval(timerInterval);
             submitQuiz('time_up');
             return;
           }
 
           updateTimerDisplay();
-          // Save progress periodically (every 10 seconds)
+          // Save progress periodically (every ~10 seconds of elapsed time)
           if (remainingTime % 10 === 0) {
             saveProgress();
           }
@@ -1124,21 +1410,25 @@ try {
     // Update status counts
     function updateCounts() {
       let answered = 0;
-      let flaggedUnanswered = 0;
+      let flaggedCount = 0;
       let unanswered = 0;
 
       answers.forEach((answer, index) => {
         const isFlagged = flaggedQuestions.has(index);
         const isAnswered = answer !== null;
 
+        if (isFlagged) {
+          // Flagged should be counted as ragu-ragu (even if answered)
+          flaggedCount++;
+        }
+
         if (isAnswered) {
-          // If answered (regardless of flagged), count as answered
+          // Answered counts regardless of flag state
           answered++;
-        } else if (isFlagged) {
-          // Only count as ragu-ragu if NOT answered
-          flaggedUnanswered++;
-        } else {
-          // Not answered and not flagged
+        }
+
+        if (!isAnswered) {
+          // Only unanswered when no answer (flagged unanswered stays unanswered too)
           unanswered++;
         }
       });
@@ -1148,7 +1438,7 @@ try {
       const unansweredEl = document.getElementById('unanswered-count');
       
       if (answeredEl) answeredEl.textContent = answered;
-      if (flaggedEl) flaggedEl.textContent = flaggedUnanswered;
+      if (flaggedEl) flaggedEl.textContent = flaggedCount;
       if (unansweredEl) unansweredEl.textContent = unanswered;
     }
     
@@ -1194,7 +1484,7 @@ try {
               name="question-${currentQuestionIndex}"
               value="${optIndex + 1}"
               ${isSelected ? 'checked' : ''}
-              onchange="handleAnswerChange(${currentQuestionIndex}, ${optIndex + 1}, this.type)"
+              onclick="handleOptionClick(${currentQuestionIndex}, ${optIndex + 1}, this)"
             />
             <span class="option-letter">${optionLetter}</span>
             <div class="option-content">${optionHtml}</div>
@@ -1279,7 +1569,8 @@ try {
         if (currentQuestionIndex < quiz.questions.length - 1) {
           goToQuestion(currentQuestionIndex + 1);
         } else {
-          submitQuiz('manual');
+          const unanswered = answers.filter(a => a === null).length;
+          showFinishModal(unanswered);
         }
       };
 
@@ -1313,16 +1604,17 @@ try {
       return answer === optionValue;
     }
 
-    // Handle answer change
-    window.handleAnswerChange = function(questionIndex, optionValue, inputType) {
+    // Handle option click (supports deselect for single choice)
+    window.handleOptionClick = function(questionIndex, optionValue, inputEl) {
+      const inputType = inputEl.type;
       if (inputType === 'checkbox') {
         // Complex multiple choice
         if (!Array.isArray(answers[questionIndex])) {
           answers[questionIndex] = [];
         }
-        const index = answers[questionIndex].indexOf(optionValue);
-        if (index > -1) {
-          answers[questionIndex].splice(index, 1);
+        const idx = answers[questionIndex].indexOf(optionValue);
+        if (idx > -1) {
+          answers[questionIndex].splice(idx, 1);
         } else {
           answers[questionIndex].push(optionValue);
         }
@@ -1330,8 +1622,11 @@ try {
           answers[questionIndex] = null;
         }
       } else {
-        // Simple multiple choice
-        answers[questionIndex] = optionValue;
+        // Single choice with deselect support
+        const alreadySelected = answers[questionIndex] === optionValue;
+        answers[questionIndex] = alreadySelected ? null : optionValue;
+        // Reflect deselect on the input
+        inputEl.checked = !alreadySelected;
       }
 
       // Update UI
@@ -1384,15 +1679,13 @@ try {
     // Submit quiz
     document.getElementById('submit-quiz-btn').onclick = () => {
       const unanswered = answers.filter(a => a === null).length;
-      if (unanswered > 0) {
-        if (!confirm(`Anda memiliki ${unanswered} soal yang belum dijawab. Yakin ingin menyelesaikan ujian?`)) {
-          return;
-        }
-      }
-      submitQuiz('manual');
+      showFinishModal(unanswered);
     };
 
     async function submitQuiz(endReason = 'manual') {
+      quizSubmitted = true;
+      disableLeaveConfirm();
+
       if (timerInterval) clearInterval(timerInterval);
       
       const timeSpent = Math.floor((Date.now() - startTime) / 1000);
@@ -1408,7 +1701,8 @@ try {
               answer: answer === null ? [] : (Array.isArray(answer) ? answer : [answer])
             })),
             timeSpent,
-            endReason
+            endReason,
+            sessionStartedAt: openStartedAt
           })
         });
         
@@ -1422,6 +1716,8 @@ try {
           alert('Error submitting quiz: ' + result.error);
         }
       } catch (error) {
+        quizSubmitted = false;
+        enableLeaveConfirm();
         alert('Error submitting quiz. Please try again.');
         console.error(error);
       }
@@ -1453,6 +1749,27 @@ try {
       }
       
       console.log('All elements found, initializing...');
+
+      // Availability checks
+      const nowTs = Date.now();
+      if (availableFromTs && nowTs < availableFromTs) {
+        renderLockedState('Kuis belum dibuka', `Kuis dapat diakses mulai ${new Date(availableFromTs).toLocaleString('id-ID')}`);
+        return;
+      }
+      if (availableUntilTs && nowTs > availableUntilTs) {
+        renderLockedState('Kuis sudah ditutup', `Batas waktu akses berakhir pada ${new Date(availableUntilTs).toLocaleString('id-ID')}`);
+        return;
+      }
+      if (openDurationSeconds > 0) {
+        const elapsedSinceOpen = Math.floor((Date.now() - openStartedAt) / 1000);
+        const openRemaining = openDurationSeconds - elapsedSinceOpen;
+        if (openRemaining <= 0) {
+          renderLockedState('Waktu sesi habis', 'Sesi kuis ini sudah berakhir. Silakan lihat hasil Anda.');
+          return;
+        }
+        // Adjust remainingTime to also respect session window
+        remainingTime = remainingTime ? Math.min(remainingTime, openRemaining) : openRemaining;
+      }
       
       // Initialize timer first
       initializeTimer();
@@ -1467,6 +1784,7 @@ try {
       
       // LaTeX will be rendered by renderQuestion() via requestAnimationFrame
       console.log('Quiz initialized successfully');
+      enableLeaveConfirm();
     }
 
     // Wait for DOM to be fully ready
@@ -1487,8 +1805,49 @@ try {
       }
     }
     
-    // Start initialization
+    function showLandingOrQuiz() {
+      const landing = document.getElementById('quiz-landing');
+      const shell = document.getElementById('quiz-shell');
+      if (hasStarted) {
+        landing?.classList.add('hidden');
+        shell?.classList.remove('hidden');
     startInitialization();
+      } else {
+        landing?.classList.remove('hidden');
+        shell?.classList.add('hidden');
+      }
+    }
+    
+    function startQuiz() {
+      if (!hasStarted) {
+        const parts = [];
+        if (quiz.settings?.timeLimit) {
+          parts.push(`Batas waktu: ${Math.floor(quiz.settings.timeLimit / 60)} menit.`);
+        }
+        if (quiz.openDurationSeconds) {
+          parts.push(`Durasi sesi: ${Math.floor(quiz.openDurationSeconds / 60)} menit.`);
+        }
+        if (quiz.attemptLimit) {
+          const remaining = Math.max(0, quiz.attemptLimit - (quiz.userAttemptCount || 0));
+          parts.push(`Sisa percobaan: ${remaining} dari ${quiz.attemptLimit}.`);
+        }
+        const detail = parts.length ? `\n${parts.join('\n')}` : '';
+        const ok = window.confirm(`Mulai "${quiz.title}" sekarang?${detail}`);
+        if (!ok) return;
+      }
+
+      hasStarted = true;
+      startTime = Date.now();
+      openStartedAt = Date.now();
+      saveProgress();
+      showLandingOrQuiz();
+    }
+    
+    const startQuizBtn = document.getElementById('start-quiz-btn');
+    startQuizBtn?.addEventListener('click', startQuiz);
+    
+    // Start initialization if already started/progress exists
+    showLandingOrQuiz();
     
     // Mobile sidebar toggle
     const sidebar = document.getElementById('sidebar');
@@ -1527,7 +1886,8 @@ try {
       if (currentQuestionIndex < quiz.questions.length - 1) {
         goToQuestion(currentQuestionIndex + 1);
       } else {
-        submitQuiz('manual');
+        const unanswered = answers.filter(a => a === null).length;
+        showFinishModal(unanswered);
       }
     });
     

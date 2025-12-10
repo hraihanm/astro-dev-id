@@ -18,7 +18,7 @@ const authConfig = {
   adapter: PrismaAdapter(prisma),
   session: { strategy: 'jwt' as const },
   trustHost: true,
-  basePath: '/api/oauth',
+  basePath: '/api/auth',
   secret: import.meta.env.AUTH_SECRET,
   providers: [
     Google({
@@ -38,7 +38,6 @@ const authConfig = {
         token.name = user.name;
       }
 
-      // Refresh role/email if token already exists
       if (!user && token?.email) {
         const dbUser = await getUserByEmail(token.email);
         if (dbUser) {
@@ -77,14 +76,14 @@ const authConfig = {
 };
 
 export const ALL: APIRoute = async ({ request, url }) => {
+  console.error('[auth] incoming', request.method, request.url, 'pathname:', url.pathname);
   try {
     return await Auth(request, authConfig);
   } catch (error) {
     console.error('Auth.js error:', error);
     console.error('Request URL:', request.url);
     console.error('URL pathname:', url.pathname);
-    console.error('Base path:', authConfig.basePath);
-    return new Response(JSON.stringify({ 
+    return new Response(JSON.stringify({
       error: 'Authentication failed',
       details: error instanceof Error ? error.message : 'Unknown error'
     }), {
@@ -93,4 +92,3 @@ export const ALL: APIRoute = async ({ request, url }) => {
     });
   }
 };
-

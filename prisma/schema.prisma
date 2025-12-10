@@ -62,6 +62,9 @@ model Quiz {
   courseId     Int? // Made nullable for standalone quizzes
   chapterId    Int?
   title        String
+  availableFrom DateTime?
+  availableUntil DateTime?
+  openDurationSeconds Int?
   visibility   String        @default("PUBLIC") // PUBLIC or PRIVATE
   questions    String
   settings     String?

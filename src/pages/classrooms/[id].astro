@@ -42,8 +42,8 @@ if (classroom && user) {
       where: { classroomId },
       orderBy: { pinnedAt: 'desc' },
       include: {
-        course: { select: { id: true, title: true, slug: true } },
-        quiz: { select: { id: true, title: true, quizType: true } }
+        course: { select: { id: true, title: true, slug: true, visibility: true } },
+        quiz: { select: { id: true, title: true, quizType: true, visibility: true } }
       }
     });
 
@@ -198,13 +198,15 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
               </p>
             )}
 
-            <div class="flex items-center gap-4 border-t border-slate-100 pt-3 text-sm font-semibold">
-              <button type="button" class="tab-btn text-slate-600 hover:text-blue-700" data-tab="stream">Stream</button>
-              <button type="button" class="tab-btn text-slate-600 hover:text-blue-700" data-tab="classwork">Classwork</button>
-              <button type="button" class="tab-btn text-slate-600 hover:text-blue-700" data-tab="people">People</button>
-            </div>
           </div>
         </header>
+
+        <div class="sticky top-[70px] md:top-[84px] lg:top-[90px] z-30 -mx-2 px-3 py-2 text-sm font-semibold flex items-center gap-4 rounded-xl border border-slate-200 bg-white/95 backdrop-blur shadow-sm">
+          <button type="button" class="tab-btn text-slate-600 hover:text-blue-700" data-tab="stream">Stream</button>
+          <button type="button" class="tab-btn text-slate-600 hover:text-blue-700" data-tab="classwork">Classwork</button>
+          <button type="button" class="tab-btn text-slate-600 hover:text-blue-700" data-tab="people">People</button>
+          <span class="ml-auto hidden text-xs text-slate-500 md:inline">Tab bar stays visible while scrolling</span>
+        </div>
 
         {user && (membership?.status === 'ACTIVE' || user.role === 'admin') ? (
           <>
@@ -214,25 +216,35 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
                   <div class="flex items-center justify-between mb-3">
                     <div>
                       <h2 class="text-sm font-semibold text-slate-800">Buat Post</h2>
-                      <p class="text-xs text-slate-500">Bagikan pengumuman atau diskusi.</p>
+                      <p class="text-xs text-slate-500">Pengumuman, diskusi, atau catatan singkat.</p>
                     </div>
                     <span id="post-status" class="text-xs text-slate-500"></span>
                   </div>
                   <textarea
                     id="post-content"
                     class="w-full border border-slate-200 rounded-xl p-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-slate-50"
-                    placeholder="Bagikan pengumuman atau diskusi..."
+                    placeholder="Contoh: Jadwal kuis minggu ini, materi baru, atau tautan referensi..."
                     rows="3"
                   ></textarea>
-                  <div class="flex justify-end mt-3">
-                    <button
-                      type="button"
-                      id="post-submit"
-                      class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm"
-                      data-classroom={classroom.id}
-                    >
-                      Post
-                    </button>
+                  <div class="flex items-center justify-between mt-3 text-xs text-slate-500">
+                    <span>Tips: singkat, sertakan tautan, gunakan komentar untuk diskusi.</span>
+                    <div class="flex gap-2">
+                      <button
+                        type="button"
+                        id="post-clear"
+                        class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+                      >
+                        Bersihkan
+                      </button>
+                      <button
+                        type="button"
+                        id="post-submit"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+                        data-classroom={classroom.id}
+                      >
+                        Post
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -272,9 +284,10 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
                           ) : (
                             post.comments.map((c: any) => (
                               <div class="text-sm flex items-start justify-between bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
-                                <div>
+                                <div class="space-y-0.5">
                                   <span class="font-medium text-slate-800">{c.author.email}</span>{' '}
                                   <span class="text-slate-700">{c.content}</span>
+                                  <div class="text-[11px] text-slate-500">{new Date(c.createdAt).toLocaleString('id-ID')}</div>
                                 </div>
                               </div>
                             ))
@@ -348,8 +361,8 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
             </div>
 
             <div class="space-y-6" data-tab-panel="classwork" style="display:none">
-              <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                <div class="flex items-center justify-between mb-3">
+              <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+                <div class="flex items-center justify-between">
                   <div>
                     <h3 class="text-sm font-semibold text-slate-800">Materi & Resource</h3>
                     <p class="text-xs text-slate-500">Kursus, kuis, atau resource lain yang ditautkan.</p>
@@ -357,31 +370,53 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
                   <span class="text-xs text-slate-500">{resources.length} resource</span>
                 </div>
                 {resources.length === 0 ? (
-                  <p class="text-sm text-slate-600">Belum ada resource tertaut. Tautkan kursus/kuis ke kelas ini.</p>
+                  <div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-600">
+                    Belum ada resource tertaut. Tautkan kursus/kuis ke kelas ini.
+                  </div>
                 ) : (
-                  <ul class="space-y-2 text-sm">
-                    {resources.map((res) => (
-                      <li class="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2">
-                        <div class="flex items-center gap-2 text-slate-700">
-                          <Icon name="bookmark" class="w-4 h-4 text-slate-500" />
-                          {res.course ? (
-                            <a class="text-blue-700 hover:underline" href={`/courses/${res.course.slug}`}>{res.course.title}</a>
-                          ) : res.quiz ? (
-                            <a class="text-blue-700 hover:underline" href={`/quizzes/${res.quiz.id}`}>{res.quiz.title}</a>
-                          ) : (
-                            <span class="text-slate-600">Resource</span>
-                          )}
-                        </div>
-                        <span class="text-xs text-slate-500">{new Date(res.createdAt).toLocaleDateString('id-ID')}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <div class="grid gap-3 md:grid-cols-2">
+                    {resources.map((res) => {
+                      const isCourse = !!res.course;
+                      const title = res.course?.title || res.quiz?.title || 'Resource';
+                      const href = res.course ? `/courses/${res.course.slug}` : res.quiz ? `/quizzes/${res.quiz.id}` : '#';
+                      const visibility = res.course?.visibility || res.quiz?.visibility || 'PUBLIC';
+                      return (
+                        <a
+                          class="group flex flex-col gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm hover:border-blue-200 hover:shadow transition"
+                          href={href}
+                        >
+                          <div class="flex items-center justify-between">
+                            <div class="inline-flex items-center gap-2 text-xs font-semibold rounded-full px-2 py-1 bg-slate-100 text-slate-700 border border-slate-200">
+                              <Icon name={isCourse ? 'book' : 'puzzle'} class="w-4 h-4 text-slate-500" />
+                              {isCourse ? 'Kursus' : 'Kuis'}
+                            </div>
+                            <span class={`text-[11px] px-2 py-1 rounded-full border ${visibility === 'PRIVATE' ? 'bg-rose-50 text-rose-700 border-rose-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>
+                              {visibility === 'PRIVATE' ? 'Privat' : 'Publik'}
+                            </span>
+                          </div>
+                          <div class="text-sm font-semibold text-slate-900 group-hover:text-blue-800">{title}</div>
+                          <div class="flex items-center justify-between text-xs text-slate-500">
+                            <span class="inline-flex items-center gap-1">
+                              <Icon name="calendar" class="w-3.5 h-3.5" />
+                              {new Date(res.createdAt).toLocaleDateString('id-ID')}
+                            </span>
+                            {res.quiz?.quizType && (
+                              <span class="inline-flex items-center gap-1">
+                                <Icon name="badge" class="w-3.5 h-3.5" />
+                                {res.quiz.quizType === 'exam' ? 'Ujian' : 'Latihan'}
+                              </span>
+                            )}
+                          </div>
+                        </a>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             </div>
 
             <div class="space-y-6" data-tab-panel="people" style="display:none">
-              <div class="grid gap-4 md:grid-cols-3">
+              <div class="grid gap-4 md:grid-cols-4">
                 <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                   <p class="text-xs text-slate-500">Anggota aktif</p>
                   <p class="text-2xl font-bold text-slate-900">{members.length}</p>
@@ -394,14 +429,18 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
                   <p class="text-xs text-slate-500">Resource tertaut</p>
                   <p class="text-2xl font-bold text-slate-900">{resources.length}</p>
                 </div>
+                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <p class="text-xs text-slate-500">Guru/Admin</p>
+                  <p class="text-2xl font-bold text-slate-900">{members.filter((m) => m.role !== 'STUDENT').length}</p>
+                </div>
               </div>
 
               {(membership?.role === 'TEACHER' || user.role === 'admin') && (
-                <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
-                  <div class="flex items-center justify-between">
+                <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+                  <div class="flex items-center justify-between flex-wrap gap-2">
                     <div>
                       <h3 class="text-sm font-semibold text-slate-800">Tambah anggota langsung</h3>
-                      <p class="text-xs text-slate-500">Masukkan ID pengguna atau email terdaftar.</p>
+                      <p class="text-xs text-slate-500">Masukkan ID atau email, bisa pisahkan dengan koma untuk banyak sekaligus.</p>
                     </div>
                     <span class="text-[11px] rounded-full bg-blue-50 px-2 py-1 text-blue-700 border border-blue-100">Admin/Guru</span>
                   </div>
@@ -410,7 +449,7 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
                       type="text"
                       id="people-invite-input"
                       class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                      placeholder="123 atau email@contoh.com"
+                      placeholder="123, 456 atau email@contoh.com, other@mail.com"
                     />
                     <button
                       type="button"
@@ -425,34 +464,107 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
                 </div>
               )}
 
-              <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                <h3 class="text-sm font-semibold text-slate-800 mb-3">Anggota aktif</h3>
+              <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+                <div class="flex items-center gap-3 flex-wrap">
+                  <h3 class="text-sm font-semibold text-slate-800">Anggota aktif</h3>
+                  <div class="flex-1"></div>
+                  <div class="relative w-full sm:w-64">
+                    <Icon name="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                    <input
+                      id="people-filter"
+                      type="text"
+                      class="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                      placeholder="Cari nama atau email"
+                    />
+                  </div>
+                </div>
                 {members.length === 0 ? (
                   <p class="text-sm text-slate-600">Belum ada anggota aktif.</p>
                 ) : (
-                  <ul class="divide-y divide-slate-100 text-sm text-slate-700">
-                    {members.map((m) => {
-                      const displayName = m.user.name || m.user.email;
-                      return (
-                        <li class="py-2 flex items-center justify-between">
-                          <span>{displayName}</span>
-                          <span class="text-xs text-slate-500">{m.role}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                  <div class="space-y-4" id="people-list">
+                    <div class="space-y-2">
+                      <div class="text-xs uppercase tracking-wide text-slate-500 font-semibold">Pengajar & Admin</div>
+                      <div class="flex flex-col gap-3">
+                        {members.filter((m) => m.role !== 'STUDENT').map((m) => {
+                      const displayName = (m.user.name && m.user.name.trim()) ? m.user.name.trim() : (m.user.email || '');
+                          const initial = (displayName || m.user.email || '?').trim().charAt(0).toUpperCase();
+                          return (
+                            <div
+                              class="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
+                              data-name={displayName?.toLowerCase()}
+                              data-email={m.user.email?.toLowerCase()}
+                              data-person-card="true"
+                            >
+                              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-blue-500 text-white font-semibold flex items-center justify-center">
+                                {initial}
+                              </div>
+                              <div class="min-w-0">
+                                <div class="font-semibold text-slate-900 truncate">{displayName}</div>
+                                <div class="text-xs text-slate-500 truncate">{m.user.email}</div>
+                              </div>
+                              <span class="ml-auto text-[11px] px-2 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-100">
+                                {m.role}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div class="space-y-2">
+                      <div class="text-xs uppercase tracking-wide text-slate-500 font-semibold">Siswa</div>
+                      <div class="flex flex-col gap-3">
+                        {members.filter((m) => m.role === 'STUDENT').map((m) => {
+                      const displayName = (m.user.name && m.user.name.trim()) ? m.user.name.trim() : (m.user.email || '');
+                          const initial = (displayName || m.user.email || '?').trim().charAt(0).toUpperCase();
+                          return (
+                            <div
+                              class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2"
+                              data-name={displayName?.toLowerCase()}
+                              data-email={m.user.email?.toLowerCase()}
+                              data-person-card="true"
+                            >
+                              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 text-slate-700 font-semibold flex items-center justify-center">
+                                {initial}
+                              </div>
+                              <div class="min-w-0">
+                                <div class="font-semibold text-slate-900 truncate">{displayName}</div>
+                                <div class="text-xs text-slate-500 truncate">{m.user.email}</div>
+                              </div>
+                              <span class="ml-auto text-[11px] px-2 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                                Siswa
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
 
               {(membership?.role === 'TEACHER' || user.role === 'admin') && pendingMembers.length > 0 && (
                 <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
-                  <h3 class="text-sm font-semibold text-slate-800">Permintaan bergabung</h3>
+                  <div class="flex items-center justify-between flex-wrap gap-2">
+                    <h3 class="text-sm font-semibold text-slate-800">Permintaan bergabung</h3>
+                    <button
+                      type="button"
+                      class="text-xs font-semibold px-3 py-1.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100 hover:bg-emerald-100"
+                      id="approve-all-btn"
+                      data-classroom={classroom.id}
+                    >
+                      Setujui semua
+                    </button>
+                  </div>
                   <div class="space-y-2">
                     {pendingMembers.map((m) => {
                       const displayName = m.user.name || m.user.email;
                       return (
                         <div class="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
-                          <span>{displayName}</span>
+                          <div>
+                            <div class="font-medium text-slate-800">{displayName}</div>
+                            <div class="text-xs text-slate-500">{m.user.email}</div>
+                          </div>
                           <div class="flex items-center gap-2">
                             <button
                               type="button"
@@ -549,6 +661,14 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
       const postBtn = document.querySelector('#post-submit');
       const postContentEl = document.querySelector('#post-content');
       const postContent = postContentEl instanceof HTMLTextAreaElement ? postContentEl : null;
+      const postClear = document.querySelector('#post-clear');
+      const postStatus = document.querySelector('#post-status');
+      if (postClear && postContent) {
+        postClear.addEventListener('click', () => {
+          postContent.value = '';
+          if (postStatus instanceof HTMLElement) postStatus.textContent = '';
+        });
+      }
       if (postBtn && postContent) {
         postBtn.addEventListener('click', async () => {
           const id = postBtn.getAttribute('data-classroom');
@@ -556,6 +676,10 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
           if (!content) return alert('Isi konten dulu.');
           postBtn.textContent = 'Mengirim...';
           postBtn.setAttribute('disabled', 'true');
+          if (postStatus instanceof HTMLElement) {
+            postStatus.textContent = 'Mengirim...';
+            postStatus.className = 'text-xs text-slate-500';
+          }
           try {
             const res = await fetch(`/api/classrooms/${id}/posts`, {
               method: 'POST',
@@ -563,6 +687,10 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
               body: JSON.stringify({ content })
             });
             if (res.ok) {
+              if (postStatus instanceof HTMLElement) {
+                postStatus.textContent = 'Terkirim. Memuat ulang...';
+                postStatus.className = 'text-xs text-emerald-600';
+              }
               location.reload();
             } else {
               const data = await res.json().catch(() => ({}));
@@ -571,6 +699,9 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
           } finally {
             postBtn.textContent = 'Post';
             postBtn.removeAttribute('disabled');
+            if (postStatus instanceof HTMLElement && !postStatus.textContent) {
+              postStatus.textContent = '';
+            }
           }
         });
       }
@@ -616,32 +747,37 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
             inviteStatus.className = 'text-xs text-red-600';
             return;
           }
-          const userId = /^\d+$/.test(raw) ? parseInt(raw, 10) : null;
-          const email = userId ? null : raw;
+          const tokens = raw.split(',').map((s) => s.trim()).filter(Boolean);
+          if (tokens.length === 0) {
+            inviteStatus.textContent = 'Masukkan minimal satu ID/email.';
+            inviteStatus.className = 'text-xs text-red-600';
+            return;
+          }
           inviteBtn.textContent = 'Menambahkan...';
           inviteBtn.setAttribute('disabled', 'true');
           inviteStatus.textContent = '';
-          try {
-            const res = await fetch(`/api/classrooms/${classId}/invite`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(userId ? { userId } : { email })
-            });
-            const data = await res.json().catch(() => ({}));
-            if (res.ok) {
-              inviteStatus.textContent = data.message || 'Anggota ditambahkan.';
-              inviteStatus.className = 'text-xs text-emerald-600';
-              inviteInput.value = '';
-            } else {
-              inviteStatus.textContent = data.error || 'Gagal menambahkan anggota.';
-              inviteStatus.className = 'text-xs text-red-600';
+          let success = 0;
+          for (const token of tokens) {
+            const userId = /^\d+$/.test(token) ? parseInt(token, 10) : null;
+            const email = userId ? null : token;
+            try {
+              const res = await fetch(`/api/classrooms/${classId}/invite`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(userId ? { userId } : { email })
+              });
+              if (res.ok) success += 1;
+            } catch (err) {
+              // ignore, aggregate result
             }
-          } catch (err) {
-            inviteStatus.textContent = 'Gagal menambahkan anggota.';
-            inviteStatus.className = 'text-xs text-red-600';
-          } finally {
-            inviteBtn.textContent = 'Tambahkan anggota';
-            inviteBtn.removeAttribute('disabled');
+          }
+          inviteStatus.textContent = success > 0 ? `Berhasil menambahkan ${success} anggota.` : 'Tidak ada anggota yang ditambahkan.';
+          inviteStatus.className = success > 0 ? 'text-xs text-emerald-600' : 'text-xs text-red-600';
+          inviteInput.value = '';
+          inviteBtn.textContent = 'Tambahkan anggota';
+          inviteBtn.removeAttribute('disabled');
+          if (success > 0) {
+            setTimeout(() => window.location.reload(), 600);
           }
         });
       }
@@ -663,6 +799,20 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
     btn.addEventListener('click', () => setTab(btn.getAttribute('data-tab') || 'stream'));
   });
   setTab('stream');
+
+  // People filter
+  const peopleFilter = document.querySelector('#people-filter');
+  if (peopleFilter) {
+    peopleFilter.addEventListener('input', () => {
+      const term = peopleFilter instanceof HTMLInputElement ? peopleFilter.value.toLowerCase() : '';
+      document.querySelectorAll('#people-list [data-person-card]').forEach((card) => {
+        const name = card.getAttribute('data-name') || '';
+        const email = card.getAttribute('data-email') || '';
+        const match = !term || name.includes(term) || email.includes(term);
+        card.setAttribute('style', match ? '' : 'display:none');
+      });
+    });
+  }
 
   // Approve / reject pending members
   document.querySelectorAll('.approve-member-btn').forEach((btn) => {
@@ -715,6 +865,33 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
       }
     });
   });
+
+  // Approve all pending
+  const approveAllBtn = document.querySelector('#approve-all-btn');
+  if (approveAllBtn) {
+    approveAllBtn.addEventListener('click', async () => {
+      const cid = approveAllBtn.getAttribute('data-classroom');
+      if (!cid) return;
+      approveAllBtn.textContent = 'Menyetujui...';
+      approveAllBtn.setAttribute('disabled', 'true');
+      const pendingBtns = Array.from(document.querySelectorAll('.approve-member-btn'));
+      try {
+        for (const btn of pendingBtns) {
+          const uid = btn.getAttribute('data-user-id');
+          if (!uid) continue;
+          await fetch(`/api/classrooms/${cid}/members`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: uid, status: 'ACTIVE', role: 'STUDENT' })
+          });
+        }
+        window.location.reload();
+      } finally {
+        approveAllBtn.textContent = 'Setujui semua';
+        approveAllBtn.removeAttribute('disabled');
+      }
+    });
+  }
 
   // Toggle privacy (teacher/admin)
   const toggleBtn = document.querySelector('#toggle-privacy-btn');

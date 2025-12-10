@@ -115,7 +115,8 @@ export function renderMarkdown(content: string): string {
   // Restore display math blocks AFTER markdown parsing
   displayMathBlocks.forEach((latex, index) => {
     const escapedLatex = latex.replace(/"/g, '&quot;');
-    const mathDiv = `<div class="math-display" data-latex="${escapedLatex}"></div>`;
+    const fallbackLatex = escapeHtml(latex);
+    const mathDiv = `<div class="math-display" data-latex="${escapedLatex}">${fallbackLatex}</div>`;
     const placeholder = `\u200B\u200BDISPLAYMATH${index}\u200B\u200B`;
     html = html.split(placeholder).join(mathDiv);
     // Also try HTML-escaped version
@@ -126,7 +127,8 @@ export function renderMarkdown(content: string): string {
   // Restore inline math blocks AFTER markdown parsing
   inlineMathBlocks.forEach((latex, index) => {
     const escapedLatex = latex.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-    const mathSpan = `<span class="math-inline" data-latex="${escapedLatex}"></span>`;
+    const fallbackLatex = escapeHtml(latex);
+    const mathSpan = `<span class="math-inline" data-latex="${escapedLatex}">${fallbackLatex}</span>`;
     const placeholder = `\u200B\u200BINLINEMATH${index}\u200B\u200B`;
     html = html.split(placeholder).join(mathSpan);
     // Also try HTML-escaped version
@@ -323,7 +325,8 @@ function processHtmlBlockContent(content: string): string {
   // Restore display math
   displayMathBlocks.forEach((latex, index) => {
     const escapedLatex = latex.replace(/"/g, '&quot;');
-    const mathDiv = `<div class="math-display" data-latex="${escapedLatex}"></div>`;
+    const fallbackLatex = escapeHtml(latex);
+    const mathDiv = `<div class="math-display" data-latex="${escapedLatex}">${fallbackLatex}</div>`;
     const placeholder = `\u200B\u200BDISPLAYMATH${index}\u200B\u200B`;
     html = html.split(placeholder).join(mathDiv);
     const escapedPlaceholder = placeholder.replace(/\u200B/g, '&#8203;');
@@ -333,7 +336,8 @@ function processHtmlBlockContent(content: string): string {
   // Restore inline math
   inlineMathBlocks.forEach((latex, index) => {
     const escapedLatex = latex.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-    const mathSpan = `<span class="math-inline" data-latex="${escapedLatex}"></span>`;
+    const fallbackLatex = escapeHtml(latex);
+    const mathSpan = `<span class="math-inline" data-latex="${escapedLatex}">${fallbackLatex}</span>`;
     const placeholder = `\u200B\u200BINLINEMATH${index}\u200B\u200B`;
     html = html.split(placeholder).join(mathSpan);
     const escapedPlaceholder = placeholder.replace(/\u200B/g, '&#8203;');

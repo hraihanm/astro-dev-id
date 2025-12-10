@@ -323,100 +323,209 @@ const quizzes = chapterQuizzes.map(quiz => {
 
 <script>
   // Client-side LaTeX rendering and code highlighting for performance
-  (function() {
-    // Load KaTeX CSS/JS once if not already loaded
-    if (typeof window !== 'undefined' && !document.querySelector('link[href*="katex"]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css';
-      document.head.appendChild(link);
-    }
-    
-    // Load Highlight.js CSS
-    if (typeof window !== 'undefined' && !document.querySelector('link[href*="highlight.js"]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css';
-      document.head.appendChild(link);
-    }
-
-    // Load and render LaTeX after page loads
-    function renderLatex() {
-      const w = typeof window !== 'undefined' ? (window as any) : null;
-      if (!w || !w.katex) return;
-      
-      const mathElements = document.querySelectorAll('.math-display, .math-inline');
-      mathElements.forEach((element) => {
-        const latex = element.getAttribute('data-latex') || '';
-        const displayMode = element.classList.contains('math-display');
-        
-        try {
-          w.katex.render(latex, element as HTMLElement, {
-            displayMode,
-            throwOnError: false,
-            trust: true,
-            macros: {
-              '\\degree': '^{\\circ}'
-            }
-          });
-        } catch (err: any) {
-          console.warn('KaTeX render error:', err);
-          (element as HTMLElement).innerHTML = `<span class="latex-error">LaTeX Error: ${err?.message || 'Unknown error'}</span>`;
-        }
-      });
-    }
-    
-    // Highlight code blocks
-    function highlightCode() {
-      const w = typeof window !== 'undefined' ? (window as any) : null;
-      if (!w || !w.hljs) return;
-      
-      const codeBlocks = document.querySelectorAll('pre code');
-      codeBlocks.forEach((block) => {
-        if (block instanceof HTMLElement) {
-          w.hljs.highlightElement(block);
-        }
-      });
-    }
-
-    // Load dependencies and render
-    if (typeof window !== 'undefined') {
-      const w = window as any;
-      let scriptsLoaded = 0;
-      const totalScripts = 2; // KaTeX + Highlight.js
-      
-      function tryRender() {
-        scriptsLoaded++;
-        if (scriptsLoaded === totalScripts) {
-          renderLatex();
-          highlightCode();
-        }
+  (() => {
+    const init = () => {
+      // Load KaTeX CSS/JS once if not already loaded
+      if (!document.querySelector('link[href*="katex"]')) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css';
+        document.head.appendChild(link);
       }
       
-      // Check if already loaded
-      if (w.katex && w.hljs) {
-        tryRender();
-        tryRender();
-      } else {
-        // Load KaTeX
-        if (w.katex) {
-          tryRender();
-        } else {
-          const katexScript = document.createElement('script');
-          katexScript.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js';
-          katexScript.onload = tryRender;
-          document.head.appendChild(katexScript);
+      // Load Highlight.js CSS
+      if (!document.querySelector('link[href*="highlight.js"]')) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css';
+        document.head.appendChild(link);
+      }
+
+      // Fallback: convert raw $...$ / $$...$$ text into math placeholders
+      function convertTextMath(container: ParentNode) {
+        const walker = document.createTreeWalker(
+          container,
+          NodeFilter.SHOW_TEXT,
+          {
+            acceptNode(node) {
+              const parent = node.parentElement;
+              if (!parent) return NodeFilter.FILTER_REJECT;
+              // Skip code/script/style/pre and already-processed math
+              const skip = ['SCRIPT', 'STYLE', 'CODE', 'PRE'].includes(parent.tagName)
+                || parent.classList.contains('math-inline')
+                || parent.classList.contains('math-display')
+                || parent.classList.contains('katex');
+              if (skip) return NodeFilter.FILTER_REJECT;
+              return node.textContent && node.textContent.includes('$')
+                ? NodeFilter.FILTER_ACCEPT
+                : NodeFilter.FILTER_REJECT;
+            }
+          }
+        );
+
+        const textNodes: Text[] = [];
+        let n: Node | null;
+        while ((n = walker.nextNode())) {
+          if (n instanceof Text) textNodes.push(n);
         }
+
+        textNodes.forEach((textNode) => {
+          const text = textNode.textContent || '';
+          const fragment = document.createDocumentFragment();
+          let lastIndex = 0;
+
+          // First handle display $$...$$
+          const displayRegex = /\$\$([\s\S]*?)\$\$/g;
+          let match: RegExpExecArray | null;
+          while ((match = displayRegex.exec(text)) !== null) {
+            if (match.index > lastIndex) {
+              fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+            }
+            const div = document.createElement('div');
+            div.className = 'math-display';
+            div.setAttribute('data-latex', match[1].trim());
+            fragment.appendChild(div);
+            lastIndex = match.index + match[0].length;
+          }
+
+          // Remaining text after display processing
+          const remaining = text.slice(lastIndex);
+          if (remaining.includes('$')) {
+            let remIndex = 0;
+            const inlineRegex = /(?<!\$)\$([^$\n]+?)\$(?!\$)/g;
+            let m: RegExpExecArray | null;
+            while ((m = inlineRegex.exec(remaining)) !== null) {
+              if (m.index > remIndex) {
+                fragment.appendChild(document.createTextNode(remaining.slice(remIndex, m.index)));
+              }
+              const span = document.createElement('span');
+              span.className = 'math-inline';
+              span.setAttribute('data-latex', m[1].trim());
+              fragment.appendChild(span);
+              remIndex = m.index + m[0].length;
+            }
+            if (remIndex < remaining.length) {
+              fragment.appendChild(document.createTextNode(remaining.slice(remIndex)));
+            }
+          } else if (remaining) {
+            fragment.appendChild(document.createTextNode(remaining));
+          }
+
+          // Replace only if we actually converted something
+          if (fragment.childNodes.length > 0) {
+            textNode.parentElement?.replaceChild(fragment, textNode);
+          }
+        });
+      }
+
+      // Fallback: in list items, wrap leading symbol before '=' as inline math
+      function wrapListLeadingSymbol() {
+        const items = document.querySelectorAll('.chapter-content li');
+        items.forEach((li) => {
+          // Skip if already contains a math-inline
+          if (li.querySelector('.math-inline')) return;
+          const text = li.textContent || '';
+          const match = text.match(/^\s*([A-Za-z]|\\[A-Za-z]+)\s*=/);
+          if (!match) return;
+
+          const symbol = match[1];
+          const rest = text.slice(match[0].length).trimStart();
+
+          // Rebuild content: math span + " = " + rest (preserve existing child nodes removed)
+          li.innerHTML = '';
+          const span = document.createElement('span');
+          span.className = 'math-inline';
+          span.setAttribute('data-latex', symbol);
+          li.appendChild(span);
+          li.appendChild(document.createTextNode(' = ' + rest));
+        });
+      }
+
+      function renderLatex() {
+        const w = typeof window !== 'undefined' ? (window as any) : null;
+        if (!w || !w.katex) return;
         
-        // Load Highlight.js
-        if (w.hljs) {
+        // Fallback conversion before rendering (catches any $...$ left in DOM)
+        convertTextMath(document.body);
+        // Fallback for leading symbols in list items (e.g., "L = ...")
+        wrapListLeadingSymbol();
+
+        const mathElements = document.querySelectorAll('.math-display, .math-inline');
+        mathElements.forEach((element) => {
+          const latex = element.getAttribute('data-latex') || '';
+          const displayMode = element.classList.contains('math-display');
+          
+          try {
+            w.katex.render(latex, element as HTMLElement, {
+              displayMode,
+              throwOnError: false,
+              trust: true,
+              macros: {
+                '\\degree': '^{\\circ}'
+              }
+            });
+          } catch (err: any) {
+            console.warn('KaTeX render error:', err);
+            (element as HTMLElement).innerHTML = `<span class="latex-error">LaTeX Error: ${err?.message || 'Unknown error'}</span>`;
+          }
+        });
+      }
+      
+      function highlightCode() {
+        const w = typeof window !== 'undefined' ? (window as any) : null;
+        if (!w || !w.hljs) return;
+        
+        const codeBlocks = document.querySelectorAll('pre code');
+        codeBlocks.forEach((block) => {
+          if (block instanceof HTMLElement) {
+            w.hljs.highlightElement(block);
+          }
+        });
+      }
+
+      if (typeof window !== 'undefined') {
+        const w = window as any;
+        let scriptsLoaded = 0;
+        const totalScripts = 2; // KaTeX + Highlight.js
+        
+        const tryRender = () => {
+          scriptsLoaded++;
+          if (scriptsLoaded === totalScripts) {
+            renderLatex();
+            highlightCode();
+          }
+        };
+        
+        if (w.katex && w.hljs) {
+          tryRender();
           tryRender();
         } else {
-          const hljsScript = document.createElement('script');
-          hljsScript.src = 'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js';
-          hljsScript.onload = tryRender;
-          document.head.appendChild(hljsScript);
+          if (w.katex) {
+            tryRender();
+          } else {
+            const katexScript = document.createElement('script');
+            katexScript.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js';
+            katexScript.onload = tryRender;
+            document.head.appendChild(katexScript);
+          }
+          
+          if (w.hljs) {
+            tryRender();
+          } else {
+            const hljsScript = document.createElement('script');
+            hljsScript.src = 'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js';
+            hljsScript.onload = tryRender;
+            document.head.appendChild(hljsScript);
+          }
         }
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init, { once: true });
+      } else {
+        init();
       }
     }
   })();

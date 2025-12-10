@@ -37,7 +37,7 @@ const { title, course, currentChapterOrder } = Astro.props;
             return (
               <a
                 href={`/courses/${course.slug}/chapter/${chapter.order}`}
-                class={`group flex items-start px-3 py-3 text-sm font-medium rounded-md transition-colors ${
+                class={`group flex items-center px-3 py-3 text-sm font-medium rounded-md transition-colors ${
                   isActive
                     ? 'bg-blue-50 text-blue-700'
                     : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
@@ -52,7 +52,7 @@ const { title, course, currentChapterOrder } = Astro.props;
                 >
                   {chapter.order}
                 </span>
-                <span class="flex-1">{chapter.title}</span>
+                <span class="flex-1 leading-snug">{chapter.title}</span>
                 {isActive && (
                   <span class="ml-2 w-1.5 h-1.5 bg-blue-600 rounded-full self-center"></span>
                 )}

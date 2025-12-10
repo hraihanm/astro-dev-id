@@ -61,16 +61,16 @@ export const siteContent = {
         noAccountQuestion: "Belum punya akun?"
     },
     home: {
-        welcomeTitle: "Selamat Datang di Portal Pembelajaran Saya",
-        subtitle: "Buat dan bagikan konten pendidikan dengan dukungan LaTeX",
+        welcomeTitle: "Belajar Astronomi dengan Materi Ringkas & Latihan Melimpah",
+        subtitle: "Konten berkualitas, fokus inti konsep, plus banyak latihan soal untuk persiapan OSK/OSP/OSN",
         browseCourses: "Jelajahi Kursus",
         adminDashboard: "Dashboard Admin",
-        richContent: "Konten Lengkap",
-        richContentDesc: "Buat kursus dengan dukungan Markdown dan LaTeX untuk konten matematika",
-        interactiveQuizzes: "Kuis Interaktif",
-        interactiveQuizzesDesc: "Uji pengetahuan siswa dengan sistem kuis bawaan",
-        easyHosting: "Hosting Mudah",
-        easyHostingDesc: "Deploy ke GitHub Pages, Vercel, atau self-host dengan mudah"
+        richContent: "Materi Padat & Jelas",
+        richContentDesc: "Ringkasan konsep yang rapi dan langsung ke poin penting",
+        interactiveQuizzes: "Latihan Soal Interaktif",
+        interactiveQuizzesDesc: "Ratusan soal dengan variasi tingkat kesulitan dan pembahasan singkat",
+        easyHosting: "Kualitas Terjaga",
+        easyHostingDesc: "Konten dikurasi mentor berpengalaman agar belajar tetap fokus dan efektif"
     },
     courses: {
         title: "Kursus Tersedia",

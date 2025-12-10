@@ -104,7 +104,13 @@ const quizzes = rawQuizzes.map(quiz => {
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 {quizzes.length === 0 ? (
         <div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-10 text-center shadow-sm">
-          <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-2xl">📝</div>
+          <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-blue-600">
+            <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 7.5c0-1.105.895-2 2-2h10c1.105 0 2 .895 2 2v9c0 1.105-.895 2-2 2H7c-1.105 0-2-.895-2-2v-9z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 7.5V6a2 2 0 012-2h2a2 2 0 012 2v1.5" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 11h6m-6 3h4" />
+            </svg>
+          </div>
           <h3 class="text-xl font-semibold text-slate-900">Belum Ada Kuis Latihan</h3>
           <p class="mt-2 text-sm text-slate-600">Belum ada kuis latihan mandiri yang tersedia saat ini.</p>
         </div>
@@ -208,7 +214,7 @@ const quizzes = rawQuizzes.map(quiz => {
                   )}
 
                   <div class="flex items-center gap-2 text-sm font-semibold text-blue-700">
-                    <span>{isLimitReached ? 'Terkunci' : 'Mulai sekarang'}</span>
+                    <span>{isLimitReached ? 'Terkunci' : 'Lihat'}</span>
                     <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-700 transition group-hover:translate-x-1">
                       <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7-7l7 7-7 7"></path>
@@ -224,4 +230,5 @@ const quizzes = rawQuizzes.map(quiz => {
     </div>
   </div>
 </Layout>
+
 

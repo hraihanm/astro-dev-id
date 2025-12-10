@@ -63,6 +63,9 @@ model Quiz {
   courseId     Int?
   chapterId    Int?
   title        String
+  availableFrom DateTime?
+  availableUntil DateTime?
+  openDurationSeconds Int?
   visibility   String        @default("PUBLIC")
   questions    String
   settings     String?

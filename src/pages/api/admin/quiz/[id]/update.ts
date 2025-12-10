@@ -26,8 +26,13 @@ function validateQuestions(questions: any[]) {
       }
       if (q.correctAnswer === undefined || q.correctAnswer === null || !Number.isInteger(q.correctAnswer)) {
         errors.push(`questions[${idx}].correctAnswer is required and must be an integer index`);
-      } else if (Array.isArray(q.options) && (q.correctAnswer < 0 || q.correctAnswer >= q.options.length)) {
-        errors.push(`questions[${idx}].correctAnswer must be a valid index into options`);
+      } else if (Array.isArray(q.options)) {
+        const len = q.options.length;
+        const zeroBasedValid = q.correctAnswer >= 0 && q.correctAnswer < len;
+        const oneBasedValid = q.correctAnswer >= 1 && q.correctAnswer <= len;
+        if (!zeroBasedValid && !oneBasedValid) {
+          errors.push(`questions[${idx}].correctAnswer must be a valid index into options`);
+        }
       }
     }
   });
@@ -57,7 +62,10 @@ export const PUT: APIRoute = async ({ params, cookies, request }) => {
       questions,
       visibility,
       courseId: rawCourseId,
-      chapterId: rawChapterId
+      chapterId: rawChapterId,
+      availableFrom,
+      availableUntil,
+      openDurationSeconds
     } = body;
 
     if (!title || !questions || questions.length === 0) {
@@ -124,14 +132,18 @@ export const PUT: APIRoute = async ({ params, cookies, request }) => {
         courseId,
         chapterId,
         questions: JSON.stringify(questions),
-        quizType: quizType || 'latihan',
+        quizType: quizType || 'exercise',
         attemptLimit: attemptLimit ?? null,
         scoreReleaseMode: scoreReleaseMode || 'immediate',
         settings: JSON.stringify({
           description,
+          notes: body.notes || '',
           timeLimit: timeLimit ? timeLimit * 60 : undefined
         }),
-        visibility: mappedVisibility
+        visibility: mappedVisibility,
+        availableFrom: availableFrom ? new Date(availableFrom) : null,
+        availableUntil: availableUntil ? new Date(availableUntil) : null,
+        openDurationSeconds: openDurationSeconds ?? null
       }
     });
 

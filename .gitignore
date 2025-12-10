@@ -37,3 +37,8 @@ assets/c__Users_*_AppData_Roaming_Cursor_User_workspaceStorage_*_images_*.png
 
 # Keep the assets folder itself
 !assets/
+.env.local
+env.example
+.vercel
+
+neon.dump

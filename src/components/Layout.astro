@@ -2,6 +2,7 @@
 import { siteContent } from '../data/siteContent';
 import { getSessionUser, getDisplayName, getUserInitials } from '../lib/auth-guard';
 import Icon from './icons/Icon.astro';
+import '../styles/global.css';
 
 export interface Props {
   title: string;
@@ -28,8 +29,8 @@ const colors = {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{title}</title>
   {description && <meta name="description" content={description}>}
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-  <link rel="stylesheet" href="/src/styles/global.css">
   <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
 </head>
 <body class="bg-slate-50 min-h-screen font-sans text-slate-800 flex flex-col">
