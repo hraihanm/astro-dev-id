@@ -331,12 +331,12 @@ const lastAttemptDate = attemptsSorted[0]?.completedAt || null;
         const isPending = !a.scoreReleasedAt;
         const scoreColor = isPending ? 'amber' : getScoreColorClient(a.percentage);
         const statusBadge = isPending
-          ? `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200 whitespace-nowrap shadow-[0_0_0_1px_rgba(251,191,36,0.4)]">⏳ Menunggu skor</span>`
+          ? `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200 whitespace-nowrap shadow-[0_0_0_1px_rgba(251,191,36,0.4)]"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Menunggu skor</span>`
           : `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-${scoreColor}-50 text-${scoreColor}-700 border border-${scoreColor}-200 whitespace-nowrap">${a.percentage}%</span>`;
         const timeLabel = a.timeSpent != null ? formatTime(a.timeSpent) : '—';
 
         const stats = isPending
-          ? `<p class="text-sm text-amber-700 flex items-center gap-2">⏳ Skor belum dirilis</p>`
+          ? `<p class="text-sm text-amber-700 flex items-center gap-2"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Skor belum dirilis</p>`
           : `<div class="flex items-center gap-2 text-sm text-slate-600">
               <span>${a.correctAnswers}/${a.totalQuestions} benar</span>
               <span class="text-slate-400">•</span>

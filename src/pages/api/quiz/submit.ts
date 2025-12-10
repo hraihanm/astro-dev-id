@@ -59,7 +59,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const scoreReleasedAt = scoreReleaseMode === 'immediate' ? new Date() : null;
 
     // Save quiz result
-    await saveQuizResult({
+    const createdAttempt = await saveQuizResult({
       userId: parseInt(userId),
       quizId,
       answers,
@@ -72,6 +72,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     return new Response(JSON.stringify({
       message: 'Quiz submitted successfully',
       score: result.percentage,
+      attemptId: createdAttempt.id,
+      scoreReleasedAt,
       result: {
         score: result.score,
         percentage: result.percentage,

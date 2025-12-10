@@ -1071,6 +1071,7 @@ try {
 
     // Quiz state
     const PROGRESS_KEY = `quiz_progress_${id}`;
+    const QUEUE_KEY = `quiz_queue_${id}`;
     const arrowLeftSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>';
     const arrowRightSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>';
     const availableFromTs = quiz.availableFrom ? new Date(quiz.availableFrom).getTime() : null;
@@ -1124,6 +1125,8 @@ try {
     // Save progress
     function saveProgress() {
       try {
+        const existingRaw = localStorage.getItem(QUEUE_KEY);
+        const existing = existingRaw ? JSON.parse(existingRaw) : null;
         const progress = {
           answers,
           flaggedQuestions: Array.from(flaggedQuestions),
@@ -1135,6 +1138,29 @@ try {
           savedAt: Date.now()
         };
         localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+        // Queue entry for header dropdown (only if timed)
+        const queueEntry = {
+          quizId: parseInt(id),
+          title: quiz.title,
+          quizType: quiz.quizType,
+          remainingTime: quiz.settings?.timeLimit ? remainingTime : 0,
+          availableUntil: quiz.availableUntil || null,
+          url: existing?.url || `/quizzes/${id}`,
+          savedAt: Date.now(),
+          status: existing?.status || 'active',
+          attemptId: existing?.attemptId || null
+        };
+        if (queueEntry.remainingTime > 0) {
+          localStorage.setItem(QUEUE_KEY, JSON.stringify(queueEntry));
+        } else {
+          // Keep pending-result entries; they will be set on submit
+          if (localStorage.getItem(QUEUE_KEY)) {
+            const existing = JSON.parse(localStorage.getItem(QUEUE_KEY));
+            if (!(existing && existing.status === 'pending_result')) {
+              localStorage.removeItem(QUEUE_KEY);
+            }
+          }
+        }
       } catch (error) {
         console.error('Error saving progress:', error);
       }
@@ -1709,7 +1735,39 @@ try {
         const result = await response.json();
         
         if (response.ok) {
-          // Clear saved progress
+          // If release is delayed, keep a pending entry
+          const delayedRelease = quiz.scoreReleaseMode && quiz.scoreReleaseMode !== 'immediate';
+          if (delayedRelease) {
+            const pendingEntry = {
+              quizId: parseInt(id),
+              title: quiz.title,
+              quizType: quiz.quizType,
+              status: 'pending_result',
+              attemptId: result.attemptId,
+              remainingTime: 0,
+              availableUntil: quiz.availableUntil || null,
+              url: `/quizzes/${id}/review/${result.attemptId}`,
+              savedAt: Date.now()
+            };
+            localStorage.setItem(QUEUE_KEY, JSON.stringify(pendingEntry));
+          } else {
+            // immediate release: store a recent entry for header mini history
+            const releasedEntry = {
+              quizId: parseInt(id),
+              title: quiz.title,
+              quizType: quiz.quizType,
+              status: 'released',
+              attemptId: result.attemptId,
+              percentage: result.percentage ?? null,
+              remainingTime: 0,
+              availableUntil: quiz.availableUntil || null,
+              url: `/quizzes/${id}/review/${result.attemptId}`,
+              savedAt: Date.now(),
+              completedAt: Date.now()
+            };
+            localStorage.setItem(QUEUE_KEY, JSON.stringify(releasedEntry));
+          }
+          // Clear saved progress (keep queue for pending/released)
           clearProgress();
           window.location.href = `/quizzes/${id}/results?score=${result.percentage || 0}`;
         } else {

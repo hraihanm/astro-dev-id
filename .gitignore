@@ -42,3 +42,4 @@ env.example
 .vercel
 
 neon.dump
+local.dump

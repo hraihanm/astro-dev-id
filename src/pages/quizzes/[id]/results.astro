@@ -455,6 +455,46 @@ const encouragement = attempt?.scoreReleasedAt
     if (!quiz || !attempt) {
       document.body.innerHTML = '<div class="text-center py-20"><p class="text-xl text-slate-600">Loading...</p></div>';
     } else {
+      const QUEUE_KEY = `quiz_queue_${quiz.id}`;
+      // If score not released, keep a pending-result queue entry for header dropdown
+      if (!attempt.scoreReleasedAt) {
+        const pendingEntry = {
+          quizId: quiz.id,
+          title: quiz.title,
+          quizType: quiz.quizType,
+          status: 'pending_result',
+          attemptId: attempt.id,
+          remainingTime: 0,
+          availableUntil: quiz.availableUntil || null,
+          url: `/quizzes/${quiz.id}/review/${attempt.id}`,
+          savedAt: Date.now()
+        };
+        try {
+          localStorage.setItem(QUEUE_KEY, JSON.stringify(pendingEntry));
+        } catch (e) {
+          console.warn('Could not persist pending queue entry', e);
+        }
+      } else {
+        try {
+          const releasedEntry = {
+            quizId: quiz.id,
+            title: quiz.title,
+            quizType: quiz.quizType,
+            status: 'released',
+            attemptId: attempt.id,
+            percentage: attempt.percentage ?? null,
+            remainingTime: 0,
+            availableUntil: quiz.availableUntil || null,
+            url: `/quizzes/${quiz.id}/review/${attempt.id}`,
+            savedAt: Date.now(),
+            completedAt: attempt.completedAt ? new Date(attempt.completedAt).getTime() : Date.now()
+          };
+          localStorage.setItem(QUEUE_KEY, JSON.stringify(releasedEntry));
+        } catch (e) {
+          /* ignore */
+        }
+      }
+
       const arrowLeftSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>';
       const arrowRightSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>';
       const lightbulbSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 18h6" /><path d="M10 22h4" /><path d="M12 2a7 7 0 017 7c0 2.3-1.2 4.3-3 5.5-.7.5-1 1.2-1 2v1h-6v-1c0-.8-.4-1.5-1-2A6.97 6.97 0 015 9a7 7 0 017-7z" /></svg>';
