@@ -1726,6 +1726,7 @@ try {
               questionId: index,
               answer: answer === null ? [] : (Array.isArray(answer) ? answer : [answer])
             })),
+            flaggedQuestions: Array.from(flaggedQuestions),
             timeSpent,
             endReason,
             sessionStartedAt: openStartedAt

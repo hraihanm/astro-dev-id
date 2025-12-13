@@ -124,7 +124,7 @@ const normalizedQuestions = Array.isArray(questions)
           id="delete-quiz-btn"
           class="delete-quiz-btn"
         >
-          Hapus
+          Hapus Kuis
         </button>
       </div>
     </div>
@@ -433,6 +433,11 @@ const normalizedQuestions = Array.isArray(questions)
           <div id="question-grid" class="grid grid-cols-5 gap-2 max-h-[360px] overflow-y-auto p-1">
             <!-- Question numbers will be rendered here -->
           </div>
+          <div
+            id="save-error-alert"
+            class="hidden mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+            role="alert"
+          ></div>
         </div>
 
         <!-- Instructions -->
@@ -446,7 +451,7 @@ const normalizedQuestions = Array.isArray(questions)
         <div class="p-4 space-y-3">
           <button
             id="save-quiz-sidebar-btn"
-            class="btn btn-primary btn-block"
+            class="save-quiz-btn w-full justify-center"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
@@ -1173,6 +1178,7 @@ const normalizedQuestions = Array.isArray(questions)
     const saveQuizSidebarBtn = document.getElementById('save-quiz-sidebar-btn');
     const deleteQuizBtn = document.getElementById('delete-quiz-btn');
     const deleteCurrentBtn = document.getElementById('delete-current-btn');
+    const saveErrorAlert = document.getElementById('save-error-alert');
 
     // Settings toggle
     const toggleSettingsBtn = document.getElementById('toggle-settings-btn');
@@ -1451,6 +1457,34 @@ const normalizedQuestions = Array.isArray(questions)
     function setupTextareaAutoResize(textarea) {
       autoResizeTextarea(textarea);
       textarea.addEventListener('input', () => autoResizeTextarea(textarea));
+    }
+
+    function showSaveError(message, details = []) {
+      if (!saveErrorAlert) return;
+      const safeMessage = escapeHtml(message || 'Gagal menyimpan kuis.');
+      const detailsHtml = Array.isArray(details) && details.length
+        ? `<ul class="mt-1 list-disc list-inside space-y-1">${details.map((d) => `<li>${escapeHtml(d)}</li>`).join('')}</ul>`
+        : '';
+
+      saveErrorAlert.innerHTML = `
+        <div class="flex items-start gap-2">
+          <svg class="w-4 h-4 mt-0.5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-.01-10a9 9 0 110 18 9 9 0 010-18z"></path>
+          </svg>
+          <div>
+            <p class="font-semibold text-red-800">${safeMessage}</p>
+            ${detailsHtml}
+          </div>
+        </div>
+      `;
+      saveErrorAlert.classList.remove('hidden');
+      saveErrorAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function clearSaveError() {
+      if (!saveErrorAlert) return;
+      saveErrorAlert.classList.add('hidden');
+      saveErrorAlert.innerHTML = '';
     }
 
     // Get reorder mode (shift or swap)
@@ -2295,13 +2329,15 @@ const normalizedQuestions = Array.isArray(questions)
 
     // Save quiz (shared function)
     async function saveQuiz() {
+      clearSaveError();
+
       // Save current question first
       if (questionsData.length > 0) {
         saveCurrentQuestion();
       }
 
       if (questionsData.length === 0) {
-        alert('Tambahkan minimal satu soal terlebih dahulu');
+        showSaveError('Tambahkan minimal satu soal terlebih dahulu.');
         return;
       }
 
@@ -2323,7 +2359,7 @@ const normalizedQuestions = Array.isArray(questions)
       if (scope === 'course' || scope === 'chapter') {
         courseId = courseSelect?.value ? parseInt(courseSelect.value) : null;
         if (!courseId) {
-          alert('Pilih kursus untuk kuis ini.');
+          showSaveError('Pilih kursus untuk kuis ini.');
           return;
         }
       }
@@ -2331,7 +2367,7 @@ const normalizedQuestions = Array.isArray(questions)
       if (scope === 'chapter') {
         chapterId = chapterSelect?.value ? parseInt(chapterSelect.value) : null;
         if (!chapterId) {
-          alert('Pilih bab untuk kuis bab.');
+          showSaveError('Pilih bab untuk kuis bab.');
           return;
         }
       }
@@ -2366,11 +2402,11 @@ const normalizedQuestions = Array.isArray(questions)
           clearStorage(); // Clear localStorage after successful save
           alert('Kuis berhasil disimpan!');
         } else {
-          alert('Error: ' + (result.error || 'Gagal menyimpan'));
+          showSaveError(result.error || 'Gagal menyimpan kuis.', result.details);
         }
       } catch (error) {
         console.error('Error:', error);
-        alert('Terjadi kesalahan saat menyimpan');
+        showSaveError('Terjadi kesalahan saat menyimpan.', [String(error)]);
       }
     }
 

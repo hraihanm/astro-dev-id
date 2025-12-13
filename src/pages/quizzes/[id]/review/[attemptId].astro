@@ -277,7 +277,6 @@ const endReasonLabel = attempt?.endReason === 'time_up' ? 'Waktu habis' : 'Disel
   const detailedResults = attempt.detailedResults;
   const rawAnswers = attempt.answers;
   const isReleased = !!attempt.scoreReleasedAt;
-  const flaggedRaw = attempt.flaggedQuestions || [];
 
   // Normalize answers to a per-question array of numeric selections (1-based where applicable)
   const userAnswers = questions.map((_, idx) => {
@@ -295,6 +294,24 @@ const endReasonLabel = attempt?.endReason === 'time_up' ? 'Waktu habis' : 'Disel
       .filter(v => !Number.isNaN(v));
     return normalized.length ? normalized : null;
   });
+
+  const userFlags = questions.map((_, idx) => {
+    const entry = Array.isArray(rawAnswers)
+      ? rawAnswers.find(a =>
+          a &&
+          (a.questionId === idx ||
+           a.questionId === idx + 1 ||
+           a.questionId === questions[idx]?.id))
+      : null;
+    return !!(entry && entry.flagged);
+  });
+
+  // Normalize flagged (ragu-ragu) set from flags or legacy flaggedQuestions array
+  const flaggedQuestions = new Set(
+    userFlags
+      .map((f, i) => (f ? i : null))
+      .filter((v) => v !== null)
+  );
 
   // Normalize flagged (ragu-ragu) set
   const flaggedQuestions = new Set(

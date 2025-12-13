@@ -16,7 +16,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     }
 
     const body = await request.json();
-    const { quizId, answers, timeSpent, endReason, sessionStartedAt } = body;
+    const { quizId, answers, timeSpent, endReason, sessionStartedAt, flaggedQuestions } = body;
 
     if (!quizId || !answers) {
       return new Response(JSON.stringify({ error: 'Quiz ID and answers are required' }), {
@@ -58,11 +58,20 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const scoreReleaseMode = quiz.scoreReleaseMode || 'immediate';
     const scoreReleasedAt = scoreReleaseMode === 'immediate' ? new Date() : null;
 
+    // Attach flagged info to answers if provided
+    const flaggedSet = Array.isArray(flaggedQuestions) ? new Set(flaggedQuestions.map((n: any) => parseInt(n))) : new Set<number>();
+    const answersWithFlags = Array.isArray(answers)
+      ? answers.map((a: any) => ({
+          ...a,
+          flagged: flaggedSet.has(a.questionId) || flaggedSet.has(a.questionId + 1)
+        }))
+      : answers;
+
     // Save quiz result
     const createdAttempt = await saveQuizResult({
       userId: parseInt(userId),
       quizId,
-      answers,
+      answers: answersWithFlags,
       result,
       timeSpent: result.timeSpent,
       scoreReleasedAt,
