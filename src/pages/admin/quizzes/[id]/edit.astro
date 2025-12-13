@@ -1103,6 +1103,77 @@ const normalizedQuestions = Array.isArray(questions)
     const arrowLeftSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>';
     const arrowRightSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>';
     
+    // Custom toast notification (more reliable than native alert)
+    function showToast(message, type = 'success') {
+      // Remove any existing toast
+      const existingToast = document.getElementById('save-toast');
+      if (existingToast) existingToast.remove();
+      
+      const toast = document.createElement('div');
+      toast.id = 'save-toast';
+      toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 16px 24px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        z-index: 10000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        animation: slideIn 0.3s ease-out;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      `;
+      
+      if (type === 'success') {
+        toast.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+        toast.innerHTML = `
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+          <span>${message}</span>
+        `;
+      } else {
+        toast.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+        toast.innerHTML = `
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+          </svg>
+          <span>${message}</span>
+        `;
+      }
+      
+      // Add animation keyframes if not already added
+      if (!document.getElementById('toast-styles')) {
+        const style = document.createElement('style');
+        style.id = 'toast-styles';
+        style.textContent = `
+          @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+          }
+          @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+      
+      document.body.appendChild(toast);
+      
+      // Auto-remove after 3 seconds
+      setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease-in forwards';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+    
     // Load from localStorage or use server data
     function loadFromStorage() {
       try {
@@ -1163,6 +1234,19 @@ const normalizedQuestions = Array.isArray(questions)
     let questionsData = stored?.questionsData || [...questions];
     let currentQuestionIndex = stored?.currentQuestionIndex || 0;
     let draggedIndex = null;
+    
+    // Delta save tracking
+    const originalQuestionsMap = new Map(); // id -> JSON snapshot for dirty detection
+    const newQuestionIds = new Set();       // IDs of questions added this session
+    const deletedQuestionIds = new Set();   // IDs of questions deleted this session
+    let questionsReordered = false;         // Track if reorder happened
+    
+    // Initialize original snapshots from server data (not localStorage)
+    questions.forEach(q => {
+      if (q.id !== undefined) {
+        originalQuestionsMap.set(q.id, JSON.stringify(q));
+      }
+    });
     
     // Ensure currentQuestionIndex is valid
     if (currentQuestionIndex >= questionsData.length) {
@@ -1594,6 +1678,9 @@ const normalizedQuestions = Array.isArray(questions)
                   currentQuestionIndex++;
                 }
               }
+              
+              // Track reorder for delta save
+              questionsReordered = true;
               
             // Re-render grid (new order) and current question
               renderQuestionGrid();
@@ -2305,6 +2392,7 @@ const normalizedQuestions = Array.isArray(questions)
       }
 
       questionsData.push(newQuestion);
+      newQuestionIds.add(newQuestion.id); // Track as new question for delta save
       currentQuestionIndex = questionsData.length - 1;
       
       renderQuestionGrid();
@@ -2316,6 +2404,19 @@ const normalizedQuestions = Array.isArray(questions)
       if (questionsData.length === 0) return;
       
       if (!confirm('Hapus soal ini?')) return;
+
+      const deletedQuestion = questionsData[currentQuestionIndex];
+      
+      // Track deletion for delta save (only if it was an existing question)
+      if (deletedQuestion && deletedQuestion.id !== undefined) {
+        if (newQuestionIds.has(deletedQuestion.id)) {
+          // If it was a new question, just remove from new set
+          newQuestionIds.delete(deletedQuestion.id);
+        } else {
+          // If it was an existing question, track for deletion
+          deletedQuestionIds.add(deletedQuestion.id);
+        }
+      }
 
       questionsData.splice(currentQuestionIndex, 1);
       
@@ -2372,6 +2473,30 @@ const normalizedQuestions = Array.isArray(questions)
         }
       }
 
+      // Build delta for questions
+      const updated = [];
+      const added = [];
+      
+      questionsData.forEach(q => {
+        if (newQuestionIds.has(q.id)) {
+          // New question - add to added list
+          added.push(q);
+        } else {
+          // Check if modified by comparing with original snapshot
+          const originalJson = originalQuestionsMap.get(q.id);
+          const currentJson = JSON.stringify(q);
+          if (originalJson && currentJson !== originalJson) {
+            updated.push(q);
+          }
+        }
+      });
+      
+      const deleted = [...deletedQuestionIds];
+      
+      // Check if any question changes exist
+      const hasQuestionChanges = updated.length > 0 || added.length > 0 || deleted.length > 0 || questionsReordered;
+      
+      // Build payload with optional question updates
       const formData = {
         title: document.getElementById('title').value,
         description: document.getElementById('description').value,
@@ -2384,28 +2509,61 @@ const normalizedQuestions = Array.isArray(questions)
         openDurationSeconds: openDurationVal ? parseInt(openDurationVal) * 60 : null,
         scoreReleaseMode: scoreReleaseMode,
         visibility: document.getElementById('visibility')?.value || 'PUBLIC',
-        questions: questionsData,
         courseId,
         chapterId
       };
+      
+      // Only include questionUpdates if there are changes
+      if (hasQuestionChanges) {
+        formData.questionUpdates = {
+          updated,
+          added,
+          deleted
+        };
+        // Include reorder info if reordered
+        if (questionsReordered) {
+          formData.questionUpdates.reordered = questionsData.map(q => q.id);
+        }
+      }
+      
+      // Log payload size for debugging
+      const payloadSize = JSON.stringify(formData).length;
+      console.log(`[Delta Save] Payload size: ${(payloadSize / 1024).toFixed(2)} KB`);
+      console.log(`[Delta Save] Updated: ${updated.length}, Added: ${added.length}, Deleted: ${deleted.length}, Reordered: ${questionsReordered}`);
 
       try {
-        const response = await fetch(`/api/admin/quiz/${quizId}/update`, {
-          method: 'PUT',
+        const response = await fetch(`/api/admin/quiz/${quizId}/patch`, {
+          method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData)
         });
 
         const result = await response.json();
+        
+        console.log('[Delta Save] Response status:', response.status, response.ok);
+        console.log('[Delta Save] Response result:', result);
 
         if (response.ok) {
           clearStorage(); // Clear localStorage after successful save
-          alert('Kuis berhasil disimpan!');
+          
+          // Reset delta tracking after successful save
+          questionsData.forEach(q => {
+            if (q.id !== undefined) {
+              originalQuestionsMap.set(q.id, JSON.stringify(q));
+            }
+          });
+          newQuestionIds.clear();
+          deletedQuestionIds.clear();
+          questionsReordered = false;
+          
+          console.log('[Delta Save] About to show success toast');
+          showToast('Kuis berhasil disimpan!', 'success');
         } else {
+          console.log('[Delta Save] Response NOT OK, showing error');
           showSaveError(result.error || 'Gagal menyimpan kuis.', result.details);
         }
       } catch (error) {
-        console.error('Error:', error);
+        console.error('[Delta Save] Catch error:', error);
         showSaveError('Terjadi kesalahan saat menyimpan.', [String(error)]);
       }
     }
