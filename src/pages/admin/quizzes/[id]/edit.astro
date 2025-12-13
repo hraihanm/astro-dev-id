@@ -5,6 +5,12 @@ import Layout from '../../../../components/Layout.astro';
 import Icon from '../../../../components/icons/Icon.astro';
 import { getQuiz } from '../../../../lib/quizzes';
 import quizSharedStyles from '../../../../styles/quiz-shared.css?url';
+import { requireAdmin } from '../../../../lib/auth-guard';
+
+const user = await requireAdmin(Astro.cookies);
+if (!user) {
+  return Astro.redirect('/');
+}
 
 const { id } = Astro.params;
 

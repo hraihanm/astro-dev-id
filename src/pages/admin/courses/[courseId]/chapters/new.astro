@@ -3,6 +3,12 @@ export const prerender = false;
 
 import Layout from '../../../../../components/Layout.astro';
 import { prisma } from '../../../../../lib/db';
+import { requireAdmin } from '../../../../../lib/auth-guard';
+
+const user = await requireAdmin(Astro.cookies);
+if (!user) {
+  return Astro.redirect('/');
+}
 
 const { courseId } = Astro.params;
 

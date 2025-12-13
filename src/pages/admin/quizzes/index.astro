@@ -4,6 +4,12 @@ export const prerender = false;
 import Layout from '../../../components/Layout.astro';
 import { getAllQuizzes } from '../../../lib/quizzes';
 import { prisma } from '../../../lib/db';
+import { requireAdmin } from '../../../lib/auth-guard';
+
+const user = await requireAdmin(Astro.cookies);
+if (!user) {
+  return Astro.redirect('/');
+}
 
 const allQuizzes = await getAllQuizzes();
 const standaloneQuizzes = allQuizzes.filter(q => q.courseId === null);

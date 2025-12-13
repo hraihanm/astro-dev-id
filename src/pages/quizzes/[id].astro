@@ -63,9 +63,9 @@ try {
       });
     }
     quiz.userAttemptCount = userAttemptCount;
-    
+      
     if (quiz.attemptLimit && userAttemptCount >= quiz.attemptLimit) {
-      attemptLimitReached = true;
+        attemptLimitReached = true;
     }
     
     // Handle essay problem format
@@ -1363,7 +1363,7 @@ try {
           lastTick = now;
 
           remainingTime -= elapsed;
-
+          
           if (remainingTime <= 0) {
             remainingTime = 0;
             updateTimerDisplay();

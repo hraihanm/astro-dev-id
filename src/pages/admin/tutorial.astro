@@ -1,5 +1,11 @@
 ---
 import Layout from '../../components/Layout.astro';
+import { requireAdmin } from '../../lib/auth-guard';
+
+const user = await requireAdmin(Astro.cookies);
+if (!user) {
+  return Astro.redirect('/');
+}
 
 const title = "Content Formatting Tutorial";
 

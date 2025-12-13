@@ -207,23 +207,30 @@ const endReasonLabel = attempt?.endReason === 'time_up' ? 'Waktu habis' : 'Disel
                 <div class="status-legend-item correct-item">
                   <div class="status-legend-label">
                     <div class="status-legend-icon bg-emerald-100 border-emerald-400 text-emerald-600">✓</div>
-                    <span class="status-legend-text">Benar</span>
+                    <span id="legend-correct-text" class="status-legend-text">Benar</span>
                   </div>
                   <span id="correct-count" class="status-legend-count text-emerald-600">0</span>
                 </div>
                 <div class="status-legend-item incorrect-item">
                   <div class="status-legend-label">
                     <div class="status-legend-icon bg-red-100 border-red-400 text-red-600">✗</div>
-                    <span class="status-legend-text">Salah</span>
+                    <span id="legend-incorrect-text" class="status-legend-text">Salah</span>
                   </div>
                   <span id="incorrect-count" class="status-legend-count text-red-600">0</span>
                 </div>
                 <div class="status-legend-item blank-item">
                   <div class="status-legend-label">
                     <div class="status-legend-icon bg-slate-100 border-slate-300">−</div>
-                    <span class="status-legend-text">Tidak Dijawab</span>
+                    <span id="legend-blank-text" class="status-legend-text">Tidak Dijawab</span>
                   </div>
                   <span id="blank-count" class="status-legend-count text-slate-500">0</span>
+                </div>
+                <div class="status-legend-item flagged-item">
+                  <div class="status-legend-label">
+                    <div class="status-legend-icon bg-amber-100 border-amber-400 text-amber-700">!</div>
+                    <span id="legend-flagged-text" class="status-legend-text">Ragu-ragu</span>
+                  </div>
+                  <span id="flagged-count" class="status-legend-count text-amber-700">0</span>
                 </div>
               </div>
             </div>
@@ -280,6 +287,7 @@ const endReasonLabel = attempt?.endReason === 'time_up' ? 'Waktu habis' : 'Disel
 
   // Normalize answers to a per-question array of numeric selections (1-based where applicable)
   const userAnswers = questions.map((_, idx) => {
+    if (!rawAnswers) return null;
     const entry = Array.isArray(rawAnswers)
       ? rawAnswers.find(a =>
           a &&
@@ -287,12 +295,12 @@ const endReasonLabel = attempt?.endReason === 'time_up' ? 'Waktu habis' : 'Disel
            a.questionId === idx + 1 ||
            a.questionId === questions[idx]?.id))
       : null;
-    if (!entry || !entry.answer) return null;
+    if (!entry || entry.answer === undefined || entry.answer === null) return null;
     const ansArr = Array.isArray(entry.answer) ? entry.answer : [entry.answer];
     const normalized = ansArr
       .map(v => parseInt(v, 10))
       .filter(v => !Number.isNaN(v));
-    return normalized.length ? normalized : null;
+    return normalized.length > 0 ? normalized : null;
   });
 
   const userFlags = questions.map((_, idx) => {
@@ -306,17 +314,14 @@ const endReasonLabel = attempt?.endReason === 'time_up' ? 'Waktu habis' : 'Disel
     return !!(entry && entry.flagged);
   });
 
-  // Normalize flagged (ragu-ragu) set from flags or legacy flaggedQuestions array
-  const flaggedQuestions = new Set(
-    userFlags
-      .map((f, i) => (f ? i : null))
-      .filter((v) => v !== null)
-  );
-
-  // Normalize flagged (ragu-ragu) set
-  const flaggedQuestions = new Set(
-    (Array.isArray(flaggedRaw) ? flaggedRaw : []).map((v) => parseInt(v, 10)).filter((v) => !Number.isNaN(v))
-  );
+  // Normalize flagged (ragu-ragu) set from per-answer flags and legacy flaggedQuestions array
+  const flaggedRaw = attempt.flaggedQuestions || [];
+  const flaggedQuestions = new Set([
+    ...userFlags.map((f, i) => (f ? i : null)).filter((v) => v !== null),
+    ...(Array.isArray(flaggedRaw) ? flaggedRaw : [])
+      .map((v) => parseInt(v, 10))
+      .filter((v) => !Number.isNaN(v))
+  ]);
   
   let currentQuestionIndex = 0;
   const arrowLeftSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>';
@@ -436,29 +441,60 @@ const endReasonLabel = attempt?.endReason === 'time_up' ? 'Waktu habis' : 'Disel
     const correctEl = document.getElementById('correct-count');
     const incorrectEl = document.getElementById('incorrect-count');
     const blankEl = document.getElementById('blank-count');
+    const flaggedEl = document.getElementById('flagged-count');
+    const correctText = document.getElementById('legend-correct-text');
+    const incorrectText = document.getElementById('legend-incorrect-text');
+    const blankText = document.getElementById('legend-blank-text');
+    const flaggedText = document.getElementById('legend-flagged-text');
 
     let correct = 0;
     let incorrect = 0;
     let blank = 0;
+    let flagged = 0;
+    let answered = 0;
 
     questions.forEach((_, idx) => {
       const answer = userAnswers[idx];
-      if (isReleased && detailedResults[idx]?.isCorrect) {
-        correct++;
-      } else if (answer !== undefined && answer !== null) {
-        if (isReleased) {
+      const isFlagged = flaggedQuestions.has(idx);
+      const hasAnswer = answer !== undefined && answer !== null && 
+                        (Array.isArray(answer) ? answer.length > 0 : true);
+
+      if (isFlagged) flagged++;
+
+      if (isReleased) {
+        // When released, show correct/incorrect/blank
+        if (detailedResults[idx]?.isCorrect) {
+          correct++;
+        } else if (hasAnswer) {
           incorrect++;
         } else {
-          correct++; // count answered
+          blank++;
         }
       } else {
-        blank++;
+        // When not released, show answered/blank/flagged
+        if (hasAnswer) {
+          answered++;
+        } else {
+          blank++;
+        }
       }
     });
 
-    if (correctEl) correctEl.textContent = correct;
+    if (isReleased) {
+      if (correctText) correctText.textContent = 'Benar';
+      if (incorrectText) incorrectText.textContent = 'Salah';
+      if (blankText) blankText.textContent = 'Tidak Dijawab';
+    } else {
+      if (correctText) correctText.textContent = 'Terjawab';
+      if (incorrectText) incorrectText.textContent = '—';
+      if (blankText) blankText.textContent = 'Tidak Dijawab';
+    }
+    if (flaggedText) flaggedText.textContent = 'Ragu-ragu';
+
+    if (correctEl) correctEl.textContent = isReleased ? correct : answered;
     if (incorrectEl) incorrectEl.textContent = isReleased ? incorrect : 0;
     if (blankEl) blankEl.textContent = blank;
+    if (flaggedEl) flaggedEl.textContent = flagged;
   }
   
   function goToQuestion(index) {
@@ -466,6 +502,7 @@ const endReasonLabel = attempt?.endReason === 'time_up' ? 'Waktu habis' : 'Disel
       currentQuestionIndex = index;
       renderQuestion();
       renderQuestionGrid();
+      renderNavBar();
       updateMobileNav();
     }
   }
@@ -486,17 +523,20 @@ const endReasonLabel = attempt?.endReason === 'time_up' ? 'Waktu habis' : 'Disel
     const result = detailedResults[currentQuestionIndex];
     const userAnswer = userAnswers[currentQuestionIndex];
     
+    const hasAnswer = userAnswer !== undefined && userAnswer !== null && 
+                      (Array.isArray(userAnswer) ? userAnswer.length > 0 : true);
+    
     let statusBadge = '';
     if (isReleased) {
       if (result?.isCorrect) {
         statusBadge = '<span class="px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-medium rounded-lg">✓ Benar</span>';
-      } else if (userAnswer !== undefined && userAnswer !== null) {
+      } else if (hasAnswer) {
         statusBadge = '<span class="px-3 py-1 bg-red-100 text-red-700 text-sm font-medium rounded-lg">✗ Salah</span>';
       } else {
         statusBadge = '<span class="px-3 py-1 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg">− Tidak Dijawab</span>';
       }
     } else {
-      statusBadge = userAnswer !== undefined && userAnswer !== null
+      statusBadge = hasAnswer
         ? '<span class="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-lg">Jawaban disimpan</span>'
         : '<span class="px-3 py-1 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg">Belum dijawab</span>';
     }
@@ -505,7 +545,9 @@ const endReasonLabel = attempt?.endReason === 'time_up' ? 'Waktu habis' : 'Disel
     if (question.options) {
       optionsHtml = question.options.map((opt, idx) => {
         const isCorrect = question.correctAnswer === idx + 1 || (question.correctAnswers && question.correctAnswers.includes(idx + 1));
-        const isSelected = Array.isArray(userAnswer) ? userAnswer.includes(idx + 1) : userAnswer === idx + 1;
+        const isSelected = userAnswer && (
+          Array.isArray(userAnswer) ? userAnswer.includes(idx + 1) : userAnswer === idx + 1
+        );
         
         let optionClass = 'option-label';
         if (isReleased && isCorrect) optionClass += ' correct';
