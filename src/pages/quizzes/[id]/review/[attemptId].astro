@@ -3,14 +3,17 @@ import Layout from '../../../../components/Layout.astro';
 import Icon from '../../../../components/icons/Icon.astro';
 import { getQuiz } from '../../../../lib/quizzes';
 import { prisma } from '../../../../lib/db';
+import { getSessionUser } from '../../../../lib/auth-guard';
 import quizSharedStyles from '../../../../styles/quiz-shared.css?url';
 
 export const prerender = false;
 
 const { id, attemptId } = Astro.params;
 
-// Get user ID from cookies
-const userId = Astro.cookies.get('user_id')?.value;
+// Get current user to check if admin
+const currentUser = await getSessionUser(Astro.cookies);
+const isAdmin = currentUser?.role === 'admin';
+const userId = currentUser?.id;
 
 let quiz: any = null;
 let attempt: any = null;
@@ -38,27 +41,36 @@ try {
     };
     
     // Get the specific attempt
-    if (userId) {
-      const foundAttempt = await prisma.quizAttempt.findFirst({
-        where: { 
-          id: attemptIdNum,
-          userId: parseInt(userId),
-          quizId 
-        }
-      });
-      
-      if (foundAttempt) {
-        const isReleased = !!foundAttempt.scoreReleasedAt;
-        attempt = {
-          ...foundAttempt,
-          answers: JSON.parse(foundAttempt.answers),
-          detailedResults: isReleased ? JSON.parse(foundAttempt.detailedResults) : [],
-          scoreReleasedAt: foundAttempt.scoreReleasedAt
-        };
-      }
+    // Admins can view any attempt, regular users can only view their own
+    const whereClause: any = {
+      id: attemptIdNum,
+      quizId
+    };
+    
+    if (!isAdmin && userId) {
+      whereClause.userId = userId;
     }
     
-    if (!attempt) {
+    const foundAttempt = await prisma.quizAttempt.findFirst({
+      where: whereClause,
+      include: {
+        user: {
+          include: {
+            profile: true
+          }
+        }
+      }
+    });
+    
+    if (foundAttempt) {
+      const isReleased = !!foundAttempt.scoreReleasedAt;
+      attempt = {
+        ...foundAttempt,
+        answers: JSON.parse(foundAttempt.answers),
+        detailedResults: isReleased ? JSON.parse(foundAttempt.detailedResults) : [],
+        scoreReleasedAt: foundAttempt.scoreReleasedAt
+      };
+    } else {
       error = 'Attempt not found or you do not have permission to view it';
     }
   }
@@ -95,6 +107,12 @@ function getScoreColor(percentage: number): string {
 
 const scoreColor = attempt && attempt.percentage != null ? getScoreColor(attempt.percentage) : 'slate';
 const endReasonLabel = attempt?.endReason === 'time_up' ? 'Waktu habis' : 'Diselesaikan manual';
+
+// Check if admin is viewing another user's attempt
+const isViewingOtherUser = isAdmin && attempt && attempt.userId !== currentUser?.id;
+const attemptUser = attempt?.user;
+const userFullName = attemptUser?.profile?.fullName || attemptUser?.profile?.firstName || attemptUser?.email?.split('@')[0] || 'Unknown';
+const userEmail = attemptUser?.email || '';
 ---
 
 <Layout title={`Tinjau - ${quiz?.title || 'Quiz'}`}>
@@ -125,6 +143,14 @@ const endReasonLabel = attempt?.endReason === 'time_up' ? 'Waktu habis' : 'Disel
                 <div>
                   <h1 class="text-xl font-bold text-slate-900">{quiz.title}</h1>
                   <p class="text-sm text-slate-500">Tinjauan Percobaan • {formatDate(attempt.completedAt)}</p>
+                  {isViewingOtherUser && (
+                    <div class="mt-1 flex items-center gap-2 text-xs text-slate-600">
+                      <Icon name="user" class="w-3.5 h-3.5 text-slate-400" />
+                      <span class="font-medium">{userFullName}</span>
+                      <span class="text-slate-400">•</span>
+                      <span>{userEmail}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
