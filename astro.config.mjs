@@ -41,9 +41,6 @@ export default defineConfig({
   integrations: [tailwind()],
   vite: {
     server: {
-      hmr: {
-        clientPort: 3000
-      },
       watch: {
         usePolling: false
       }

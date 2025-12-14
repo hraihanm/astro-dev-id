@@ -671,11 +671,52 @@ const userEmail = attemptUser?.email || '';
     document.body.style.overflow = '';
   }
   
+  function syncQueueStatus() {
+    // IMPORTANT: Only remove the queue entry if score is released (user has seen the result)
+    // Do NOT remove if score is still pending/unreleased - user needs to see it in queue
+    if (!isReleased || !attempt?.scoreReleasedAt) {
+      // Score not released yet, keep the entry in queue
+      return;
+    }
+    
+    const QUEUE_PREFIX = 'quiz_queue_';
+    
+    try {
+      // Find and remove all entries for this quiz (only when score is released)
+      Object.keys(localStorage).forEach(k => {
+        if (k.startsWith(QUEUE_PREFIX)) {
+          try {
+            const data = JSON.parse(localStorage.getItem(k) || '{}');
+            if (data && String(data.quizId) === String(quiz.id)) {
+              // Remove the entry since user is viewing the released result
+              localStorage.removeItem(k);
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+      });
+      
+      // Trigger custom event to notify Layout immediately
+      window.dispatchEvent(new Event('storage'));
+      
+      // Also trigger queue update if available
+      if (window.qqRender) {
+        window.qqRender();
+      }
+    } catch (e) {
+      console.warn('Failed to sync queue status', e);
+    }
+  }
+
   // Initialize
   function initReview() {
     renderQuestionGrid();
     renderNavBar();
     renderQuestion();
+    
+    // Always remove from queue when viewing review page (user has seen the result)
+    syncQueueStatus();
     
     document.getElementById('sidebar-toggle')?.addEventListener('click', openSidebar);
     document.getElementById('close-sidebar')?.addEventListener('click', closeSidebar);

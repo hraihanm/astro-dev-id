@@ -41,16 +41,16 @@ export async function getStandaloneQuizzes(options?: { userId?: number; role?: s
       ? { courseId: null }
       : classroomIds.length > 0
         ? {
-            courseId: null,
-            OR: [
-              { visibility: { not: 'PRIVATE' } } as any,
-              { visibility: 'PRIVATE', classroomResources: { some: { classroomId: { in: classroomIds } } } } as any
-            ]
-          }
+          courseId: null,
+          OR: [
+            { visibility: { not: 'PRIVATE' } } as any,
+            { visibility: 'PRIVATE', classroomResources: { some: { classroomId: { in: classroomIds } } } } as any
+          ]
+        }
         : {
-            courseId: null,
-            visibility: { not: 'PRIVATE' } as any
-          };
+          courseId: null,
+          visibility: { not: 'PRIVATE' } as any
+        };
 
   return await prisma.quiz.findMany({
     where: whereFilter as any,
@@ -108,6 +108,7 @@ export async function getQuiz(quizId: number, options?: { role?: string; classro
 
   return {
     ...quiz,
+    scoreReleaseMode: (quiz as any).scoreReleaseMode || 'immediate',
     availableFrom,
     availableUntil,
     openDurationSeconds,

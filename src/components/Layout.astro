@@ -212,14 +212,105 @@ const colors = {
       return match ? parseInt(match[1]) : null;
     }
 
+    async function qqCheckReleasedStatus(item) {
+      // Only check if status is pending_result and we have an attemptId
+      if (item.status !== 'pending_result' || !item.attemptId) {
+        return false;
+      }
+      
+      try {
+        const response = await fetch(`/api/quiz/attempt-status?attemptId=${item.attemptId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.isReleased) {
+            // Update the entry to released status
+            const key = item._key || `${QUEUE_PREFIX}${item.quizId}`;
+            const updatedEntry = {
+              ...item,
+              status: 'released',
+              percentage: data.percentage ?? null,
+              scoreReleasedAt: data.scoreReleasedAt,
+              seen: false, // Mark as not seen yet
+              savedAt: Date.now()
+            };
+            const { _key, ...dataToSave } = updatedEntry;
+            localStorage.setItem(key, JSON.stringify(dataToSave));
+            return true;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to check attempt status:', e);
+      }
+      return false;
+    }
+    
+    async function qqCheckAllPending() {
+      const items = qqRead();
+      const pendingItems = items.filter(item => item.status === 'pending_result' && item.attemptId);
+      
+      if (pendingItems.length === 0) return;
+      
+      // Check all pending items in parallel
+      const checks = pendingItems.map(item => qqCheckReleasedStatus(item));
+      const results = await Promise.all(checks);
+      
+      // If any were updated, re-render
+      if (results.some(r => r)) {
+        qqRender();
+      }
+    }
+    
+    function qqMarkAsViewed(quizId) {
+      // Find and remove all entries for this quiz (backup removal)
+      let removed = false;
+      Object.keys(localStorage).forEach(k => {
+        if (k.startsWith(QUEUE_PREFIX)) {
+          try {
+            const data = JSON.parse(localStorage.getItem(k));
+            if (data && String(data.quizId) === String(quizId)) {
+              localStorage.removeItem(k);
+              removed = true;
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+      });
+      if (removed && window.qqRender) {
+        window.qqRender();
+      }
+      return removed;
+    }
+    
+    function qqRemoveByKey(key) {
+      if (key && localStorage.getItem(key)) {
+        localStorage.removeItem(key);
+        // Force immediate UI update synchronously
+        qqRender();
+        // Also trigger storage event for other tabs
+        window.dispatchEvent(new Event('storage'));
+        return true;
+      }
+      return false;
+    }
+
     function qqRead() {
       const items = [];
       if (typeof localStorage === 'undefined') return items;
+      
+      // Track seen quiz IDs to prevent duplicates
+      const seenQuizIds = new Set();
+      
+      // First, clean up any invalid or expired entries
       Object.keys(localStorage).forEach((k) => {
         if (!k.startsWith(QUEUE_PREFIX)) return;
         try {
-          const data = JSON.parse(localStorage.getItem(k));
-          if (!data || !data.quizId) return;
+          const data = JSON.parse(localStorage.getItem(k) || '{}');
+          if (!data.quizId) {
+            localStorage.removeItem(k);
+            return;
+          }
+          
           // Recover attemptId from url if missing
           if (!data.attemptId && data.url) {
             const recovered = extractAttemptIdFromUrl(data.url);
@@ -228,36 +319,108 @@ const colors = {
               localStorage.setItem(k, JSON.stringify(data));
             }
           }
+          
           const remaining = data.remainingTime != null ? data.remainingTime : 0;
           const pendingResult = data.status === 'pending_result';
           const released = data.status === 'released';
           const savedAt = data.savedAt || Date.now();
-          if (released && Date.now() - savedAt > QUEUE_EXPIRE_MS) {
+          
+          // Remove if entry is too old
+          if (Date.now() - savedAt > QUEUE_EXPIRE_MS) {
             localStorage.removeItem(k);
             return;
           }
-          if (remaining <= 0 && !pendingResult && !released) {
+          
+          // Determine quiz state
+          // It is active if:
+          // 1. Explicitly marked as active, OR
+          // 2. Has remaining time and is not completed/pending/released
+          const isActive = data.status === 'active' || 
+                          (remaining > 0 && !data.completedAt && !pendingResult && !released);
+          
+          // If it's not active, pending, or recently released, skip it
+          if (!isActive && !pendingResult && !released) {
             localStorage.removeItem(k);
             return;
           }
-          items.push(data);
+          
+          // Remove released entries that have been seen (user has viewed the result)
+          if (released && data.seen === true) {
+            localStorage.removeItem(k);
+            return;
+          }
+          
+          // Check if we already have this quiz in our items
+          const existingIndex = items.findIndex(item => String(item.quizId) === String(data.quizId));
+          
+          if (existingIndex === -1) {
+            // New quiz, add it
+            items.push({ ...data, _key: k });
+          } else {
+            // Existing quiz, update if this one is more relevant
+            const existing = items[existingIndex];
+            const existingRemaining = existing.remainingTime || 0;
+            const existingIsActive = existingRemaining > 0 && !existing.completedAt && 
+                                  existing.status !== 'pending_result' && 
+                                  existing.status !== 'released';
+            
+            // Determine which one to keep
+            // We keep the NEW one if:
+            // 1. New is active and old is not
+            // 2. Both are active (or both inactive), and new is more recent
+            const shouldReplace = (isActive && !existingIsActive) || 
+                                 ((isActive === existingIsActive) && savedAt > (existing.savedAt || 0));
+
+            if (shouldReplace) {
+              // Remove the old entry from storage
+              if (existing._key) localStorage.removeItem(existing._key);
+              // Replace with new
+              items[existingIndex] = { ...data, _key: k };
+            } else {
+              // Remove the new (duplicate/stale) entry from storage
+              localStorage.removeItem(k);
+            }
+          }
+          
+          // Mark this quiz ID as seen
+          seenQuizIds.add(data.quizId);
         } catch (e) {
-          // ignore malformed entries
+          // If we can't parse the data, remove the invalid entry
+          localStorage.removeItem(k);
+          return;
         }
       });
+      
+      // Sort items: active first, then pending, then released (newest first)
       return items.sort((a, b) => {
-        const aPending = a.status === 'pending_result';
-        const bPending = b.status === 'pending_result';
-        const aReleased = a.status === 'released';
-        const bReleased = b.status === 'released';
-        // Active first (with remainingTime), then pending, then released recents
-        if (!aPending && !aReleased && (bPending || bReleased)) return -1;
-        if (!bPending && !bReleased && (aPending || aReleased)) return 1;
-        if (aPending !== bPending) return aPending ? -1 : 1; // pending before released
-        if (aReleased && bReleased) {
+        const aRemaining = a.remainingTime || 0;
+        const bRemaining = b.remainingTime || 0;
+        
+        const aIsActive = aRemaining > 0 && !a.completedAt && 
+                         a.status !== 'pending_result' && a.status !== 'released';
+        const bIsActive = bRemaining > 0 && !b.completedAt && 
+                         b.status !== 'pending_result' && b.status !== 'released';
+        
+        // Active quizzes first
+        if (aIsActive && !bIsActive) return -1;
+        if (!aIsActive && bIsActive) return 1;
+        
+        // Then pending results
+        if (a.status === 'pending_result' && b.status !== 'pending_result') return -1;
+        if (a.status !== 'pending_result' && b.status === 'pending_result') return 1;
+        
+        // Then released results (newest first)
+        if (a.status === 'released' && b.status === 'released') {
           return (b.completedAt || b.savedAt || 0) - (a.completedAt || a.savedAt || 0);
         }
-        return (a.remainingTime || 0) - (b.remainingTime || 0);
+        
+        // For active quizzes, sort by remaining time (ascending)
+        if (aIsActive && bIsActive) {
+          return aRemaining - bRemaining;
+        }
+        
+        // Default: sort by savedAt (newest first)
+        return (b.savedAt || 0) - (a.savedAt || 0);
       });
     }
 
@@ -268,6 +431,7 @@ const colors = {
       if (items.length) qqCount.textContent = items.length;
       if (!items.length) {
         qqList.innerHTML = `<p class="text-slate-500 text-sm">Tidak ada kuis aktif.</p>`;
+        // If queue is empty and panel is open, keep it open but show empty message
         return;
       }
       const limited = items.slice(0, QUEUE_MAX_RECENTS);
@@ -276,18 +440,27 @@ const colors = {
         const deadline = item.availableUntil
           ? `<span class="text-[11px] text-amber-600">Tutup: ${new Date(item.availableUntil).toLocaleString('id-ID')}</span>`
           : '';
+        const remaining = item.remainingTime || 0;
         const isPending = item.status === 'pending_result';
         const isReleased = item.status === 'released';
-        const badge = isPending
-          ? `<span class="px-2 py-1 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-100">Menunggu hasil</span>`
-          : isReleased
-            ? `<span class="px-2 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">${item.percentage != null ? `${item.percentage}%` : 'Selesai'}</span>`
-            : `<span class="px-2 py-1 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-100">${qqFormatTime(item.remainingTime || 0)}</span>`;
+        const isActive = remaining > 0 && !item.completedAt && !isReleased && !isPending;
+        
+        let badge = '';
+        if (isActive) {
+          badge = `<span class="px-2 py-1 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-100">${qqFormatTime(remaining)}</span>`;
+        } else if (isPending) {
+          badge = `<span class="px-2 py-1 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-100">Menunggu</span>`;
+        } else if (isReleased) {
+          badge = `<span class="px-2 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">Selesai</span>`;
+        }
+        const isSeen = item.seen === true;
         const footer = isPending
           ? 'Menunggu rilis skor'
           : isReleased
-            ? 'Skor sudah dirilis'
-            : 'Sedang berlangsung';
+            ? (isSeen ? 'Skor sudah dirilis' : 'Skor sudah dirilis • Baru')
+            : isActive
+              ? 'Sedang berlangsung'
+              : 'Belum dimulai';
         const targetUrl = (() => {
           // Pending/released must go to review when possible
           if (isPending || isReleased) {
@@ -299,8 +472,14 @@ const colors = {
           if (item.url) return item.url;
           return `/quizzes/${item.quizId}`;
         })();
+        
+        // For released results, remove immediately and navigate
+        const itemKey = item._key || `${QUEUE_PREFIX}${item.quizId}`;
+        const onClickHandler = isReleased 
+          ? `onclick="(e) => { e.preventDefault(); const key = '${itemKey}'; if (window.qqRemoveByKey) { window.qqRemoveByKey(key); } setTimeout(() => { window.location.href='${targetUrl}'; }, 150); }"` 
+          : '';
         return `
-          <div class="border border-slate-100 rounded-lg px-3 py-2.5 hover:border-blue-200 hover:shadow-sm transition">
+          <div class="border border-slate-100 rounded-lg px-3 py-2.5 hover:border-blue-200 hover:shadow-sm transition" data-queue-key="${itemKey}">
             <div class="flex items-start justify-between gap-2">
               <div class="space-y-0.5">
                 <p class="text-sm font-semibold text-slate-900 line-clamp-2">${item.title || 'Kuis'}</p>
@@ -311,7 +490,7 @@ const colors = {
             </div>
             <div class="mt-2 flex items-center justify-between text-xs text-slate-500">
               <span>${footer}</span>
-              <a href="${targetUrl}" class="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700">
+              <a href="${targetUrl}" ${onClickHandler} class="inline-flex items-center gap-1 text-[11px] font-semibold ${isReleased && !isSeen ? 'text-emerald-600 hover:text-emerald-700' : 'text-blue-600 hover:text-blue-700'}">
                 ${isReleased ? 'Lihat hasil' : (isPending ? 'Lihat status' : 'Lanjutkan')}
                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 5l7 7-7 7" />
@@ -323,9 +502,15 @@ const colors = {
       }).join('');
     }
 
-    qqBtn?.addEventListener('click', () => {
+    qqBtn?.addEventListener('click', async () => {
       if (!qqPanel) return;
+      const wasHidden = qqPanel.classList.contains('hidden');
       qqPanel.classList.toggle('hidden');
+      
+      // When opening the panel, check for released scores
+      if (wasHidden) {
+        await qqCheckAllPending();
+      }
     });
 
     document.addEventListener('click', (e) => {
@@ -335,19 +520,101 @@ const colors = {
       }
     });
 
-    setInterval(() => {
-      const items = qqRead();
-      items.forEach((item) => {
-        const isPending = item.status === 'pending_result';
-        if (!isPending) {
-          item.remainingTime = Math.max(0, (item.remainingTime || 0) - 1);
-          localStorage.setItem(`${QUEUE_PREFIX}${item.quizId}`, JSON.stringify(item));
-        }
-      });
-      qqRender();
-    }, 1000);
+    // Duplicate setInterval removed. Logic is handled in initializeQuizQueue.
 
-    qqRender();
+    // Make functions available globally
+    window.qqMarkAsViewed = qqMarkAsViewed;
+    window.qqRemoveByKey = qqRemoveByKey;
+    window.qqRender = qqRender;
+    window.qqCheckAllPending = qqCheckAllPending;
+    
+    let queueInterval; // Track interval to prevent duplicates
+
+    // Clean up any invalid entries on load
+    function initializeQuizQueue() {
+      // Clear existing interval if any (prevents fast timer bug)
+      if (queueInterval) clearInterval(queueInterval);
+
+      // First clean up any duplicates or invalid entries
+      qqRead();
+      
+      // Check for released scores on initialization
+      qqCheckAllPending().then(() => {
+        // Then render the initial state
+        qqRender();
+      });
+      
+      // Set up periodic refresh
+      queueInterval = setInterval(() => {
+        const items = qqRead();
+        let needsRerender = false;
+        
+        items.forEach((item) => {
+          const isPending = item.status === 'pending_result';
+          const isReleased = item.status === 'released';
+          
+          if (!isPending && !isReleased) {
+            let newRemaining = item.remainingTime || 0;
+
+            // DRIFT FIX: Use timerEndAt timestamp if available for perfect sync
+            if (item.timerEndAt) {
+              const secondsLeft = Math.floor((item.timerEndAt - Date.now()) / 1000);
+              newRemaining = Math.max(0, secondsLeft);
+            } else if (newRemaining > 0) {
+              // Legacy fallback: decrement manually
+              newRemaining = Math.max(0, newRemaining - 1);
+            }
+
+            // Update if changed or if we need to sync active status
+            if (newRemaining !== item.remainingTime) {
+              item.remainingTime = newRemaining;
+              const key = item._key || `${QUEUE_PREFIX}${item.quizId}`;
+              try {
+                const { _key, ...dataToSave } = item; // Don't save internal _key
+                localStorage.setItem(key, JSON.stringify(dataToSave));
+              } catch (e) {
+                console.error('Error updating quiz time:', e);
+              }
+            }
+          }
+        });
+        
+        // Check for released scores periodically (every 30 seconds)
+        const now = Date.now();
+        const lastCheck = window.lastQueueCheck || 0;
+        if (now - lastCheck >= 30000) {
+          window.lastQueueCheck = now;
+          qqCheckAllPending().then(() => {
+            qqRender();
+          });
+        } else {
+          qqRender();
+        }
+      }, 1000);
+    }
+    
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeQuizQueue);
+    } else {
+      initializeQuizQueue();
+    }
+    
+    // Listen for storage changes to update the UI when results are viewed in other tabs
+    window.addEventListener('storage', (e) => {
+      if (e.key && e.key.startsWith(QUEUE_PREFIX)) {
+        qqRead();
+        qqRender();
+      }
+    });
+    
+    // Also clean up on page visibility changes
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        qqRead();
+        qqRender();
+      }
+    });
   </script>
   
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full">

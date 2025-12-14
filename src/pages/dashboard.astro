@@ -16,6 +16,9 @@ const userId = user.id;
 // Get user progress
 const { attempts, stats } = await getUserProgress(userId);
 
+// Count unreleased quiz attempts
+const unreleasedCount = attempts.filter(a => !a.scoreReleasedAt).length;
+
 // Get ongoing quizzes from localStorage (we'll render this client-side)
 ---
 
@@ -50,6 +53,9 @@ const { attempts, stats } = await getUserProgress(userId);
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
             </svg>
             Riwayat Ujian
+            {unreleasedCount > 0 && (
+              <span class="ml-auto bg-amber-100 text-amber-600 text-xs font-semibold px-2 py-0.5 rounded-full">{unreleasedCount}</span>
+            )}
           </a>
 
           <a href="/courses" class="flex items-center px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
@@ -125,6 +131,9 @@ const { attempts, stats } = await getUserProgress(userId);
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
             </svg>
             Riwayat Ujian
+            {unreleasedCount > 0 && (
+              <span class="ml-auto bg-amber-100 text-amber-600 text-xs font-semibold px-2 py-0.5 rounded-full">{unreleasedCount}</span>
+            )}
           </a>
 
           <a href="/courses" class="flex items-center px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">

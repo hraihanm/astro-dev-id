@@ -90,6 +90,7 @@ try {
         settings: quiz.settings,
         quizType: quiz.quizType || 'latihan',
         attemptLimit: quiz.attemptLimit,
+        scoreReleaseMode: quiz.scoreReleaseMode,
         userAttemptCount,
         userAttemptCount: userAttemptCount,
         isEssay: quiz.isEssay,
@@ -1083,6 +1084,7 @@ try {
     let startTime = Date.now();
     let openStartedAt = Date.now();
     let timerInterval = null;
+    let animationFrameId = null;
     const totalTimeLimit = quiz.settings?.timeLimit || 0;
     let quizSubmitted = false;
     let hasStarted = false;
@@ -1102,14 +1104,21 @@ try {
           
           // Restore timer state
           if (quiz.settings?.timeLimit) {
-            if (progress.remainingTime !== undefined) {
+            if (progress.timerEndAt) {
+              // Use timestamp-based timer (preferred)
+              timerEndAt = progress.timerEndAt;
+              const now = Date.now();
+              remainingTime = Math.max(0, Math.floor((timerEndAt - now) / 1000));
+            } else if (progress.remainingTime !== undefined) {
               // Resume timer even if tab was closed: subtract elapsed since last save
               const elapsedSinceSave = Math.floor((Date.now() - (progress.savedAt || Date.now())) / 1000);
               remainingTime = Math.max(0, progress.remainingTime - elapsedSinceSave);
+              timerEndAt = Date.now() + (remainingTime * 1000);
             } else if (progress.startTime) {
               // Calculate from start time (legacy support)
               const elapsed = Math.floor((Date.now() - progress.startTime) / 1000);
               remainingTime = Math.max(0, quiz.settings.timeLimit - elapsed);
+              timerEndAt = Date.now() + (remainingTime * 1000);
             }
           }
           
@@ -1127,40 +1136,43 @@ try {
       try {
         const existingRaw = localStorage.getItem(QUEUE_KEY);
         const existing = existingRaw ? JSON.parse(existingRaw) : null;
+        
+        // Recalculate remainingTime from timerEndAt if available
+        let currentRemaining = remainingTime;
+        if (timerEndAt) {
+          currentRemaining = Math.max(0, Math.floor((timerEndAt - Date.now()) / 1000));
+        }
+        
         const progress = {
           answers,
           flaggedQuestions: Array.from(flaggedQuestions),
           currentQuestionIndex,
-          remainingTime: quiz.settings?.timeLimit ? remainingTime : undefined,
+          remainingTime: quiz.settings?.timeLimit ? currentRemaining : undefined,
+          timerEndAt: timerEndAt || null,
           startTime: startTime,
           openStartedAt,
           hasStarted,
           savedAt: Date.now()
         };
         localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
-        // Queue entry for header dropdown (only if timed)
+        
+        // Queue entry with timestamp-based timer (Drift Fix)
         const queueEntry = {
           quizId: parseInt(id),
           title: quiz.title,
           quizType: quiz.quizType,
-          remainingTime: quiz.settings?.timeLimit ? remainingTime : 0,
+          scoreReleaseMode: quiz.scoreReleaseMode || 'immediate',
+          remainingTime: quiz.settings?.timeLimit ? currentRemaining : 0,
+          timerEndAt: timerEndAt || null,
           availableUntil: quiz.availableUntil || null,
-          url: existing?.url || `/quizzes/${id}`,
+          url: `/quizzes/${id}`,
           savedAt: Date.now(),
-          status: existing?.status || 'active',
+          status: 'active',
           attemptId: existing?.attemptId || null
         };
-        if (queueEntry.remainingTime > 0) {
-          localStorage.setItem(QUEUE_KEY, JSON.stringify(queueEntry));
-        } else {
-          // Keep pending-result entries; they will be set on submit
-          if (localStorage.getItem(QUEUE_KEY)) {
-            const existing = JSON.parse(localStorage.getItem(QUEUE_KEY));
-            if (!(existing && existing.status === 'pending_result')) {
-              localStorage.removeItem(QUEUE_KEY);
-            }
-          }
-        }
+        
+        // Always save active quizzes to queue
+        localStorage.setItem(QUEUE_KEY, JSON.stringify(queueEntry));
       } catch (error) {
         console.error('Error saving progress:', error);
       }
@@ -1281,6 +1293,7 @@ try {
 
     // Initialize timer variables
     let remainingTime = quiz.settings?.timeLimit || 0;
+    let timerEndAt = null; // Timestamp when timer should reach zero
     
     // Load progress first
     const hasProgress = loadProgress();
@@ -1288,6 +1301,15 @@ try {
     // If no saved progress, use full time limit
     if (!hasProgress && quiz.settings?.timeLimit) {
       remainingTime = quiz.settings.timeLimit;
+      timerEndAt = Date.now() + (remainingTime * 1000);
+    } else if (hasProgress && quiz.settings?.timeLimit) {
+      // Restore timerEndAt from saved progress or calculate from remainingTime
+      const saved = JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}');
+      if (saved.timerEndAt) {
+        timerEndAt = saved.timerEndAt;
+      } else if (remainingTime > 0) {
+        timerEndAt = Date.now() + (remainingTime * 1000);
+      }
     }
 
     // Apply open duration window (per-open)
@@ -1297,7 +1319,16 @@ try {
       }
       const elapsedSinceOpen = Math.floor((Date.now() - openStartedAt) / 1000);
       const openRemaining = Math.max(0, openDurationSeconds - elapsedSinceOpen);
-      remainingTime = remainingTime ? Math.min(remainingTime, openRemaining) : openRemaining;
+      const timeLimitRemaining = remainingTime;
+      remainingTime = timeLimitRemaining ? Math.min(timeLimitRemaining, openRemaining) : openRemaining;
+      
+      // Adjust timerEndAt to respect the earlier of time limit or open duration
+      if (timerEndAt && openDurationSeconds > 0) {
+        const openEndAt = openStartedAt + (openDurationSeconds * 1000);
+        timerEndAt = Math.min(timerEndAt, openEndAt);
+      } else if (openDurationSeconds > 0 && !timerEndAt) {
+        timerEndAt = openStartedAt + (openRemaining * 1000);
+      }
     }
 
     function renderLockedState(title, message) {
@@ -1329,13 +1360,26 @@ try {
     function initializeTimer() {
       // Initialize timer if time limit exists
       if (quiz.settings?.timeLimit) {
+        // Ensure timerEndAt is set
+        if (!timerEndAt && remainingTime > 0) {
+          timerEndAt = Date.now() + (remainingTime * 1000);
+        }
+        
         // If already expired while away, submit immediately
-        if (remainingTime <= 0) {
+        if (timerEndAt && Date.now() >= timerEndAt) {
+          remainingTime = 0;
           submitQuiz('time_up');
           return;
         }
+        
         // Update display immediately
         const updateTimerDisplay = () => {
+          // Calculate remaining time from timestamp for accuracy
+          if (timerEndAt) {
+            const now = Date.now();
+            remainingTime = Math.max(0, Math.floor((timerEndAt - now) / 1000));
+          }
+          
           const timerDisplay = document.getElementById('timer-display');
           const timerWrapper = document.getElementById('timer');
           if (timerDisplay) {
@@ -1355,29 +1399,60 @@ try {
         
         updateTimerDisplay();
 
-        let lastTick = Date.now();
-        timerInterval = setInterval(() => {
-          const now = Date.now();
-          const elapsed = Math.floor((now - lastTick) / 1000);
-          if (elapsed <= 0) return;
-          lastTick = now;
-
-          remainingTime -= elapsed;
+        // Use requestAnimationFrame for smoother updates, fallback to setInterval
+        let lastSaveTime = Date.now();
+        let localAnimationFrameId = null;
+        
+        const tick = () => {
+          if (!timerEndAt) {
+            timerInterval = setInterval(tick, 1000);
+            return;
+          }
           
-          if (remainingTime <= 0) {
+          const now = Date.now();
+          
+          // Check if expired
+          if (now >= timerEndAt) {
             remainingTime = 0;
             updateTimerDisplay();
-            clearInterval(timerInterval);
+            if (localAnimationFrameId && typeof cancelAnimationFrame !== 'undefined') {
+              cancelAnimationFrame(localAnimationFrameId);
+            }
+            if (timerInterval) {
+              clearInterval(timerInterval);
+              timerInterval = null;
+            }
             submitQuiz('time_up');
             return;
           }
-
+          
+          // Update display every frame for smoothness
           updateTimerDisplay();
-          // Save progress periodically (every ~10 seconds of elapsed time)
-          if (remainingTime % 10 === 0) {
+          
+          // Save progress every ~10 seconds
+          if (now - lastSaveTime >= 10000) {
             saveProgress();
+            lastSaveTime = now;
           }
-        }, 1000);
+          
+          // Use requestAnimationFrame for smooth updates (typically ~60fps)
+          // This ensures the timer updates smoothly even if the interval is delayed
+          if (typeof requestAnimationFrame !== 'undefined') {
+            localAnimationFrameId = requestAnimationFrame(tick);
+            animationFrameId = localAnimationFrameId; // Store in outer scope for cleanup
+          } else {
+            // Fallback to setInterval if requestAnimationFrame not available
+            timerInterval = setInterval(tick, 100);
+          }
+        };
+        
+        // Start with requestAnimationFrame for smooth updates
+        if (typeof requestAnimationFrame !== 'undefined') {
+          localAnimationFrameId = requestAnimationFrame(tick);
+          animationFrameId = localAnimationFrameId;
+        } else {
+          timerInterval = setInterval(tick, 1000);
+        }
       } else {
         const timerElement = document.getElementById('timer');
         if (timerElement) {
@@ -1712,7 +1787,14 @@ try {
       quizSubmitted = true;
       disableLeaveConfirm();
 
-      if (timerInterval) clearInterval(timerInterval);
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      if (typeof cancelAnimationFrame !== 'undefined' && animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
       
       const timeSpent = Math.floor((Date.now() - startTime) / 1000);
       
@@ -1737,18 +1819,23 @@ try {
         
         if (response.ok) {
           // If release is delayed, keep a pending entry
-          const delayedRelease = quiz.scoreReleaseMode && quiz.scoreReleaseMode !== 'immediate';
+          // Explicitly check for admin release mode
+          const isManualRelease = quiz.scoreReleaseMode === 'admin';
+          const delayedRelease = isManualRelease || (quiz.scoreReleaseMode && quiz.scoreReleaseMode !== 'immediate');
+          
           if (delayedRelease) {
             const pendingEntry = {
               quizId: parseInt(id),
               title: quiz.title,
               quizType: quiz.quizType,
               status: 'pending_result',
+              scoreReleaseMode: quiz.scoreReleaseMode,
               attemptId: result.attemptId,
               remainingTime: 0,
               availableUntil: quiz.availableUntil || null,
               url: `/quizzes/${id}/review/${result.attemptId}`,
-              savedAt: Date.now()
+              savedAt: Date.now(),
+              seen: false
             };
             localStorage.setItem(QUEUE_KEY, JSON.stringify(pendingEntry));
           } else {
@@ -1758,13 +1845,15 @@ try {
               title: quiz.title,
               quizType: quiz.quizType,
               status: 'released',
+              scoreReleaseMode: 'immediate',
               attemptId: result.attemptId,
               percentage: result.percentage ?? null,
               remainingTime: 0,
               availableUntil: quiz.availableUntil || null,
               url: `/quizzes/${id}/review/${result.attemptId}`,
               savedAt: Date.now(),
-              completedAt: Date.now()
+              completedAt: Date.now(),
+              seen: false
             };
             localStorage.setItem(QUEUE_KEY, JSON.stringify(releasedEntry));
           }
