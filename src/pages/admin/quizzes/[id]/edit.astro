@@ -522,6 +522,61 @@ const normalizedQuestions = Array.isArray(questions)
       </div>
     </div>
   </div>
+    <!-- Upload Images Section -->
+    <div class="max-w-4xl mx-auto px-6 py-6">
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+          <h3 class="font-bold text-slate-900 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+            <span>Upload Images</span>
+          </h3>
+        </div>
+        <div class="p-5">
+          <details class="group">
+            <summary class="flex items-center justify-between cursor-pointer text-sm font-medium text-blue-600 hover:text-blue-700 mb-4">
+              <span>+ Upload Images from ZIP Archive</span>
+              <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </summary>
+            <div class="mt-4 space-y-3">
+              <p class="text-sm text-slate-600">
+                Upload a ZIP archive containing images. Images will be uploaded to cloud storage and paths in your quiz questions will be automatically updated.
+              </p>
+              <form id="upload-images-form" class="space-y-3">
+                <div>
+                  <label for="image-archive" class="block text-sm font-medium text-slate-700 mb-2">
+                    ZIP Archive (max 50MB)
+                  </label>
+                  <input
+                    type="file"
+                    id="image-archive"
+                    name="archive"
+                    accept=".zip"
+                    required
+                    class="w-full text-sm text-slate-500 file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                  <p class="mt-2 text-xs text-slate-500">
+                    Supported formats: JPG, PNG, GIF, WebP, SVG. Archive should contain images matching paths in your markdown (e.g., <code class="bg-slate-100 px-1 rounded">./OSK2012_rf/media/image3.jpg</code>).
+                  </p>
+                </div>
+                <button
+                  type="submit"
+                  id="upload-images-btn"
+                  class="w-full py-2 px-4 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Upload Images
+                </button>
+                <div id="upload-images-status" class="hidden text-sm"></div>
+              </form>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+
     <!-- Import Questions Section -->
     <div class="max-w-4xl mx-auto px-6 py-6">
       <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
@@ -3167,6 +3222,77 @@ const normalizedQuestions = Array.isArray(questions)
       saveTimeout = setTimeout(() => {
         saveCurrentQuestion();
       }, 1000); // Save 1 second after last input
+    });
+
+    // Handle image upload
+    const uploadImagesForm = document.getElementById('upload-images-form');
+    const uploadImagesFileInput = document.getElementById('image-archive');
+    const uploadImagesBtn = document.getElementById('upload-images-btn');
+    const uploadImagesStatus = document.getElementById('upload-images-status');
+
+    uploadImagesForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const file = uploadImagesFileInput?.files?.[0];
+      if (!file) {
+        if (uploadImagesStatus) {
+          uploadImagesStatus.textContent = 'Please select a ZIP file';
+          uploadImagesStatus.classList.remove('hidden', 'text-green-600', 'text-blue-600');
+          uploadImagesStatus.className = 'p-3 bg-red-50 text-red-700 text-sm rounded-lg';
+        }
+        return;
+      }
+
+      // Disable button and show loading
+      if (uploadImagesBtn) {
+        uploadImagesBtn.disabled = true;
+        uploadImagesBtn.textContent = 'Uploading...';
+      }
+      if (uploadImagesStatus) {
+        uploadImagesStatus.className = 'p-3 bg-blue-50 text-blue-700 text-sm rounded-lg';
+        uploadImagesStatus.textContent = 'Uploading images...';
+        uploadImagesStatus.classList.remove('hidden');
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append('archive', file);
+
+        const response = await fetch(`/api/admin/quiz/${quizId}/upload-images`, {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Upload failed');
+        }
+
+        // Success
+        if (uploadImagesStatus) {
+          uploadImagesStatus.className = 'p-3 bg-emerald-50 text-emerald-700 text-sm rounded-lg';
+          uploadImagesStatus.textContent = `✅ Successfully uploaded ${result.uploadedCount} images. ${result.replacedCount} paths updated in quiz.`;
+        }
+
+        // Reload questions to show updated paths
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        if (uploadImagesStatus) {
+          uploadImagesStatus.className = 'p-3 bg-red-50 text-red-700 text-sm rounded-lg';
+          uploadImagesStatus.textContent = `❌ Error: ${errorMessage}`;
+        }
+        console.error('Image upload error:', error);
+      } finally {
+        if (uploadImagesBtn) {
+          uploadImagesBtn.disabled = false;
+          uploadImagesBtn.textContent = 'Upload Images';
+        }
+      }
     });
 
     // Handle append questions from markdown

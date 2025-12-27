@@ -14,12 +14,14 @@
     "create-admin": "node scripts/create-admin.js"
   },
   "dependencies": {
-    "@astrojs/vercel": "^9.0.2",
     "@astrojs/tailwind": "^5.0.0",
+    "@astrojs/vercel": "^9.0.2",
     "@auth/core": "^0.34.2",
     "@auth/prisma-adapter": "^1.0.0",
     "@monaco-editor/react": "^4.7.0",
     "@prisma/client": "^5.0.0",
+    "@vercel/blob": "^2.0.0",
+    "adm-zip": "^0.5.16",
     "astro": "^5.16.4",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^12.5.0",
