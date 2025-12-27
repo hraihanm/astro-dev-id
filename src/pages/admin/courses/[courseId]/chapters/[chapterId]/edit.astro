@@ -67,6 +67,23 @@ const allChapters = await prisma.chapter.findMany({
       document.head.appendChild(script);
     }
   </script>
+  
+  <!-- Apply widescreen mode immediately before render -->
+  <script is:inline>
+    (function() {
+      if (localStorage.getItem('admin-widescreen-mode') === 'true') {
+        document.documentElement.classList.add('system-widescreen-mode');
+        if (document.body) {
+          document.body.classList.add('system-widescreen-mode');
+        } else {
+          document.addEventListener('DOMContentLoaded', function() {
+            document.body.classList.add('system-widescreen-mode');
+          });
+        }
+      }
+    })();
+  </script>
+  
   <div class="min-h-screen bg-slate-50">
     <!-- Header -->
     <div class="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
@@ -88,6 +105,19 @@ const allChapters = await prisma.chapter.findMany({
             </div>
           </div>
           <div class="flex items-center gap-3">
+            <button
+              id="system-widescreen-toggle"
+              class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg transition-colors"
+              title="Toggle widescreen mode (system-wide)"
+            >
+              <svg id="system-widescreen-icon-normal" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+              </svg>
+              <svg id="system-widescreen-icon-wide" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
+              </svg>
+              <span class="hidden sm:inline">Widescreen</span>
+            </button>
             <a href="/admin/tutorial" target="_blank" class="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 px-2 py-1 hover:bg-blue-50 rounded transition-colors">
               <Icon name="book-stack" class="w-4 h-4" />
               <span>Tutorial Formatting</span>
@@ -458,6 +488,48 @@ const allChapters = await prisma.chapter.findMany({
 </Layout>
 
 <script define:vars={{ chapterId: chapter.id, courseId: parseInt(courseId), originalContent: chapter.content || '', originalTitle: chapter.title, originalOrder: chapter.order }}>
+  // System-wide Widescreen mode toggle - Initialize immediately
+  (function initSystemWidescreen() {
+    // Load system-wide widescreen preference from localStorage
+    const savedMode = localStorage.getItem('admin-widescreen-mode');
+    const isSystemWidescreen = savedMode === 'true';
+    
+    // Apply immediately on page load
+    if (isSystemWidescreen) {
+      document.body.classList.add('system-widescreen-mode');
+    }
+    
+    // Set up toggle after DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+      const systemWidescreenToggle = document.getElementById('system-widescreen-toggle');
+      const systemWidescreenIconNormal = document.getElementById('system-widescreen-icon-normal');
+      const systemWidescreenIconWide = document.getElementById('system-widescreen-icon-wide');
+      
+      let currentMode = isSystemWidescreen;
+      
+      function updateSystemWidescreenMode() {
+        if (currentMode) {
+          document.body.classList.add('system-widescreen-mode');
+          systemWidescreenIconNormal?.classList.add('hidden');
+          systemWidescreenIconWide?.classList.remove('hidden');
+        } else {
+          document.body.classList.remove('system-widescreen-mode');
+          systemWidescreenIconNormal?.classList.remove('hidden');
+          systemWidescreenIconWide?.classList.add('hidden');
+        }
+      }
+      
+      systemWidescreenToggle?.addEventListener('click', () => {
+        currentMode = !currentMode;
+        localStorage.setItem('admin-widescreen-mode', String(currentMode));
+        updateSystemWidescreenMode();
+      });
+      
+      // Update icons on load
+      updateSystemWidescreenMode();
+    });
+  })();
+
   // Track content size
   function updateContentSize() {
     const content = monacoEditor ? monacoEditor.getValue() : (document.getElementById('content')?.value || '');
@@ -1123,6 +1195,19 @@ const allChapters = await prisma.chapter.findMany({
     return html;
   }
 
+  // Escape HTML entities
+  function escapeHtml(text) {
+    if (!text) return '';
+    const map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return String(text).replace(/[&<>"']/g, m => map[m]);
+  }
+
   // Simple markdown renderer - returns {html, displayMathBlocks, inlineMathBlocks}
   function renderMarkdown(text) {
     if (!text) return {html: '', displayMathBlocks: [], inlineMathBlocks: []};
@@ -1174,16 +1259,84 @@ const allChapters = await prisma.chapter.findMany({
     inlineMathCount = (tempProcessed.match(/\$[^$\n]+?\$/g) || []).length;
     console.log('Found LaTeX in markdown:', displayMathCount, 'display,', inlineMathCount, 'inline');
 
+    // Process images with Pandoc-style attributes BEFORE markdown parsing
+    // Pattern: ![](image.png){width=300px class=diagram align=center}
+    processed = processed.replace(/!\[([^\]]*)\]\(([^)]+)\)\{([^}]+)\}/g, (match, alt, src, attrs) => {
+      // Parse attributes (supports key=value pairs, quoted values)
+      const attrObj = {};
+      let current = '';
+      let inQuotes = false;
+      let quoteChar = '';
+      
+      for (let i = 0; i < attrs.length; i++) {
+        const char = attrs[i];
+        if ((char === '"' || char === "'") && !inQuotes) {
+          inQuotes = true;
+          quoteChar = char;
+          current += char;
+        } else if (char === quoteChar && inQuotes) {
+          inQuotes = false;
+          quoteChar = '';
+          current += char;
+        } else if (char === ' ' && !inQuotes) {
+          if (current.trim()) {
+            const [key, ...valueParts] = current.split('=');
+            if (key && valueParts.length > 0) {
+              let value = valueParts.join('=').trim();
+              if ((value.startsWith('"') && value.endsWith('"')) ||
+                  (value.startsWith("'") && value.endsWith("'"))) {
+                value = value.slice(1, -1);
+              }
+              attrObj[key.toLowerCase().trim()] = value;
+            }
+            current = '';
+          }
+        } else {
+          current += char;
+        }
+      }
+      
+      if (current.trim()) {
+        const [key, ...valueParts] = current.split('=');
+        if (key && valueParts.length > 0) {
+          let value = valueParts.join('=').trim();
+          if ((value.startsWith('"') && value.endsWith('"')) ||
+              (value.startsWith("'") && value.endsWith("'"))) {
+            value = value.slice(1, -1);
+          }
+          attrObj[key.toLowerCase().trim()] = value;
+        }
+      }
+      
+      // Build style
+      const styles = [];
+      if (attrObj.width) styles.push(`width: ${escapeHtml(attrObj.width)}`);
+      if (attrObj.height) styles.push(`height: ${escapeHtml(attrObj.height)}`);
+      if (attrObj.scale) {
+        const scale = parseFloat(attrObj.scale);
+        if (!isNaN(scale) && scale !== 1) {
+          styles.push(`transform: scale(${scale})`);
+        }
+      }
+      if (attrObj.align === 'left') styles.push('float: left; margin-right: 1rem');
+      else if (attrObj.align === 'right') styles.push('float: right; margin-left: 1rem');
+      else if (attrObj.align === 'center') styles.push('display: block; margin-left: auto; margin-right: auto');
+      if (!styles.some(s => s.includes('max-width'))) styles.push('max-width: 100%');
+      if (!attrObj.height && !styles.some(s => s.includes('height'))) styles.push('height: auto');
+      if (attrObj.style) styles.push(attrObj.style);
+      
+      // Build img tag
+      const parts = [`src="${escapeHtml(src)}"`];
+      if (alt) parts.push(`alt="${escapeHtml(alt)}"`);
+      if (styles.length > 0) parts.push(`style="${styles.join('; ')}"`);
+      if (attrObj.class) parts.push(`class="${escapeHtml(attrObj.class)}"`);
+      if (attrObj.id) parts.push(`id="${escapeHtml(attrObj.id)}"`);
+      
+      return `<img ${parts.join(' ')} />`;
+    });
+
     // CRITICAL: Process display math blocks BEFORE markdown parsing
     // Replace $$...$$ with placeholders that won't be processed by marked.js
-    // Process images with width attributes BEFORE markdown parsing
-    // Pattern: ![](image.png){width=300px} or ![alt](image.png){width=300px}
-    processed = processed.replace(/!\[([^\]]*)\]\(([^)]+)\)\{width=([^}]+)\}/g, (match, alt, src, width) => {
-      const cleanAlt = (alt || '').trim().replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-      const cleanSrc = src.trim().replace(/"/g, '&quot;');
-      const cleanWidth = width.trim().replace(/"/g, '&quot;');
-      return `<img src="${cleanSrc}" alt="${cleanAlt}" style="width: ${cleanWidth}; max-width: 100%; height: auto;" />`;
-    });
 
     const displayMathBlocks = [];
     processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
@@ -2326,6 +2479,109 @@ const allChapters = await prisma.chapter.findMany({
   
   .prose ol ol ol {
     list-style-type: lower-roman;
+  }
+
+  /* System-wide Widescreen Mode - Override all max-width constraints */
+  html.system-widescreen-mode,
+  body.system-widescreen-mode {
+    max-width: 100vw !important;
+    width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  body.system-widescreen-mode .min-h-screen {
+    max-width: 100vw !important;
+    width: 100% !important;
+  }
+
+  body.system-widescreen-mode .min-h-screen > *,
+  body.system-widescreen-mode .min-h-screen > * > * {
+    max-width: 100% !important;
+  }
+
+  /* Override ALL Tailwind max-width classes */
+  body.system-widescreen-mode [class*="max-w"] {
+    max-width: 100% !important;
+  }
+
+  /* Override mx-auto centering */
+  body.system-widescreen-mode [class*="mx-auto"] {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  /* Expand form container and all children */
+  body.system-widescreen-mode #chapter-form,
+  body.system-widescreen-mode #chapter-form > * {
+    max-width: 100% !important;
+  }
+
+  /* Expand tools section */
+  body.system-widescreen-mode #tools-section {
+    max-width: 100% !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  /* Header container */
+  body.system-widescreen-mode header .max-w-full,
+  body.system-widescreen-mode header [class*="max-w"] {
+    max-width: 100% !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  /* Force all direct children of min-h-screen to be full width */
+  body.system-widescreen-mode .min-h-screen > div {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* Ensure preview panel is always visible and properly positioned */
+  body.system-widescreen-mode #chapter-form .flex-1.flex.overflow-hidden > div {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    max-width: none !important;
+  }
+
+  /* When NOT in widescreen mode, ensure normal centered layout */
+  body:not(.system-widescreen-mode) #chapter-form {
+    max-width: 100%;
+  }
+
+  body:not(.system-widescreen-mode) .min-h-screen {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Ensure preview panel is visible when widescreen is off */
+  body:not(.system-widescreen-mode) #chapter-form .flex-1.flex.overflow-hidden {
+    display: flex !important;
+    width: 100% !important;
+  }
+
+  body:not(.system-widescreen-mode) #chapter-form .flex-1.flex.overflow-hidden > div {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    flex: 1 1 50% !important;
+    min-width: 0 !important;
+  }
+
+  /* Ensure preview panel (right side) takes up proper space */
+  body:not(.system-widescreen-mode) #chapter-form .flex-1.flex.overflow-hidden > div:last-child {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    flex: 1 1 50% !important;
+  }
+
+  /* Ensure preview content is visible */
+  body:not(.system-widescreen-mode) #preview-content {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
   }
 </style>
 

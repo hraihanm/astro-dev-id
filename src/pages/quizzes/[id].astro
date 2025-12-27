@@ -1036,31 +1036,111 @@ try {
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   
   <script define:vars={{ quiz: clientQuiz, id }}>
-    // Escape HTML for safe attribute embedding
-    function escapeHtml(text) {
-      if (!text) return '';
-      return text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
+    // Import unified markdown renderer
+    // Note: In a real implementation, this would be bundled, but for now we'll inline the core logic
+    // For production, consider bundling markdown-renderer/client.ts
     
-    // Full markdown renderer with LaTeX support
+    // Simplified client-side renderer using unified core logic
+    // This is a temporary solution - ideally we'd bundle the client module
     function renderMarkdown(text) {
       if (!text) return '';
+      
+      // Load marked if not available
+      if (!window.marked) {
+        console.warn('marked.js not loaded');
+        return text;
+      }
+      
+      // Use the unified renderer pattern
+      // For now, we'll use a simplified version that matches the core logic
+      // TODO: Bundle markdown-renderer/client.ts for proper reuse
       
       // Normalize newlines
       let processed = text.replace(/\r\n?|\u2028|\u2029/g, '\n');
       
-      // Process images with width attributes BEFORE markdown parsing
-      // Pattern: ![](image.png){width=300px} or ![alt](image.png){width=300px}
-      processed = processed.replace(/!\[([^\]]*)\]\(([^)]+)\)\{width=([^}]+)\}/g, (match, alt, src, width) => {
-        const cleanAlt = (alt || '').trim();
-        const cleanSrc = src.trim();
-        const cleanWidth = width.trim();
-        return `<img src="${escapeHtml(cleanSrc)}" alt="${escapeHtml(cleanAlt)}" style="width: ${escapeHtml(cleanWidth)}; max-width: 100%; height: auto;" />`;
+      // Process images with Pandoc-style attributes
+      // Pattern: ![](image.png){width=300px class=diagram align=center}
+      processed = processed.replace(/!\[([^\]]*)\]\(([^)]+)\)\{([^}]+)\}/g, (match, alt, src, attrs) => {
+        // Parse attributes (supports key=value pairs, quoted values, etc.)
+        const attrObj = {};
+        let current = '';
+        let inQuotes = false;
+        let quoteChar = '';
+        
+        // Parse attribute string, handling quoted values
+        for (let i = 0; i < attrs.length; i++) {
+          const char = attrs[i];
+          if ((char === '"' || char === "'") && !inQuotes) {
+            inQuotes = true;
+            quoteChar = char;
+            current += char;
+          } else if (char === quoteChar && inQuotes) {
+            inQuotes = false;
+            quoteChar = '';
+            current += char;
+          } else if (char === ' ' && !inQuotes) {
+            if (current.trim()) {
+              const [key, ...valueParts] = current.split('=');
+              if (key && valueParts.length > 0) {
+                let value = valueParts.join('=').trim();
+                if ((value.startsWith('"') && value.endsWith('"')) ||
+                    (value.startsWith("'") && value.endsWith("'"))) {
+                  value = value.slice(1, -1);
+                }
+                attrObj[key.toLowerCase().trim()] = value;
+              }
+              current = '';
+            }
+          } else {
+            current += char;
+          }
+        }
+        
+        // Process last token
+        if (current.trim()) {
+          const [key, ...valueParts] = current.split('=');
+          if (key && valueParts.length > 0) {
+            let value = valueParts.join('=').trim();
+            if ((value.startsWith('"') && value.endsWith('"')) ||
+                (value.startsWith("'") && value.endsWith("'"))) {
+              value = value.slice(1, -1);
+            }
+            attrObj[key.toLowerCase().trim()] = value;
+          }
+        }
+        
+        // Build style attribute
+        const styles = [];
+        if (attrObj.width) styles.push(`width: ${escapeHtml(attrObj.width)}`);
+        if (attrObj.height) styles.push(`height: ${escapeHtml(attrObj.height)}`);
+        if (attrObj.scale) {
+          const scale = parseFloat(attrObj.scale);
+          if (!isNaN(scale) && scale !== 1) {
+            styles.push(`transform: scale(${scale})`);
+            if (!attrObj.width && !attrObj.height) {
+              styles.push(`max-width: ${Math.round(scale * 100)}%`);
+            }
+          }
+        }
+        if (attrObj.align === 'left') {
+          styles.push('float: left; margin-right: 1rem');
+        } else if (attrObj.align === 'right') {
+          styles.push('float: right; margin-left: 1rem');
+        } else if (attrObj.align === 'center') {
+          styles.push('display: block; margin-left: auto; margin-right: auto');
+        }
+        if (!styles.some(s => s.includes('max-width'))) styles.push('max-width: 100%');
+        if (!attrObj.height && !styles.some(s => s.includes('height'))) styles.push('height: auto');
+        if (attrObj.style) styles.push(attrObj.style);
+        
+        // Build img tag attributes
+        const parts = [`src="${escapeHtml(src)}"`];
+        if (alt) parts.push(`alt="${escapeHtml(alt)}"`);
+        if (styles.length > 0) parts.push(`style="${styles.join('; ')}"`);
+        if (attrObj.class) parts.push(`class="${escapeHtml(attrObj.class)}"`);
+        if (attrObj.id) parts.push(`id="${escapeHtml(attrObj.id)}"`);
+        
+        return `<img ${parts.join(' ')} />`;
       });
       
       // Convert display math blocks ($$ ... $$) to placeholders
@@ -1076,16 +1156,22 @@ try {
       });
 
       // Use marked for full markdown parsing
-      if (window.marked) {
-        try {
-          return window.marked.parse(processed);
-        } catch (e) {
-          console.error('Markdown parsing error:', e);
-          return processed;
-        }
+      try {
+        return window.marked.parse(processed);
+      } catch (e) {
+        console.error('Markdown parsing error:', e);
+        return processed;
       }
-      
-      return processed;
+    }
+    
+    function escapeHtml(text) {
+      if (!text) return '';
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
     }
     
     // Simple LaTeX-only processor (legacy compatibility)

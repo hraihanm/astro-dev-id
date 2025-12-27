@@ -35,7 +35,7 @@ const colors = {
 </head>
 <body class="bg-slate-50 min-h-screen font-sans text-slate-800 flex flex-col">
   <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 system-header-container">
       <div class="flex justify-between h-14 sm:h-16 items-center gap-4">
         <!-- Left: Logo & Courses -->
         <div class="flex items-center gap-4 sm:gap-6">
@@ -680,3 +680,43 @@ const colors = {
   </footer>
 </body>
 </html>
+
+<style>
+  /* System-wide Widescreen Mode - Override Layout constraints */
+  html.system-widescreen-mode,
+  body.system-widescreen-mode {
+    max-width: 100vw !important;
+    width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Override header container */
+  body.system-widescreen-mode header .system-header-container,
+  body.system-widescreen-mode header [class*="max-w"] {
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+  }
+
+  /* Override main content wrapper - THIS IS THE KEY! */
+  body.system-widescreen-mode main {
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  /* Override all max-width classes in widescreen mode */
+  body.system-widescreen-mode [class*="max-w"] {
+    max-width: 100% !important;
+  }
+
+  /* Override all mx-auto centering */
+  body.system-widescreen-mode [class*="mx-auto"] {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+</style>

@@ -519,14 +519,81 @@ const encouragement = attempt?.scoreReleasedAt
         // Normalize newlines
         let processed = text.replace(/\r\n?|\u2028|\u2029/g, '\n');
         
-        // Process images with width attributes BEFORE markdown parsing
-        // Pattern: ![](image.png){width=300px} or ![alt](image.png){width=300px}
-        processed = processed.replace(/!\[([^\]]*)\]\(([^)]+)\)\{width=([^}]+)\}/g, (match, alt, src, width) => {
-          const cleanAlt = (alt || '').trim();
-          const cleanSrc = src.trim();
-          const cleanWidth = width.trim();
-          return `<img src="${escapeHtml(cleanSrc)}" alt="${escapeHtml(cleanAlt)}" style="width: ${escapeHtml(cleanWidth)}; max-width: 100%; height: auto;" />`;
-        });
+      // Process images with Pandoc-style attributes BEFORE markdown parsing
+      // Pattern: ![](image.png){width=300px class=diagram align=center}
+      processed = processed.replace(/!\[([^\]]*)\]\(([^)]+)\)\{([^}]+)\}/g, (match, alt, src, attrs) => {
+        // Parse attributes
+        const attrObj = {};
+        let current = '';
+        let inQuotes = false;
+        let quoteChar = '';
+        
+        for (let i = 0; i < attrs.length; i++) {
+          const char = attrs[i];
+          if ((char === '"' || char === "'") && !inQuotes) {
+            inQuotes = true;
+            quoteChar = char;
+            current += char;
+          } else if (char === quoteChar && inQuotes) {
+            inQuotes = false;
+            quoteChar = '';
+            current += char;
+          } else if (char === ' ' && !inQuotes) {
+            if (current.trim()) {
+              const [key, ...valueParts] = current.split('=');
+              if (key && valueParts.length > 0) {
+                let value = valueParts.join('=').trim();
+                if ((value.startsWith('"') && value.endsWith('"')) ||
+                    (value.startsWith("'") && value.endsWith("'"))) {
+                  value = value.slice(1, -1);
+                }
+                attrObj[key.toLowerCase().trim()] = value;
+              }
+              current = '';
+            }
+          } else {
+            current += char;
+          }
+        }
+        
+        if (current.trim()) {
+          const [key, ...valueParts] = current.split('=');
+          if (key && valueParts.length > 0) {
+            let value = valueParts.join('=').trim();
+            if ((value.startsWith('"') && value.endsWith('"')) ||
+                (value.startsWith("'") && value.endsWith("'"))) {
+              value = value.slice(1, -1);
+            }
+            attrObj[key.toLowerCase().trim()] = value;
+          }
+        }
+        
+        // Build style
+        const styles = [];
+        if (attrObj.width) styles.push(`width: ${escapeHtml(attrObj.width)}`);
+        if (attrObj.height) styles.push(`height: ${escapeHtml(attrObj.height)}`);
+        if (attrObj.scale) {
+          const scale = parseFloat(attrObj.scale);
+          if (!isNaN(scale) && scale !== 1) {
+            styles.push(`transform: scale(${scale})`);
+          }
+        }
+        if (attrObj.align === 'left') styles.push('float: left; margin-right: 1rem');
+        else if (attrObj.align === 'right') styles.push('float: right; margin-left: 1rem');
+        else if (attrObj.align === 'center') styles.push('display: block; margin-left: auto; margin-right: auto');
+        if (!styles.some(s => s.includes('max-width'))) styles.push('max-width: 100%');
+        if (!attrObj.height && !styles.some(s => s.includes('height'))) styles.push('height: auto');
+        if (attrObj.style) styles.push(attrObj.style);
+        
+        // Build img tag
+        const parts = [`src="${escapeHtml(src)}"`];
+        if (alt) parts.push(`alt="${escapeHtml(alt)}"`);
+        if (styles.length > 0) parts.push(`style="${styles.join('; ')}"`);
+        if (attrObj.class) parts.push(`class="${escapeHtml(attrObj.class)}"`);
+        if (attrObj.id) parts.push(`id="${escapeHtml(attrObj.id)}"`);
+        
+        return `<img ${parts.join(' ')} />`;
+      });
         
         // Convert display math blocks
         processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
