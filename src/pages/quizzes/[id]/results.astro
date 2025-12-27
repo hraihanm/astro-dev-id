@@ -519,6 +519,15 @@ const encouragement = attempt?.scoreReleasedAt
         // Normalize newlines
         let processed = text.replace(/\r\n?|\u2028|\u2029/g, '\n');
         
+        // Process images with width attributes BEFORE markdown parsing
+        // Pattern: ![](image.png){width=300px} or ![alt](image.png){width=300px}
+        processed = processed.replace(/!\[([^\]]*)\]\(([^)]+)\)\{width=([^}]+)\}/g, (match, alt, src, width) => {
+          const cleanAlt = (alt || '').trim();
+          const cleanSrc = src.trim();
+          const cleanWidth = width.trim();
+          return `<img src="${escapeHtml(cleanSrc)}" alt="${escapeHtml(cleanAlt)}" style="width: ${escapeHtml(cleanWidth)}; max-width: 100%; height: auto;" />`;
+        });
+        
         // Convert display math blocks
         processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
           return `\n<div class="math-display" data-latex="${escapeHtml((latex || '').trim())}"></div>\n`;

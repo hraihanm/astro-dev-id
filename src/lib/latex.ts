@@ -75,6 +75,15 @@ export function renderMarkdown(content: string): string {
     return match;
   });
 
+  // Process images with width attributes BEFORE markdown parsing
+  // Pattern: ![](image.png){width=300px} or ![alt](image.png){width=300px}
+  processed = processed.replace(/!\[([^\]]*)\]\(([^)]+)\)\{width=([^}]+)\}/g, (match, alt, src, width) => {
+    const cleanAlt = (alt || '').trim();
+    const cleanSrc = src.trim();
+    const cleanWidth = width.trim();
+    return `<img src="${escapeHtml(cleanSrc)}" alt="${escapeHtml(cleanAlt)}" style="width: ${escapeHtml(cleanWidth)}; max-width: 100%; height: auto;" />`;
+  });
+
   // CRITICAL: Process display math blocks BEFORE markdown parsing
   // Replace $$...$$ with zero-width space placeholders that won't be processed by marked.js
   const displayMathBlocks: string[] = [];

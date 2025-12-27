@@ -1176,6 +1176,15 @@ const allChapters = await prisma.chapter.findMany({
 
     // CRITICAL: Process display math blocks BEFORE markdown parsing
     // Replace $$...$$ with placeholders that won't be processed by marked.js
+    // Process images with width attributes BEFORE markdown parsing
+    // Pattern: ![](image.png){width=300px} or ![alt](image.png){width=300px}
+    processed = processed.replace(/!\[([^\]]*)\]\(([^)]+)\)\{width=([^}]+)\}/g, (match, alt, src, width) => {
+      const cleanAlt = (alt || '').trim().replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+      const cleanSrc = src.trim().replace(/"/g, '&quot;');
+      const cleanWidth = width.trim().replace(/"/g, '&quot;');
+      return `<img src="${cleanSrc}" alt="${cleanAlt}" style="width: ${cleanWidth}; max-width: 100%; height: auto;" />`;
+    });
+
     const displayMathBlocks = [];
     processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
       const cleanLatex = sanitizeLatex((latex || '').trim());

@@ -375,8 +375,17 @@ const userEmail = attemptUser?.email || '';
   function processMarkdownAndLatex(text) {
     if (!text) return '';
     
+    // Process images with width attributes BEFORE markdown parsing
+    // Pattern: ![](image.png){width=300px} or ![alt](image.png){width=300px}
+    let processed = text.replace(/!\[([^\]]*)\]\(([^)]+)\)\{width=([^}]+)\}/g, (match, alt, src, width) => {
+      const cleanAlt = (alt || '').trim();
+      const cleanSrc = src.trim();
+      const cleanWidth = width.trim();
+      return `<img src="${escapeHtml(cleanSrc)}" alt="${escapeHtml(cleanAlt)}" style="width: ${escapeHtml(cleanWidth)}; max-width: 100%; height: auto;" />`;
+    });
+    
     // First, process LaTeX
-    let processed = text.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
+    processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
       const cleanLatex = (latex || '').trim();
       return `<div class="math-display" data-latex="${escapeHtml(cleanLatex)}"></div>`;
     });

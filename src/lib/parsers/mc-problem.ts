@@ -19,34 +19,35 @@
 
 export interface MCOption {
   text: string;
-  images: string[];
+  images?: string[]; // Deprecated: kept for backward compatibility, images now in text
 }
 
 export interface MCProblem {
   question: string;
-  questionImages: string[];
+  questionImages?: string[]; // Deprecated: kept for backward compatibility, images now in text
   options: MCOption[];
   correctAnswer: string; // The letter after "Jawaban: "
   solution: string;
-  solutionImages: string[];
+  solutionImages?: string[]; // Deprecated: kept for backward compatibility, images now in text
 }
 
 /**
- * Extract images from markdown content and return cleaned content
+ * Extract images from markdown content (for backward compatibility)
+ * Now images are preserved in text as markdown syntax
  */
 function extractImages(content: string): { content: string; images: string[] } {
+  // Keep images in content - don't extract them anymore
+  // This function is kept for backward compatibility but now preserves images in text
   const images: string[] = [];
   const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)(\{[^}]+\})?/g;
-  let cleanContent = content;
   let match;
   
   while ((match = imageRegex.exec(content)) !== null) {
-    images.push(match[2]); // Push the image path
-    // Remove the entire image markdown including optional attributes
-    cleanContent = cleanContent.replace(match[0], '');
+    images.push(match[2]); // Track images for backward compatibility
+    // Don't remove images from content - keep them as markdown
   }
   
-  return { content: cleanContent.trim(), images };
+  return { content: content.trim(), images };
 }
 
 /**
@@ -167,12 +168,12 @@ function parseQuestionSection(section: string): MCProblem | null {
   const { content: solutionText, images: solutionImages } = extractImages(solutionTextRaw);
   
   return {
-    question: questionText,
-    questionImages,
+    question: questionText, // Images are now embedded in questionText as markdown
+    questionImages, // Kept for backward compatibility
     options,
     correctAnswer,
-    solution: solutionText,
-    solutionImages
+    solution: solutionText, // Images are now embedded in solutionText as markdown
+    solutionImages // Kept for backward compatibility
   };
 }
 

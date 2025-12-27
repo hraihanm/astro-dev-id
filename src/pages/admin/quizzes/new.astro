@@ -11,207 +11,119 @@ if (!user) {
 }
 ---
 
-<Layout title="Create Standalone Quiz">
-  <div class="min-h-screen bg-gray-50">
+<Layout title="Buat Kuis Baru">
+  <div class="min-h-screen bg-slate-50">
     <!-- Header -->
-    <div class="bg-white shadow mb-8">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-          <div class="flex items-center">
-            <a href="/admin/quizzes" class="inline-flex items-center gap-2 text-gray-700 hover:text-blue-600 mr-4">
-              <Icon name="arrow-left" class="w-4 h-4" />
-              Kembali ke Kuis
+    <div class="bg-white border-b border-slate-200 sticky top-0 z-10">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <div class="flex items-center gap-4">
+            <a href="/admin/quizzes" class="text-slate-500 hover:text-slate-700 transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
             </a>
-            <h1 class="text-2xl font-bold text-gray-900">Buat Kuis Mandiri</h1>
+            <div>
+              <h1 class="text-lg font-bold text-slate-900">Buat Kuis Baru</h1>
+              <p class="text-sm text-slate-500">Buat kuis baru dan tambahkan soal di editor</p>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Quiz Creation Options -->
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      
-      <!-- Import/Create Tabs -->
-      <div class="mb-6">
-        <div class="border-b border-gray-200">
-          <nav class="-mb-px flex space-x-4">
-            <button
-              type="button"
-              id="manual-tab"
-              class="tab-button active py-2 px-4 border-b-2 border-blue-500 text-sm font-medium text-blue-600 cursor-pointer"
-              onclick="
-                document.getElementById('manual-section').classList.remove('hidden');
-                document.getElementById('import-section').classList.add('hidden');
-                this.classList.add('border-blue-500', 'text-blue-600');
-                this.classList.remove('border-transparent', 'text-gray-500');
-                document.getElementById('import-tab').classList.remove('border-blue-500', 'text-blue-600');
-                document.getElementById('import-tab').classList.add('border-transparent', 'text-gray-500');
-              "
-            >
-              Buat Manual
-            </button>
-            <button
-              type="button"
-              id="import-tab"
-              class="tab-button py-2 px-4 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 cursor-pointer"
-              onclick="
-                document.getElementById('import-section').classList.remove('hidden');
-                document.getElementById('manual-section').classList.add('hidden');
-                this.classList.add('border-blue-500', 'text-blue-600');
-                this.classList.remove('border-transparent', 'text-gray-500');
-                document.getElementById('manual-tab').classList.remove('border-blue-500', 'text-blue-600');
-                document.getElementById('manual-tab').classList.add('border-transparent', 'text-gray-500');
-              "
-            >
-              Impor dari Markdown
-            </button>
-          </nav>
+      <!-- Import Option -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm mb-6">
+        <div class="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+          <h3 class="font-bold text-slate-900 flex items-center gap-2">
+            <svg class="w-4 h-4" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" role="img">
+              <path d="M4 20h4l10.5-10.5a2.828 2.828 0 10-4-4L4 16v4z" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+              <path d="M13.5 6.5l4 4" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+            </svg>
+            <span>Impor dari Markdown</span>
+          </h3>
         </div>
-      </div>
-      
-      <!-- Import Section -->
-      <div id="import-section" class="hidden mb-8">
-        <div class="bg-white shadow sm:rounded-lg p-6">
-          <h3 class="text-lg font-medium text-gray-900 mb-4">Impor Kuis Mandiri dari Markdown</h3>
-          
-          <!-- Quiz Import -->
-          <div class="mb-6 p-4 border-2 border-dashed border-gray-300 rounded-lg">
-            <h4 class="text-sm font-medium text-gray-900 mb-3">Kuis Pilihan Ganda</h4>
-            <form id="standalone-quiz-import-form" method="POST" action="/api/admin/quiz/import-standalone" enctype="multipart/form-data">
-              <div class="space-y-3">
+        <div class="p-5">
+          <details class="group">
+            <summary class="flex items-center justify-between cursor-pointer text-sm font-medium text-blue-600 hover:text-blue-700 mb-4">
+              <span>+ Impor Kuis dari File Markdown</span>
+              <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </summary>
+            <div class="mt-4 space-y-3">
+              <form id="quiz-import-form" class="space-y-3">
                 <div>
-                  <label for="standalone-quiz-title" class="block text-sm font-medium text-gray-700">
-                    Judul Kuis
-                  </label>
                   <input
                     type="text"
-                    id="standalone-quiz-title"
                     name="title"
+                    id="import-quiz-title"
                     required
-                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Misalnya, Kuis Latihan Matematika"
+                    class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Judul Kuis"
                   />
                 </div>
                 
-                <div class="grid grid-cols-2 gap-3">
-                  <div>
-                    <label for="standalone-time-limit" class="block text-sm font-medium text-gray-700">
-                      Batas Waktu (menit)
-                    </label>
-                    <input
-                      type="number"
-                      id="standalone-time-limit"
-                      name="timeLimit"
-                      min="0"
-                      class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="30"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label for="standalone-max-attempts" class="block text-sm font-medium text-gray-700">
-                      Maksimum Percobaan
-                    </label>
-                    <input
-                      type="number"
-                      id="standalone-max-attempts"
-                      name="maxAttempts"
-                      min="0"
-                      class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="3"
-                    />
-                  </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <input
+                    type="number"
+                    name="timeLimit"
+                    id="import-time-limit"
+                    min="1"
+                    class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Waktu (menit)"
+                  />
+                  <input
+                    type="number"
+                    name="maxAttempts"
+                    id="import-max-attempts"
+                    min="1"
+                    class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Maks Percobaan"
+                  />
                 </div>
                 
                 <div>
-                  <label for="standalone-quiz-file" class="block text-sm font-medium text-gray-700">
-                    File Kuis (.md)
-                  </label>
                   <input
                     type="file"
-                    id="standalone-quiz-file"
+                    id="import-quiz-file"
                     name="file"
                     accept=".md,.txt"
                     required
-                    class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    class="w-full text-sm text-slate-500 file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                   />
-                  <p class="mt-1 text-xs text-gray-500">
-                    Unggah file Markdown berisi pertanyaan kuis.
-                  </p>
                 </div>
                 
                 <button
                   type="submit"
-                  id="standalone-quiz-import-btn"
-                  class="w-full bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  id="quiz-import-btn"
+                  class="w-full py-2 px-4 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
                 >
-                  Impor Kuis
+                  Impor
                 </button>
-              </div>
             </form>
-            <div id="standalone-quiz-import-status" class="mt-3 hidden"></div>
+              
+              <div id="import-status" class="hidden text-sm"></div>
           </div>
-          
-          <!-- Essay Import -->
-          <div class="p-4 border-2 border-dashed border-gray-300 rounded-lg">
-            <h4 class="text-sm font-medium text-gray-900 mb-3">Soal Essay</h4>
-            <form id="standalone-essay-import-form" method="POST" action="/api/admin/essay/import-standalone" enctype="multipart/form-data">
-              <div class="space-y-3">
-                <div>
-                  <label for="standalone-essay-title" class="block text-sm font-medium text-gray-700">
-                    Judul Soal Essay
-                  </label>
-                  <input
-                    type="text"
-                    id="standalone-essay-title"
-                    name="title"
-                    required
-                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Misalnya, Soal Essay Fisika"
-                  />
-                </div>
-                
-                <div>
-                  <label for="standalone-essay-file" class="block text-sm font-medium text-gray-700">
-                    File Soal Essay (.md)
-                  </label>
-                  <input
-                    type="file"
-                    id="standalone-essay-file"
-                    name="file"
-                    accept=".md,.txt"
-                    required
-                    class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
-                  />
-                  <p class="mt-1 text-xs text-gray-500">
-                    Unggah file Markdown dengan soal essay. Format: <code class="text-xs bg-gray-100 px-1 py-0.5 rounded">## Judul Soal</code> untuk soal, <code class="text-xs bg-gray-100 px-1 py-0.5 rounded">### Subsoal</code> untuk subsoal.
-                  </p>
-                </div>
-                
-                <button
-                  type="submit"
-                  class="w-full bg-purple-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-                >
-                  Impor Soal Essay
-                </button>
-              </div>
-            </form>
-            <div id="standalone-essay-import-status" class="mt-3 hidden"></div>
-          </div>
+          </details>
         </div>
       </div>
       
-      <!-- Manual Creation Section -->
-      <div id="manual-section">
-      <form id="quiz-form" class="space-y-6">
+      <!-- Create Form -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="px-5 py-4 border-b border-slate-100 bg-slate-50">
+          <h3 class="font-bold text-slate-900 flex items-center gap-2">
+            <svg class="w-4 h-4" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" role="img">
+              <path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+            </svg>
+            <span>Buat Kuis Baru</span>
+          </h3>
+        </div>
         
-        <!-- Quiz Info -->
-        <div class="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
-          <h3 class="text-lg font-medium text-gray-900 mb-6">Informasi Kuis</h3>
-          
-          <div class="space-y-4">
+        <form id="quiz-form" class="p-5 space-y-5">
             <div>
-              <label for="title" class="block text-sm font-medium text-gray-700">
+            <label for="title" class="block text-sm font-medium text-slate-700 mb-1.5">
                 Judul Kuis *
               </label>
               <input
@@ -219,57 +131,57 @@ if (!user) {
                 name="title"
                 id="title"
                 required
-                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                placeholder="contoh: Kuis Dasar Matematika"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              placeholder="Misalnya: Kuis Latihan Matematika"
               />
             </div>
 
             <div>
-              <label for="description" class="block text-sm font-medium text-gray-700">
+            <label for="description" class="block text-sm font-medium text-slate-700 mb-1.5">
                 Deskripsi
               </label>
               <textarea
                 name="description"
                 id="description"
                 rows="3"
-                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                placeholder="Deskripsi singkat tentang apa yang dicakup kuis ini..."
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
+              placeholder="Deskripsi singkat tentang kuis ini..."
               ></textarea>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label for="quizScope" class="block text-sm font-medium text-gray-700">
+              <label for="quizScope" class="block text-sm font-medium text-slate-700 mb-1.5">
                   Keterkaitan Kuis
                 </label>
                 <select
                   id="quizScope"
-                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 >
                   <option value="standalone">Mandiri</option>
                   <option value="course">Terhubung ke Kursus</option>
                   <option value="chapter">Terhubung ke Bab</option>
                 </select>
-                <p class="mt-1 text-xs text-gray-500">Pilih apakah kuis berdiri sendiri atau terkait kursus/bab.</p>
+              <p class="text-xs text-slate-500 mt-1">Pilih apakah kuis berdiri sendiri atau terkait kursus/bab.</p>
               </div>
-              <div>
-                <label for="courseSelect" class="block text-sm font-medium text-gray-700">
-                  Kursus (opsional)
+            <div id="course-select-wrapper" class="hidden">
+              <label for="courseSelect" class="block text-sm font-medium text-slate-700 mb-1.5">
+                Kursus
                 </label>
                 <select
                   id="courseSelect"
-                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 >
                   <option value="">Pilih kursus</option>
                 </select>
               </div>
               <div id="chapter-select-wrapper" class="hidden">
-                <label for="chapterSelect" class="block text-sm font-medium text-gray-700">
-                  Bab (opsional)
+              <label for="chapterSelect" class="block text-sm font-medium text-slate-700 mb-1.5">
+                Bab
                 </label>
                 <select
                   id="chapterSelect"
-                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 >
                   <option value="">Pilih bab</option>
                 </select>
@@ -278,7 +190,7 @@ if (!user) {
 
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label for="timeLimit" class="block text-sm font-medium text-gray-700">
+              <label for="timeLimit" class="block text-sm font-medium text-slate-700 mb-1.5">
                   Batas Waktu (menit)
                 </label>
                 <input
@@ -286,13 +198,13 @@ if (!user) {
                   name="timeLimit"
                   id="timeLimit"
                   min="1"
-                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   placeholder="30"
                 />
               </div>
 
               <div>
-                <label for="maxAttempts" class="block text-sm font-medium text-gray-700">
+              <label for="maxAttempts" class="block text-sm font-medium text-slate-700 mb-1.5">
                   Maksimal Percobaan
                 </label>
                 <input
@@ -300,130 +212,36 @@ if (!user) {
                   name="maxAttempts"
                   id="maxAttempts"
                   min="1"
-                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   placeholder="3"
                 />
-              </div>
-            </div>
           </div>
         </div>
 
-        <!-- Questions -->
-        <div class="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-medium text-gray-900">Pertanyaan</h3>
+          <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
+            <a href="/admin/quizzes" class="px-6 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
+              Batal
+            </a>
             <button
-              type="button"
-              id="add-question-btn"
-              class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
+              type="submit"
+              class="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
             >
-              + Tambah Pertanyaan
+              Buat Kuis & Lanjut ke Editor
             </button>
           </div>
-
-          <div id="questions-container" class="space-y-4">
-            <p class="text-sm text-gray-500 text-center py-8">
-              Belum ada pertanyaan. Klik "Tambah Pertanyaan" untuk memulai.
-            </p>
-          </div>
+        </form>
         </div>
-
-        <!-- Submit -->
-        <div class="flex justify-end space-x-4">
-          <a href="/admin/quizzes" class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
-            Batal
-          </a>
-          <button
-            type="submit"
-            class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-          >
-            Buat Kuis
-          </button>
-        </div>
-      </form>
     </div>
-
-    <!-- Question Template (hidden) -->
-    <template id="question-template">
-      <div class="question-block border border-gray-200 rounded-lg p-4" data-question-id="">
-        <div class="flex items-center justify-between mb-4">
-          <h4 class="text-md font-medium text-gray-900">Pertanyaan <span class="question-number"></span></h4>
-          <button type="button" class="delete-question text-red-600 hover:text-red-800 text-sm">
-            Hapus
-          </button>
         </div>
-
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Teks Pertanyaan</label>
-            <textarea
-              class="question-text block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              rows="3"
-              placeholder="Masukkan pertanyaan Anda di sini..."
-            ></textarea>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Tipe Pertanyaan</label>
-              <select class="question-type block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                <option value="multiple-choice">Pilihan Ganda</option>
-                <option value="complex">Pilihan Ganda Kompleks</option>
-                <option value="text">Jawaban Teks</option>
-                <option value="number">Jawaban Numerik</option>
-              </select>
-            </div>
-
-            <div class="options-container">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Jumlah Opsi</label>
-              <input
-                type="number"
-                class="num-options block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                min="2"
-                max="10"
-                value="4"
-              />
-            </div>
-          </div>
-
-          <div class="options-list space-y-2"></div>
-
-          <div class="correct-answer-container">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Jawaban Benar</label>
-            <input
-              type="text"
-              class="correct-answer block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              placeholder='Untuk ganda: "1, 3" atau tunggal: "2"'
-            />
-          </div>
-
-          <div class="tolerance-container hidden">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Toleransi (untuk numerik)</label>
-            <input
-              type="number"
-              class="tolerance block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              step="0.01"
-              value="0.01"
-            />
-          </div>
-        </div>
-      </div>
-    </template>
+</Layout>
 
     <script>
-      let questionCounter = 0;
-      const questionsContainer = document.getElementById('questions-container');
-      const questionTemplate = document.getElementById('question-template');
-      const addQuestionBtn = document.getElementById('add-question-btn');
       const quizForm = document.getElementById('quiz-form');
       const quizScopeSelect = document.getElementById('quizScope');
       const courseSelect = document.getElementById('courseSelect');
       const chapterSelect = document.getElementById('chapterSelect');
+  const courseWrapper = document.getElementById('course-select-wrapper');
       const chapterWrapper = document.getElementById('chapter-select-wrapper');
-      const importScopeSelect = document.getElementById('import-quiz-scope');
-      const importCourseSelect = document.getElementById('import-course-select');
-      const importChapterSelect = document.getElementById('import-chapter-select');
-      const importChapterWrapper = document.getElementById('import-chapter-wrapper');
       let coursesData = [];
       let coursesLoaded = false;
 
@@ -443,47 +261,43 @@ if (!user) {
       }
 
       function renderCourseOptions() {
-        if (courseSelect) {
-          courseSelect.innerHTML = '<option value=\"\">Pilih kursus</option>';
-        }
-        if (importCourseSelect) {
-          importCourseSelect.innerHTML = '<option value=\"\">Pilih kursus</option>';
-        }
-
+    if (!courseSelect) return;
+    courseSelect.innerHTML = '<option value="">Pilih kursus</option>';
         coursesData.forEach((course) => {
           const option = document.createElement('option');
           option.value = course.id;
           option.textContent = course.title;
-          courseSelect?.appendChild(option.cloneNode(true));
-          importCourseSelect?.appendChild(option);
+      courseSelect.appendChild(option);
         });
       }
 
-      function renderChapterOptions(courseId, target) {
-        const selectEl = target === 'import' ? importChapterSelect : chapterSelect;
-        if (!selectEl) return;
-        selectEl.innerHTML = '<option value=\"\">Pilih bab</option>';
+  function renderChapterOptions(courseId) {
+    if (!chapterSelect) return;
+    chapterSelect.innerHTML = '<option value="">Pilih bab</option>';
         const course = coursesData.find((c) => String(c.id) === String(courseId));
         const chapters = course?.chapters || [];
         chapters.forEach((ch) => {
           const option = document.createElement('option');
           option.value = ch.id;
           option.textContent = `${ch.order}. ${ch.title}`;
-          selectEl.appendChild(option);
+      chapterSelect.appendChild(option);
         });
       }
 
       quizScopeSelect?.addEventListener('change', () => {
         const scope = quizScopeSelect.value;
         if (scope === 'standalone') {
+      courseWrapper?.classList.add('hidden');
           chapterWrapper?.classList.add('hidden');
           courseSelect && (courseSelect.value = '');
           chapterSelect && (chapterSelect.value = '');
         } else if (scope === 'course') {
+      courseWrapper?.classList.remove('hidden');
           chapterWrapper?.classList.add('hidden');
           chapterSelect && (chapterSelect.value = '');
           loadCourses();
         } else if (scope === 'chapter') {
+      courseWrapper?.classList.remove('hidden');
           chapterWrapper?.classList.remove('hidden');
           loadCourses();
         }
@@ -491,121 +305,11 @@ if (!user) {
 
       courseSelect?.addEventListener('change', () => {
         if (quizScopeSelect?.value === 'chapter') {
-          renderChapterOptions(courseSelect.value, 'manual');
+      renderChapterOptions(courseSelect.value);
         }
       });
 
-      importScopeSelect?.addEventListener('change', () => {
-        const scope = importScopeSelect.value;
-        if (scope === 'standalone') {
-          importChapterWrapper?.classList.add('hidden');
-          importCourseSelect && (importCourseSelect.value = '');
-          importChapterSelect && (importChapterSelect.value = '');
-        } else if (scope === 'course') {
-          importChapterWrapper?.classList.add('hidden');
-          importChapterSelect && (importChapterSelect.value = '');
-          loadCourses();
-        } else if (scope === 'chapter') {
-          importChapterWrapper?.classList.remove('hidden');
-          loadCourses();
-        }
-      });
-
-      importCourseSelect?.addEventListener('change', () => {
-        if (importScopeSelect?.value === 'chapter') {
-          renderChapterOptions(importCourseSelect.value, 'import');
-        }
-      });
-
-      // Load courses lazily when the page starts (non-blocking)
-      loadCourses();
-
-      // Add question
-      addQuestionBtn?.addEventListener('click', () => {
-        questionCounter++;
-        const questionClone = questionTemplate.content.cloneNode(true);
-        const questionBlock = questionClone.querySelector('.question-block');
-        questionBlock?.setAttribute('data-question-id', questionCounter.toString());
-        questionClone.querySelector('.question-number').textContent = questionCounter.toString();
-
-        // Empty state message
-        const emptyState = questionsContainer?.querySelector('p.text-center');
-        if (emptyState) emptyState.remove();
-
-        questionsContainer?.appendChild(questionClone);
-
-        setupQuestionListeners(questionBlock);
-      });
-
-      // Setup listeners for a question
-      function setupQuestionListeners(questionBlock) {
-        // Delete button
-        questionBlock.querySelector('.delete-question')?.addEventListener('click', () => {
-          questionBlock.remove();
-          if (questionsContainer && questionsContainer.querySelectorAll('.question-block').length === 0) {
-            questionsContainer.innerHTML = '<p class="text-sm text-gray-500 text-center py-8">Belum ada pertanyaan. Klik "Tambah Pertanyaan" untuk memulai.</p>';
-          }
-        });
-
-        // Type change
-        const typeSelect = questionBlock.querySelector('.question-type');
-        const toleranceContainer = questionBlock.querySelector('.tolerance-container');
-        const optionsContainer = questionBlock.querySelector('.options-container');
-
-        typeSelect?.addEventListener('change', () => {
-          if (typeSelect.value === 'number') {
-            toleranceContainer?.classList.remove('hidden');
-            optionsContainer?.classList.add('hidden');
-          } else if (typeSelect.value === 'text') {
-            toleranceContainer?.classList.add('hidden');
-            optionsContainer?.classList.add('hidden');
-          } else {
-            toleranceContainer?.classList.add('hidden');
-            optionsContainer?.classList.remove('hidden');
-          }
-          generateOptions(questionBlock);
-        });
-
-        // Number of options
-        const numOptionsInput = questionBlock.querySelector('.num-options');
-        numOptionsInput?.addEventListener('change', () => {
-          generateOptions(questionBlock);
-        });
-
-        // Initial options
-        generateOptions(questionBlock);
-      }
-
-      // Generate options
-      function generateOptions(questionBlock) {
-        const typeSelect = questionBlock.querySelector('.question-type');
-        const numOptionsInput = questionBlock.querySelector('.num-options');
-        const optionsList = questionBlock.querySelector('.options-list');
-
-        if (typeSelect?.value === 'text' || typeSelect?.value === 'number') {
-          optionsList.innerHTML = '';
-          return;
-        }
-
-        const numOptions = parseInt(numOptionsInput?.value || '4');
-        optionsList.innerHTML = '';
-
-        for (let i = 0; i < numOptions; i++) {
-          const optionDiv = document.createElement('div');
-          optionDiv.className = 'flex items-center space-x-2';
-          optionDiv.innerHTML = `
-            <label class="block text-sm font-medium text-gray-700 w-16">${String.fromCharCode(65 + i)}.</label>
-            <input
-              type="text"
-              class="option-input block flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              placeholder="Opsi ${String.fromCharCode(65 + i)}"
-            />
-          `;
-          optionsList.appendChild(optionDiv);
-        }
-      }
-
-      // Form submit
+  // Form submit - create quiz and redirect to editor
       quizForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         
@@ -634,52 +338,13 @@ if (!user) {
         }
 
         if (!title) {
-          alert('Quiz title is required');
+      alert('Judul kuis wajib diisi');
           return;
         }
 
-        const questions: any[] = [];
-        const questionBlocks = document.querySelectorAll('.question-block');
-
-        if (questionBlocks.length === 0) {
-          alert('Please add at least one question');
-          return;
-        }
-
-        questionBlocks.forEach((block) => {
-          const type = (block.querySelector('.question-type') as HTMLSelectElement)?.value;
-          const questionText = (block.querySelector('.question-text') as HTMLTextAreaElement)?.value;
-          const correctAnswer = (block.querySelector('.correct-answer') as HTMLInputElement)?.value;
-
-          if (!questionText || !correctAnswer) {
-            alert('All questions must have text and correct answer');
-            return;
-          }
-
-          const options: string[] = [];
-          if (type !== 'text' && type !== 'number') {
-            block.querySelectorAll('.option-input').forEach((input: any) => {
-              options.push(input.value);
-            });
-          }
-
-          const question: any = {
-            id: questions.length + 1,
-            type,
-            question: questionText,
-            options,
-            correctAnswer: correctAnswer.includes(',') 
-              ? correctAnswer.split(',').map((n: string) => parseInt(n.trim()))
-              : parseInt(correctAnswer)
-          };
-
-          if (type === 'number') {
-            const tolerance = parseFloat((block.querySelector('.tolerance') as HTMLInputElement)?.value || '0.01');
-            question.tolerance = tolerance;
-          }
-
-          questions.push(question);
-        });
+    const submitBtn = quizForm.querySelector('button[type="submit"]') as HTMLButtonElement;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Membuat...';
 
         try {
           const response = await fetch('/api/admin/quiz/create', {
@@ -687,10 +352,10 @@ if (!user) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               title,
-              description,
+          description: description || undefined,
               timeLimit: timeLimit ? parseInt(timeLimit) : undefined,
               maxAttempts: maxAttempts ? parseInt(maxAttempts) : undefined,
-              questions,
+          questions: [], // Empty - questions will be added in editor
               courseId,
               chapterId
             })
@@ -699,275 +364,42 @@ if (!user) {
           const result = await response.json();
 
           if (response.ok) {
+        // Redirect to editor
+        const quizId = result.id || result.quiz?.id;
+        if (quizId) {
+          window.location.href = `/admin/quizzes/${quizId}/edit`;
+        } else {
+          alert('Kuis berhasil dibuat, tetapi ID tidak ditemukan. Silakan refresh halaman.');
             window.location.href = '/admin/quizzes';
+        }
           } else {
-            alert('Error creating quiz: ' + result.error);
+        alert('Error: ' + (result.error || 'Gagal membuat kuis'));
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Buat Kuis & Lanjut ke Editor';
           }
         } catch (error) {
-          alert('Error creating quiz. Please try again.');
-          console.error(error);
-        }
-      });
-    </script>
-    
-    <!-- Import Options -->
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-8 border-t">
-      <div class="bg-white shadow sm:rounded-lg p-6">
-        <h2 class="text-xl font-bold text-gray-900 mb-4">Atau Impor dari Markdown</h2>
-        
-        <!-- Quiz Import -->
-        <div class="mb-6 p-4 border-2 border-dashed border-gray-300 rounded-lg">
-          <h4 class="text-sm font-medium text-gray-900 mb-3">Kuis Pilihan Ganda</h4>
-          <form id="standalone-quiz-import-form" onsubmit="return false;">
-            <div class="space-y-3">
-              <div>
-                <label for="standalone-quiz-title" class="block text-sm font-medium text-gray-700">
-                  Judul Kuis
-                </label>
-                <input
-                  type="text"
-                  id="standalone-quiz-title"
-                  name="title"
-                  required
-                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Misalnya, Kuis Latihan Matematika"
-                />
-              </div>
-              
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <label for="import-quiz-scope" class="block text-sm font-medium text-gray-700">Keterkaitan</label>
-                  <select
-                    id="import-quiz-scope"
-                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="standalone">Mandiri</option>
-                    <option value="course">Kursus</option>
-                    <option value="chapter">Bab</option>
-                  </select>
-                </div>
-                <div>
-                  <label for="import-course-select" class="block text-sm font-medium text-gray-700">Kursus (opsional)</label>
-                  <select
-                    id="import-course-select"
-                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Pilih kursus</option>
-                  </select>
-                </div>
-                <div id="import-chapter-wrapper" class="hidden">
-                  <label for="import-chapter-select" class="block text-sm font-medium text-gray-700">Bab (opsional)</label>
-                  <select
-                    id="import-chapter-select"
-                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Pilih bab</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label for="standalone-time-limit" class="block text-sm font-medium text-gray-700">
-                    Batas Waktu (menit)
-                  </label>
-                  <input
-                    type="number"
-                    id="standalone-time-limit"
-                    name="timeLimit"
-                    min="0"
-                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="30"
-                  />
-                </div>
-                
-                <div>
-                  <label for="standalone-max-attempts" class="block text-sm font-medium text-gray-700">
-                    Maksimum Percobaan
-                  </label>
-                  <input
-                    type="number"
-                    id="standalone-max-attempts"
-                    name="maxAttempts"
-                    min="0"
-                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="3"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label for="standalone-quiz-file" class="block text-sm font-medium text-gray-700">
-                  File Kuis (.md)
-                </label>
-                <input
-                  type="file"
-                  id="standalone-quiz-file"
-                  name="file"
-                  accept=".md,.txt"
-                  required
-                  class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                />
-              </div>
-              
-              <button
-                type="submit"
-                id="standalone-quiz-import-btn"
-                class="w-full bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700"
-              >
-                Impor Kuis
-              </button>
-            </div>
-          </form>
-          <div id="standalone-quiz-import-status" class="mt-3 hidden"></div>
-        </div>
-        
-        <!-- Essay Import -->
-        <div class="p-4 border-2 border-dashed border-gray-300 rounded-lg">
-          <h4 class="text-sm font-medium text-gray-900 mb-3">Soal Essay</h4>
-          <form id="standalone-essay-import-form" onsubmit="return false;">
-            <div class="space-y-3">
-              <div>
-                <label for="standalone-essay-title" class="block text-sm font-medium text-gray-700">
-                  Judul Soal Essay
-                </label>
-                <input
-                  type="text"
-                  id="standalone-essay-title"
-                  name="title"
-                  required
-                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Misalnya, Soal Essay Fisika"
-                />
-              </div>
-              
-              <div>
-                <label for="standalone-essay-file" class="block text-sm font-medium text-gray-700">
-                  File Soal Essay (.md)
-                </label>
-                <input
-                  type="file"
-                  id="standalone-essay-file"
-                  name="file"
-                  accept=".md,.txt"
-                  required
-                  class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
-                />
-              </div>
-              
-              <button
-                type="submit"
-                class="w-full bg-purple-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-purple-700"
-              >
-                Impor Soal Essay
-              </button>
-            </div>
-          </form>
-          <div id="standalone-essay-import-status" class="mt-3 hidden"></div>
-        </div>
-      </div>
-    </div>
-    
-    <script>
-      // Handle standalone quiz import
-      document.getElementById('standalone-quiz-import-form')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const form = e.target as HTMLFormElement;
-        const statusDiv = document.getElementById('standalone-quiz-import-status');
-        const submitBtn = document.getElementById('standalone-quiz-import-btn') as HTMLButtonElement;
-        
-        const title = (form.querySelector('#standalone-quiz-title') as HTMLInputElement)?.value;
-        const file = (form.querySelector('#standalone-quiz-file') as HTMLInputElement)?.files?.[0];
-        const scope = importScopeSelect?.value || 'standalone';
-        let courseId = null;
-        let chapterId = null;
-
-        if (scope === 'course' || scope === 'chapter') {
-          courseId = importCourseSelect?.value ? parseInt(importCourseSelect.value) : null;
-          if (!courseId) {
-            statusDiv!.className = 'mt-3 p-3 bg-red-50 border border-red-200 rounded text-red-700';
-            statusDiv!.textContent = '❌ Pilih kursus untuk impor kuis.';
-            statusDiv!.classList.remove('hidden');
-            return;
-          }
-        }
-
-        if (scope === 'chapter') {
-          chapterId = importChapterSelect?.value ? parseInt(importChapterSelect.value) : null;
-          if (!chapterId) {
-            statusDiv!.className = 'mt-3 p-3 bg-red-50 border border-red-200 rounded text-red-700';
-            statusDiv!.textContent = '❌ Pilih bab untuk impor kuis bab.';
-            statusDiv!.classList.remove('hidden');
-            return;
-          }
-        }
-        
-        if (!title || !file) {
-          if (statusDiv) {
-            statusDiv.className = 'mt-3 p-3 bg-red-50 border border-red-200 rounded text-red-700';
-            statusDiv.textContent = '❌ Harap isi judul dan pilih file.';
-            statusDiv.classList.remove('hidden');
-          }
-          return;
-        }
-        
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Mengimpor...';
-        
-        statusDiv!.className = 'mt-3 p-3 bg-blue-50 border border-blue-200 rounded text-blue-700';
-        statusDiv!.textContent = 'Mengimpor kuis...';
-        statusDiv!.classList.remove('hidden');
-        
-        const formData = new FormData(form);
-        if (courseId !== null) formData.set('courseId', String(courseId));
-        if (chapterId !== null) formData.set('chapterId', String(chapterId));
-        
-        try {
-          const endpoint = scope === 'standalone' ? '/api/admin/quiz/import-standalone' : '/api/admin/quiz/import';
-          const response = await fetch(endpoint, {
-            method: 'POST',
-            body: formData
-          });
-          
-          const result = await response.json();
-          
-          if (response.ok) {
-            statusDiv!.className = 'mt-3 p-3 bg-green-50 border border-green-200 rounded text-green-700';
-            const count = result.questionCount || 0;
-            statusDiv!.textContent = `✅ Berhasil mengimpor ${count} pertanyaan!`;
-            form.reset();
-            setTimeout(() => {
-              window.location.href = '/admin/quizzes';
-            }, 1500);
-          } else {
-            statusDiv!.className = 'mt-3 p-3 bg-red-50 border border-red-200 rounded text-red-700';
-            statusDiv!.textContent = `❌ ${result.error || 'Gagal mengimpor kuis'}`;
-          }
-        } catch (error) {
-          statusDiv!.className = 'mt-3 p-3 bg-red-50 border border-red-200 rounded text-red-700';
-          statusDiv!.textContent = `❌ Kesalahan: ${error instanceof Error ? error.message : 'Unknown'}`;
-        } finally {
+      alert('Terjadi kesalahan saat membuat kuis');
+      console.error(error);
           submitBtn.disabled = false;
-          submitBtn.textContent = 'Impor Kuis';
+      submitBtn.textContent = 'Buat Kuis & Lanjut ke Editor';
         }
       });
       
-      // Handle standalone essay import
-      document.getElementById('standalone-essay-import-form')?.addEventListener('submit', async (e) => {
+  // Handle quiz import
+  document.getElementById('quiz-import-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         
         const form = e.target as HTMLFormElement;
-        const statusDiv = document.getElementById('standalone-essay-import-status');
-        const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+    const statusDiv = document.getElementById('import-status');
+    const submitBtn = document.getElementById('quiz-import-btn') as HTMLButtonElement;
         
-        const title = (form.querySelector('#standalone-essay-title') as HTMLInputElement)?.value;
-        const file = (form.querySelector('#standalone-essay-file') as HTMLInputElement)?.files?.[0];
+    const title = (form.querySelector('#import-quiz-title') as HTMLInputElement)?.value;
+    const file = (form.querySelector('#import-quiz-file') as HTMLInputElement)?.files?.[0];
         
         if (!title || !file) {
           if (statusDiv) {
-            statusDiv.className = 'mt-3 p-3 bg-red-50 border border-red-200 rounded text-red-700';
-            statusDiv.textContent = '❌ Harap isi judul dan pilih file.';
+        statusDiv.className = 'p-3 bg-red-50 text-red-700 text-sm rounded-lg';
+        statusDiv.textContent = 'Harap isi judul dan pilih file';
             statusDiv.classList.remove('hidden');
           }
           return;
@@ -975,15 +407,14 @@ if (!user) {
         
         submitBtn.disabled = true;
         submitBtn.textContent = 'Mengimpor...';
-        
-        statusDiv!.className = 'mt-3 p-3 bg-blue-50 border border-blue-200 rounded text-blue-700';
-        statusDiv!.textContent = 'Mengimpor soal essay...';
+    statusDiv!.className = 'p-3 bg-blue-50 text-blue-700 text-sm rounded-lg';
+    statusDiv!.textContent = 'Mengimpor...';
         statusDiv!.classList.remove('hidden');
         
         const formData = new FormData(form);
         
         try {
-          const response = await fetch('/api/admin/essay/import-standalone', {
+      const response = await fetch('/api/admin/quiz/import-standalone', {
             method: 'POST',
             body: formData
           });
@@ -991,26 +422,22 @@ if (!user) {
           const result = await response.json();
           
           if (response.ok) {
-            statusDiv!.className = 'mt-3 p-3 bg-green-50 border border-green-200 rounded text-green-700';
-            const count = result.problemCount || 0;
-            statusDiv!.textContent = `✅ Berhasil mengimpor ${count} soal essay!`;
+        statusDiv!.className = 'p-3 bg-emerald-50 text-emerald-700 text-sm rounded-lg';
+        statusDiv!.textContent = `✓ Berhasil mengimpor ${result.questionCount || result.questions?.length || 0} soal`;
             form.reset();
             setTimeout(() => {
               window.location.href = '/admin/quizzes';
             }, 1500);
           } else {
-            statusDiv!.className = 'mt-3 p-3 bg-red-50 border border-red-200 rounded text-red-700';
-            statusDiv!.textContent = `❌ ${result.error || 'Gagal mengimpor soal essay'}`;
+        statusDiv!.className = 'p-3 bg-red-50 text-red-700 text-sm rounded-lg';
+        statusDiv!.textContent = 'Gagal: ' + (result.error || 'Kesalahan tidak dikenal');
           }
         } catch (error) {
-          statusDiv!.className = 'mt-3 p-3 bg-red-50 border border-red-200 rounded text-red-700';
-          statusDiv!.textContent = `❌ Kesalahan: ${error instanceof Error ? error.message : 'Unknown'}`;
+      statusDiv!.className = 'p-3 bg-red-50 text-red-700 text-sm rounded-lg';
+      statusDiv!.textContent = 'Gagal mengimpor kuis';
         } finally {
           submitBtn.disabled = false;
-          submitBtn.textContent = 'Impor Soal Essay';
+      submitBtn.textContent = 'Impor';
         }
       });
     </script>
-  </div>
-</Layout>
-

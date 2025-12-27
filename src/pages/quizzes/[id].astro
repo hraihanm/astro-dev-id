@@ -470,6 +470,17 @@ try {
                 <span id="flag-text">Ragu-Ragu</span>
               </button>
               
+              <!-- Cancel button - only shown for exercises (not exams) -->
+              <button
+                id="cancel-attempt-btn"
+                class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border-2 border-red-300 text-red-700 rounded-lg hover:bg-red-50 hover:border-red-400 text-sm font-medium transition-all hidden"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+                Batalkan Percobaan
+              </button>
+              
               <button
                 id="submit-quiz-btn"
                 class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-sm transition-all"
@@ -559,9 +570,12 @@ try {
     }
 
     .math-display {
-      margin: 0.75rem 0;
+      margin: 0.5rem 0;
       text-align: center;
-      overflow-x: auto;
+    }
+
+    .math-display .katex-display {
+      margin: 0;
     }
 
     .math-inline {
@@ -1039,6 +1053,15 @@ try {
       
       // Normalize newlines
       let processed = text.replace(/\r\n?|\u2028|\u2029/g, '\n');
+      
+      // Process images with width attributes BEFORE markdown parsing
+      // Pattern: ![](image.png){width=300px} or ![alt](image.png){width=300px}
+      processed = processed.replace(/!\[([^\]]*)\]\(([^)]+)\)\{width=([^}]+)\}/g, (match, alt, src, width) => {
+        const cleanAlt = (alt || '').trim();
+        const cleanSrc = src.trim();
+        const cleanWidth = width.trim();
+        return `<img src="${escapeHtml(cleanSrc)}" alt="${escapeHtml(cleanAlt)}" style="width: ${escapeHtml(cleanWidth)}; max-width: 100%; height: auto;" />`;
+      });
       
       // Convert display math blocks ($$ ... $$) to placeholders
       processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
@@ -1783,6 +1806,45 @@ try {
       showFinishModal(unanswered);
     };
 
+    // Cancel attempt function (only for exercises)
+    async function cancelAttempt() {
+      if (quiz.quizType === 'tryout' || quiz.quizType === 'exam') {
+        // Should not be visible for exams, but double-check
+        return;
+      }
+
+      const confirmed = window.confirm('Apakah Anda yakin ingin membatalkan percobaan ini? Semua progress akan hilang.');
+      if (!confirmed) {
+        return;
+      }
+
+      // Stop timer
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      if (typeof cancelAnimationFrame !== 'undefined' && animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+
+      // Disable leave confirmation
+      disableLeaveConfirm();
+
+      // Clear progress and queue
+      clearProgress();
+      try {
+        localStorage.removeItem(QUEUE_KEY);
+      } catch (error) {
+        console.error('Error clearing queue:', error);
+      }
+
+      // Redirect to quiz landing page
+      window.location.href = `/quizzes/${id}`;
+    }
+
+    // Cancel button handler (will be set up in initializeQuiz)
+
     async function submitQuiz(endReason = 'manual') {
       quizSubmitted = true;
       disableLeaveConfirm();
@@ -1921,6 +1983,18 @@ try {
       
       // Initialize timer first
       initializeTimer();
+      
+      // Show/hide cancel button based on quiz type (only for exercises)
+      const cancelBtn = document.getElementById('cancel-attempt-btn');
+      if (cancelBtn) {
+        const isExercise = quiz.quizType !== 'tryout' && quiz.quizType !== 'exam';
+        if (isExercise) {
+          cancelBtn.classList.remove('hidden');
+          cancelBtn.onclick = cancelAttempt;
+        } else {
+          cancelBtn.classList.add('hidden');
+        }
+      }
       
       // Render UI immediately (don't wait for KaTeX)
       console.log('Rendering question grid...');

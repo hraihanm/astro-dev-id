@@ -224,10 +224,7 @@ const lastAttemptDate = attemptsSorted[0]?.completedAt || null;
                       </div>
                       <div class="flex items-center gap-2">
                         <a href={`/quizzes/${a.quizId}/review/${a.id}`} class="inline-flex items-center justify-center px-3 py-2 text-sm font-semibold rounded-lg transition-colors text-emerald-700 bg-emerald-50 hover:bg-emerald-100">
-                          Tinjau
-                        </a>
-                        <a href={`/quizzes/${a.quizId}/results?score=${!isPending ? a.percentage || 0 : 0}`} class={`inline-flex items-center justify-center px-3 py-2 text-sm font-semibold rounded-lg transition-colors ${isPending ? 'bg-blue-50 text-blue-700 opacity-60 pointer-events-none' : 'text-blue-700 bg-blue-50 hover:bg-blue-100'}`}>
-                          Lihat hasil
+                          Lihat
                         </a>
                         <button
                           class="delete-attempt-btn ml-auto px-3 py-2 text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
@@ -345,10 +342,6 @@ const lastAttemptDate = attemptsSorted[0]?.completedAt || null;
 
         const reviewClass = 'inline-flex items-center justify-center px-3 py-2 text-sm font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors';
 
-        const resultsClass = isPending
-          ? 'inline-flex items-center justify-center px-3 py-2 text-sm font-semibold rounded-lg bg-blue-50 text-blue-700 opacity-60 pointer-events-none'
-          : 'inline-flex items-center justify-center px-3 py-2 text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors';
-
         return `
           <div class="border border-slate-200 rounded-xl p-4 bg-white shadow-sm hover:shadow-md transition-all flex flex-col gap-3">
             <div class="flex items-start justify-between gap-3">
@@ -363,10 +356,7 @@ const lastAttemptDate = attemptsSorted[0]?.completedAt || null;
               <span>${formatDate(a.completedAt)}</span>
             </div>
             <div class="flex items-center gap-2">
-              <a href="/quizzes/${a.quizId}/review/${a.id}" class="${reviewClass}">Tinjau</a>
-              <a href="/quizzes/${a.quizId}/results?score=${a.percentage || 0}" class="${resultsClass}">
-                Lihat hasil
-              </a>
+              <a href="/quizzes/${a.quizId}/review/${a.id}" class="${reviewClass}">Lihat</a>
               <button
                 class="delete-attempt-btn ml-auto px-3 py-2 text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
                 data-id="${a.id}"

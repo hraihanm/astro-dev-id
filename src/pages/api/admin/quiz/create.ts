@@ -61,19 +61,30 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       visibility
     } = body;
 
-    if (!title || !questions || questions.length === 0) {
-      return new Response(JSON.stringify({ error: 'Title and questions are required' }), {
+    if (!title) {
+      return new Response(JSON.stringify({ error: 'Title is required' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    const validation = validateQuestions(questions);
-    if (!validation.ok) {
-      return new Response(JSON.stringify({ error: 'Invalid questions', details: validation.errors }), {
+    // Allow empty questions array - questions can be added later in the editor
+    if (!Array.isArray(questions)) {
+      return new Response(JSON.stringify({ error: 'questions must be an array' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
+    }
+
+    // Only validate questions if there are any
+    if (questions.length > 0) {
+      const validation = validateQuestions(questions);
+      if (!validation.ok) {
+        return new Response(JSON.stringify({ error: 'Invalid questions', details: validation.errors }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
     }
 
     const parsedCourseId = rawCourseId !== undefined && rawCourseId !== null ? parseInt(rawCourseId) : null;
@@ -136,6 +147,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     return new Response(JSON.stringify({
       message: 'Quiz created successfully',
+      id: quiz.id,
       quiz
     }), {
       status: 201,

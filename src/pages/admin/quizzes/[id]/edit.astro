@@ -127,6 +127,15 @@ const normalizedQuestions = Array.isArray(questions)
           Simpan Kuis
         </button>
         <button
+          id="save-as-quiz-btn"
+          class="save-as-quiz-btn"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+          </svg>
+          Simpan Sebagai
+        </button>
+        <button
           id="delete-quiz-btn"
           class="delete-quiz-btn"
         >
@@ -477,6 +486,57 @@ const normalizedQuestions = Array.isArray(questions)
       </div>
     </div>
   </div>
+    <!-- Import Questions Section -->
+    <div class="max-w-4xl mx-auto px-6 py-6">
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+          <h3 class="font-bold text-slate-900 flex items-center gap-2">
+            <svg class="w-4 h-4" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" role="img">
+              <path d="M4 20h4l10.5-10.5a2.828 2.828 0 10-4-4L4 16v4z" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+              <path d="M13.5 6.5l4 4" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+            </svg>
+            <span>Impor Soal dari Markdown</span>
+          </h3>
+        </div>
+        <div class="p-5">
+          <details class="group">
+            <summary class="flex items-center justify-between cursor-pointer text-sm font-medium text-blue-600 hover:text-blue-700 mb-4">
+              <span>+ Tambahkan Soal dari File Markdown</span>
+              <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </summary>
+            <div class="mt-4 space-y-3">
+              <form id="append-questions-form" class="space-y-3">
+                <div>
+                  <input
+                    type="file"
+                    id="append-quiz-file"
+                    name="file"
+                    accept=".md,.txt"
+                    required
+                    class="w-full text-sm text-slate-500 file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                  <p class="mt-2 text-xs text-slate-500">
+                    Pilih file Markdown berisi soal yang akan ditambahkan ke kuis ini. Soal baru akan ditambahkan di akhir daftar soal yang sudah ada.
+                  </p>
+                </div>
+                
+                <button
+                  type="submit"
+                  id="append-questions-btn"
+                  class="w-full py-2 px-4 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  Tambahkan Soal
+                </button>
+              </form>
+              
+              <div id="append-status" class="hidden text-sm"></div>
+            </div>
+          </details>
+      </div>
+    </div>
+  </div>
 
   <style is:global>
     /* Question number grid - match quiz page exactly */
@@ -811,9 +871,12 @@ const normalizedQuestions = Array.isArray(questions)
     
     /* LaTeX math rendering in preview */
     .preview-content .math-display {
-      margin: 1.5rem 0;
+      margin: 0.5rem 0;
       text-align: center;
-      overflow-x: auto;
+    }
+
+    .preview-content .math-display .katex-display {
+      margin: 0;
     }
 
     .preview-content .math-inline {
@@ -830,6 +893,15 @@ const normalizedQuestions = Array.isArray(questions)
 
     .preview-content .math-inline .katex-html {
       line-height: inherit;
+    }
+
+    .preview-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 0.5rem;
+      margin: 0.75rem 0;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     .preview-option {
@@ -1026,6 +1098,37 @@ const normalizedQuestions = Array.isArray(questions)
     
     .save-quiz-btn:disabled {
       opacity: 0.6;
+      cursor: not-allowed;
+    }
+    
+    /* Save As Quiz Button */
+    .save-as-quiz-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.625rem 1.25rem;
+      background: white;
+      color: #059669;
+      border: 1.5px solid #6ee7b7;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .save-as-quiz-btn:hover:not(:disabled) {
+      background: #ecfdf5;
+      border-color: #34d399;
+      color: #047857;
+    }
+    
+    .save-as-quiz-btn:active:not(:disabled) {
+      background: #d1fae5;
+    }
+    
+    .save-as-quiz-btn:disabled {
+      opacity: 0.5;
       cursor: not-allowed;
     }
     
@@ -1266,6 +1369,7 @@ const normalizedQuestions = Array.isArray(questions)
     const questionTypeSelect = document.getElementById('question-type-select');
     const saveQuizBtn = document.getElementById('save-quiz-btn');
     const saveQuizSidebarBtn = document.getElementById('save-quiz-sidebar-btn');
+    const saveAsQuizBtn = document.getElementById('save-as-quiz-btn');
     const deleteQuizBtn = document.getElementById('delete-quiz-btn');
     const deleteCurrentBtn = document.getElementById('delete-current-btn');
     const saveErrorAlert = document.getElementById('save-error-alert');
@@ -1507,6 +1611,15 @@ const normalizedQuestions = Array.isArray(questions)
       
       // Normalize newlines
       let processed = text.replace(/\r\n?|\u2028|\u2029/g, '\n');
+      
+      // Process images with width attributes BEFORE markdown parsing
+      // Pattern: ![](image.png){width=300px} or ![alt](image.png){width=300px}
+      processed = processed.replace(/!\[([^\]]*)\]\(([^)]+)\)\{width=([^}]+)\}/g, (match, alt, src, width) => {
+        const cleanAlt = (alt || '').trim();
+        const cleanSrc = src.trim();
+        const cleanWidth = width.trim();
+        return `<img src="${escapeHtml(cleanSrc)}" alt="${escapeHtml(cleanAlt)}" style="width: ${escapeHtml(cleanWidth)}; max-width: 100%; height: auto;" />`;
+      });
       
       // Convert display math blocks ($$ ... $$) to placeholders
       processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
@@ -2518,7 +2631,7 @@ const normalizedQuestions = Array.isArray(questions)
         courseId,
         chapterId
       };
-      
+
       // Only include questionUpdates if there are changes
       if (hasQuestionChanges) {
         formData.questionUpdates = {
@@ -2578,6 +2691,93 @@ const normalizedQuestions = Array.isArray(questions)
     saveQuizBtn?.addEventListener('click', saveQuiz);
     saveQuizSidebarBtn?.addEventListener('click', saveQuiz);
 
+    // Save As (Duplicate) quiz
+    saveAsQuizBtn?.addEventListener('click', async () => {
+      // Save current question first to include any unsaved changes
+      if (questionsData.length > 0) {
+        saveCurrentQuestion();
+      }
+
+      const currentTitle = document.getElementById('title')?.value || quiz.title;
+      const newTitle = prompt('Masukkan nama baru untuk kuis:', `${currentTitle} (Copy)`);
+      
+      if (!newTitle || !newTitle.trim()) {
+        return; // User cancelled or entered empty title
+      }
+
+      if (saveAsQuizBtn) {
+        saveAsQuizBtn.disabled = true;
+        const originalText = saveAsQuizBtn.innerHTML;
+        saveAsQuizBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>Menduplikasi...';
+
+        // Collect current quiz data (including unsaved changes)
+        const quizType = document.getElementById('quizType')?.value || 'exercise';
+        const attemptLimitValue = document.getElementById('attemptLimit')?.value;
+        const attemptLimit = attemptLimitValue ? parseInt(attemptLimitValue) : null;
+        const availableFromInput = document.getElementById('availableFrom');
+        const availableUntilInput = document.getElementById('availableUntil');
+        const openDurationInput = document.getElementById('openDuration');
+        const availableFromVal = availableFromInput && availableFromInput instanceof HTMLInputElement ? availableFromInput.value : null;
+        const availableUntilVal = availableUntilInput && availableUntilInput instanceof HTMLInputElement ? availableUntilInput.value : null;
+        const openDurationVal = openDurationInput && openDurationInput instanceof HTMLInputElement ? openDurationInput.value : null;
+        const scoreReleaseMode = document.getElementById('scoreReleaseMode')?.value || 'immediate';
+        const scope = quizScopeSelect?.value || 'standalone';
+
+        let courseId = null;
+        let chapterId = null;
+
+        if (scope === 'course' || scope === 'chapter') {
+          courseId = courseSelect?.value ? parseInt(courseSelect.value) : null;
+        }
+
+        if (scope === 'chapter') {
+          chapterId = chapterSelect?.value ? parseInt(chapterSelect.value) : null;
+        }
+
+        const duplicateData = {
+          newTitle: newTitle.trim(),
+          title: document.getElementById('title')?.value,
+          description: document.getElementById('description')?.value,
+          notes: document.getElementById('notes')?.value || '',
+          timeLimit: parseInt(document.getElementById('timeLimit')?.value) || undefined,
+          quizType: quizType,
+          attemptLimit: attemptLimit,
+          availableFrom: availableFromVal ? new Date(availableFromVal).toISOString() : null,
+          availableUntil: availableUntilVal ? new Date(availableUntilVal).toISOString() : null,
+          openDurationSeconds: openDurationVal ? parseInt(openDurationVal) * 60 : null,
+          scoreReleaseMode: scoreReleaseMode,
+          visibility: document.getElementById('visibility')?.value || 'PUBLIC',
+          questions: questionsData,
+          courseId,
+          chapterId
+        };
+
+        try {
+          const response = await fetch(`/api/admin/quiz/${quizId}/duplicate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(duplicateData)
+          });
+
+          const result = await response.json();
+
+          if (response.ok) {
+            // Redirect to the new quiz editor
+            window.location.href = `/admin/quizzes/${result.quiz.id}/edit`;
+          } else {
+            alert('Error: ' + (result.error || 'Gagal menduplikasi kuis'));
+            saveAsQuizBtn.disabled = false;
+            saveAsQuizBtn.innerHTML = originalText;
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          alert('Terjadi kesalahan saat menduplikasi kuis');
+          saveAsQuizBtn.disabled = false;
+          saveAsQuizBtn.innerHTML = originalText;
+        }
+      }
+    });
+
     // Delete quiz
     deleteQuizBtn?.addEventListener('click', async () => {
       if (!confirm('Hapus kuis ini? Tindakan ini tidak dapat dibatalkan.')) return;
@@ -2617,6 +2817,77 @@ const normalizedQuestions = Array.isArray(questions)
       saveTimeout = setTimeout(() => {
         saveCurrentQuestion();
       }, 1000); // Save 1 second after last input
+    });
+
+    // Handle append questions from markdown
+    const appendForm = document.getElementById('append-questions-form');
+    const appendStatus = document.getElementById('append-status');
+    const appendBtn = document.getElementById('append-questions-btn');
+
+    appendForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const fileInput = document.getElementById('append-quiz-file');
+      const file = fileInput && fileInput instanceof HTMLInputElement ? fileInput.files?.[0] : null;
+      
+      if (!file) {
+        if (appendStatus) {
+          appendStatus.className = 'p-3 bg-red-50 text-red-700 text-sm rounded-lg';
+          appendStatus.textContent = 'Harap pilih file';
+          appendStatus.classList.remove('hidden');
+        }
+        return;
+      }
+      
+      if (appendBtn) {
+        appendBtn.disabled = true;
+        appendBtn.textContent = 'Menambahkan...';
+      }
+      if (appendStatus) {
+        appendStatus.className = 'p-3 bg-blue-50 text-blue-700 text-sm rounded-lg';
+        appendStatus.textContent = 'Memproses file...';
+        appendStatus.classList.remove('hidden');
+      }
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      try {
+        const response = await fetch(`/api/admin/quiz/${quizId}/append-questions`, {
+          method: 'POST',
+          body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+          if (appendStatus) {
+            appendStatus.className = 'p-3 bg-emerald-50 text-emerald-700 text-sm rounded-lg';
+            appendStatus.textContent = `✓ Berhasil menambahkan ${result.appendedCount} soal. Total soal sekarang: ${result.totalCount}`;
+          }
+          
+          // Reload the page to show new questions
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } else {
+          if (appendStatus) {
+            appendStatus.className = 'p-3 bg-red-50 text-red-700 text-sm rounded-lg';
+            appendStatus.textContent = 'Gagal: ' + (result.error || 'Kesalahan tidak dikenal');
+          }
+        }
+      } catch (error) {
+        if (appendStatus) {
+          appendStatus.className = 'p-3 bg-red-50 text-red-700 text-sm rounded-lg';
+          appendStatus.textContent = 'Gagal menambahkan soal';
+        }
+        console.error(error);
+      } finally {
+        if (appendBtn) {
+          appendBtn.disabled = false;
+          appendBtn.textContent = 'Tambahkan Soal';
+        }
+      }
     });
   </script>
 </Layout>

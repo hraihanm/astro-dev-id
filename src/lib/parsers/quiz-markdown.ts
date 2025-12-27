@@ -132,21 +132,16 @@ export function parseMarkdownQuiz(content: string): QuizQuestion[] {
       
       if (options.length === 0) continue;
       
-      // Extract images
-      const images: string[] = [];
-      const imageRegex = /!\[[^\]]*\]\(([^)]+)\)/g;
-      const imageMatches = block.matchAll(imageRegex);
-      for (const match of imageMatches) {
-        images.push(match[1]);
-      }
+      // Images are now preserved in text as markdown syntax (![](path))
+      // No need to extract them separately
       
       questions.push({
         id: index,
         type: isSimple ? 'multiple-choice' : 'complex-multiple-choice',
-        question: questionText,
-        options,
+        question: questionText, // Images embedded as markdown in text
+        options, // Images embedded as markdown in option text
         correctAnswer: isSimple ? correctAnswers[0] : correctAnswers,
-        images
+        images: [] // Images are now in text, not separate
       });
     } catch (error) {
       console.error(`Error parsing question ${index + 1}:`, error);

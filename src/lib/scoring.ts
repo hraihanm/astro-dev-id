@@ -283,13 +283,16 @@ export async function getUserProgress(userId: number) {
     orderBy: { completedAt: 'desc' }
   });
 
+  // Filter to only released attempts for score calculations
+  const releasedAttempts = attempts.filter(a => a.scoreReleasedAt !== null);
+
   const stats = {
     totalAttempts: attempts.length,
-    averageScore: attempts.length > 0 
-      ? Math.round(attempts.reduce((sum, a) => sum + a.percentage, 0) / attempts.length) 
+    averageScore: releasedAttempts.length > 0 
+      ? Math.round(releasedAttempts.reduce((sum, a) => sum + a.percentage, 0) / releasedAttempts.length) 
       : 0,
-    bestScore: attempts.length > 0 
-      ? Math.max(...attempts.map(a => a.percentage)) 
+    bestScore: releasedAttempts.length > 0 
+      ? Math.max(...releasedAttempts.map(a => a.percentage)) 
       : 0,
     coursesCompleted: new Set(
       attempts
