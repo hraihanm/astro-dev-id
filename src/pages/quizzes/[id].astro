@@ -1197,6 +1197,10 @@ try {
     const totalTimeLimit = quiz.settings?.timeLimit || 0;
     let quizSubmitted = false;
     let hasStarted = false;
+    
+    // Track active time spent (not total elapsed time)
+    let activeTimeSpent = 0;
+    let lastActivityTime = Date.now();
 
     // Load saved progress
     function loadProgress() {
@@ -1210,6 +1214,10 @@ try {
           startTime = progress.startTime || startTime;
           openStartedAt = progress.openStartedAt || openStartedAt;
           hasStarted = progress.hasStarted || false;
+          
+          // Load active time tracking
+          activeTimeSpent = progress.activeTimeSpent || 0;
+          lastActivityTime = progress.lastActivityTime || Date.now();
           
           // Restore timer state
           if (quiz.settings?.timeLimit) {
@@ -1261,6 +1269,8 @@ try {
           startTime: startTime,
           openStartedAt,
           hasStarted,
+          activeTimeSpent,
+          lastActivityTime,
           savedAt: Date.now()
         };
         localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
@@ -1285,6 +1295,21 @@ try {
       } catch (error) {
         console.error('Error saving progress:', error);
       }
+    }
+
+    // Update active time spent based on user activity
+    function updateActiveTime() {
+      const now = Date.now();
+      const timeSinceLastActivity = Math.floor((now - lastActivityTime) / 1000);
+      
+      // Only count time if user has been actively working (within reasonable time frame)
+      // This prevents counting long periods of inactivity (e.g., user left browser open)
+      if (timeSinceLastActivity <= 300) { // 5 minutes threshold for activity
+        activeTimeSpent += timeSinceLastActivity;
+      }
+      
+      lastActivityTime = now;
+      return activeTimeSpent;
     }
 
     // Clear progress
@@ -1520,6 +1545,13 @@ try {
           
           const now = Date.now();
           
+          // Update active time periodically (every minute)
+          if (now - lastSaveTime >= 60000) {
+            updateActiveTime();
+            saveProgress();
+            lastSaveTime = now;
+          }
+          
           // Check if expired
           if (now >= timerEndAt) {
             remainingTime = 0;
@@ -1735,12 +1767,17 @@ try {
       container.innerHTML = `
         <div class="question-card">
           <div class="question-header">
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between gap-2 flex-wrap">
               <span class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Pertanyaan</span>
               ${isComplex ? `
-                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-purple-100 text-purple-700 border border-purple-200">
-                  <Icon name="puzzle" class="w-3.5 h-3.5" />
-                  Pilihan Ganda Kompleks
+                <span class="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200 whitespace-nowrap flex-shrink-0">
+                  <span class="hidden sm:inline">Pilihan Ganda Kompleks</span>
+                  <span class="sm:hidden">Kompleks</span>
+                </span>
+              ` : question.type === 'multiple-choice' ? `
+                <span class="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200 whitespace-nowrap flex-shrink-0">
+                  <span class="hidden sm:inline">Pilihan Tunggal</span>
+                  <span class="sm:hidden">Tunggal</span>
                 </span>
               ` : ''}
             </div>
@@ -1816,6 +1853,9 @@ try {
 
     // Handle option click (supports deselect for single choice)
     window.handleOptionClick = function(questionIndex, optionValue, inputEl) {
+      // Update active time on user interaction
+      updateActiveTime();
+      
       const inputType = inputEl.type;
       if (inputType === 'checkbox') {
         // Complex multiple choice
@@ -1859,6 +1899,9 @@ try {
 
     // Navigation functions
     function goToQuestion(index) {
+      // Update active time on navigation
+      updateActiveTime();
+      
       const clampedIndex = Math.max(0, Math.min(index, quiz.questions.length - 1));
       currentQuestionIndex = clampedIndex;
       renderQuestion();
@@ -1874,6 +1917,9 @@ try {
 
     // Flag button handler
     document.getElementById('flag-btn').onclick = () => {
+      // Update active time on user interaction
+      updateActiveTime();
+      
       if (flaggedQuestions.has(currentQuestionIndex)) {
         flaggedQuestions.delete(currentQuestionIndex);
       } else {
@@ -1944,7 +1990,10 @@ try {
         animationFrameId = null;
       }
       
-      const timeSpent = Math.floor((Date.now() - startTime) / 1000);
+      // Update active time before submission
+      updateActiveTime();
+      
+      const timeSpent = activeTimeSpent;
       
       try {
         const response = await fetch('/api/quiz/submit', {
@@ -2147,6 +2196,11 @@ try {
       hasStarted = true;
       startTime = Date.now();
       openStartedAt = Date.now();
+      
+      // Reset active time tracking when starting quiz
+      activeTimeSpent = 0;
+      lastActivityTime = Date.now();
+      
       saveProgress();
       showLandingOrQuiz();
     }
@@ -2234,6 +2288,14 @@ try {
     // ============================================
     // ANTI-CHEATING MEASURES
     // ============================================
+    
+    // Track page visibility for accurate time tracking
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        // User returned to the tab - update activity timestamp
+        lastActivityTime = Date.now();
+      }
+    });
     
     // Disable right-click on quiz content
     document.getElementById('question-container')?.addEventListener('contextmenu', (e) => {

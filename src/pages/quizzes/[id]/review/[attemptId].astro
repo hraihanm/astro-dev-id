@@ -190,7 +190,7 @@ const userEmail = attemptUser?.email || '';
           <!-- Time column - Fixed width to match sidebar -->
           <div class="hidden lg:flex w-80 border-l border-slate-200 px-4 py-3 items-center justify-center">
             <div class="flex items-center gap-3 text-slate-600 text-sm">
-              <span>⏱️</span>
+              <Icon name="clock" class="w-4 h-4 text-slate-500" />
               <span class="font-medium">Waktu: {formatTime(attempt.timeSpent)}</span>
             </div>
           </div>
@@ -645,20 +645,34 @@ const userEmail = attemptUser?.email || '';
     
     let optionsHtml = '';
     if (question.options) {
+      const isComplex = question.type === 'complex-multiple-choice' || question.type === 'complex';
+      const inputType = isComplex ? 'checkbox' : 'radio';
+      
       optionsHtml = question.options.map((opt, idx) => {
-        const isCorrect = question.correctAnswer === idx + 1 || (question.correctAnswers && question.correctAnswers.includes(idx + 1));
+        const optionValue = idx + 1;
+        const isCorrect = question.correctAnswer === optionValue || (question.correctAnswers && question.correctAnswers.includes(optionValue));
         const isSelected = userAnswer && (
-          Array.isArray(userAnswer) ? userAnswer.includes(idx + 1) : userAnswer === idx + 1
+          Array.isArray(userAnswer) ? userAnswer.includes(optionValue) : userAnswer === optionValue
         );
         
         let optionClass = 'option-label';
-        if (isReleased && isCorrect) optionClass += ' correct';
-        if (isReleased && isSelected && !isCorrect) optionClass += ' incorrect';
+        if (isReleased) {
+          if (isCorrect && isSelected) {
+            // Correct answer that was chosen - green
+            optionClass += ' correct';
+          } else if (isCorrect && !isSelected && isComplex) {
+            // Correct answer that was NOT chosen (only for complex MC) - light green/blue
+            optionClass += ' correct-not-selected';
+          } else if (isSelected && !isCorrect) {
+            // Wrong answer that was selected - red
+            optionClass += ' incorrect';
+          }
+        }
         if (isSelected) optionClass += ' selected';
         
         return `
           <label class="${optionClass}">
-            <input type="radio" disabled ${isSelected ? 'checked' : ''}>
+            <input type="${inputType}" disabled ${isSelected ? 'checked' : ''}>
             <span class="option-letter">${String.fromCharCode(65 + idx)}</span>
             <div class="option-content">${processMarkdownAndLatex(opt)}</div>
           </label>
@@ -850,6 +864,128 @@ const userEmail = attemptUser?.email || '';
     color: #64748b;
   }
   
+  /* Option label styles for review page */
+  .option-label {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 0.875rem 1rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 0.75rem;
+    cursor: default;
+    transition: all 0.2s ease-in-out;
+    margin-bottom: 0.625rem;
+    background-color: #ffffff;
+    position: relative;
+    overflow: hidden;
+    min-height: 3rem;
+  }
+  
+  @media (min-width: 640px) {
+    .option-label {
+      padding: 1rem 1.25rem;
+      margin-bottom: 0.75rem;
+    }
+  }
+  
+  .option-label::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: transparent;
+    transition: all 0.2s ease;
+  }
+  
+  /* Correct answer that was chosen - green */
+  .option-label.correct {
+    background: linear-gradient(to right, #ecfdf5, #ffffff);
+    border-color: #10b981;
+  }
+  
+  .option-label.correct::before {
+    background: linear-gradient(to bottom, #10b981, #059669);
+  }
+  
+  .option-label.correct .option-letter {
+    background: #10b981;
+    color: white;
+  }
+  
+  /* Correct answer that was NOT chosen (complex MC only) - light green/blue */
+  .option-label.correct-not-selected {
+    background: linear-gradient(to right, #f0fdfa, #ffffff);
+    border-color: #5eead4;
+    border-style: dashed;
+  }
+  
+  .option-label.correct-not-selected::before {
+    background: linear-gradient(to bottom, #5eead4, #14b8a6);
+  }
+  
+  .option-label.correct-not-selected .option-letter {
+    background: #5eead4;
+    color: #0f766e;
+    border: 2px solid #14b8a6;
+  }
+  
+  /* Incorrect answer that was selected - red */
+  .option-label.incorrect {
+    background: linear-gradient(to right, #fef2f2, #ffffff);
+    border-color: #ef4444;
+  }
+  
+  .option-label.incorrect::before {
+    background: linear-gradient(to bottom, #ef4444, #dc2626);
+  }
+  
+  .option-label.incorrect .option-letter {
+    background: #ef4444;
+    color: white;
+  }
+  
+  .option-label input[type="radio"],
+  .option-label input[type="checkbox"] {
+    display: none;
+  }
+  
+  .option-letter {
+    flex-shrink: 0;
+    width: 1.75rem;
+    height: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    background: #f1f5f9;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.8125rem;
+    margin-right: 0.875rem;
+    transition: all 0.2s ease;
+  }
+  
+  @media (min-width: 640px) {
+    .option-letter {
+      width: 2rem;
+      height: 2rem;
+      margin-right: 1rem;
+      font-size: 0.875rem;
+    }
+  }
+  
+  .option-content {
+    flex: 1;
+    text-align: left;
+    line-height: 1.5;
+    color: #334155;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    min-height: 1.5rem;
+  }
   
   .math-display {
     margin: 0.75rem 0;

@@ -116,65 +116,104 @@ const normalizedQuestions = Array.isArray(questions)
 
   <div id="quiz-editor-page" class="flex flex-col min-h-screen bg-gray-100 pb-16">
     <!-- Header -->
-    <div class="bg-white shadow-sm px-6 py-4 border-b flex items-center justify-between">
-      <div class="flex items-center space-x-4">
-        <a href="/admin/quizzes" class="inline-flex items-center gap-2 text-gray-700 hover:text-blue-600">
-          <Icon name="arrow-left" class="w-4 h-4" />
-          Kembali ke Kuis
-        </a>
-        <h1 class="text-xl font-bold text-gray-900">{quiz.title}</h1>
-        <div id="unsaved-indicator" class="hidden items-center space-x-2 text-amber-600 bg-amber-50 px-3 py-1 rounded-full text-sm">
-          <span class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
-          <span>Perubahan belum disimpan</span>
+    <div class="bg-white shadow-sm border-b">
+      <div class="px-4 sm:px-6 py-3 sm:py-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+          <!-- Left Section: Navigation & Title -->
+          <div class="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+            <a href="/admin/quizzes" class="inline-flex items-center gap-1.5 text-gray-600 hover:text-blue-600 transition-colors flex-shrink-0" title="Kembali ke Daftar Kuis">
+              <Icon name="arrow-left" class="w-4 h-4" />
+              <span class="hidden sm:inline text-sm font-medium">Kembali</span>
+            </a>
+            <div class="min-w-0 flex-1">
+              <h1 class="text-lg sm:text-xl font-bold text-gray-900 truncate">{quiz.title}</h1>
+            </div>
+            <div id="unsaved-indicator" class="hidden items-center gap-1.5 text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full text-xs sm:text-sm flex-shrink-0">
+              <span class="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
+              <span class="hidden sm:inline">Perubahan belum disimpan</span>
+              <span class="sm:hidden">Belum disimpan</span>
+            </div>
+          </div>
+
+          <!-- Right Section: Actions -->
+          <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            <!-- Widescreen Toggle (Icon Only) -->
+            <button
+              id="system-widescreen-toggle"
+              class="inline-flex items-center justify-center w-9 h-9 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Toggle widescreen mode"
+            >
+              <svg id="system-widescreen-icon-normal" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+              </svg>
+              <svg id="system-widescreen-icon-wide" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
+              </svg>
+            </button>
+
+            <!-- Submissions Button -->
+            <a
+              href={`/admin/quizzes/${quiz.id}/submissions`}
+              class="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600 transition-colors shadow-sm"
+              title="Panel Submission"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span class="hidden sm:inline">Submissions</span>
+            </a>
+
+            <!-- Save Button (Primary) -->
+            <button
+              id="save-quiz-btn"
+              class="save-quiz-btn inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="hidden sm:inline">Simpan</span>
+              <span class="sm:hidden">Simpan</span>
+            </button>
+
+            <!-- More Actions Dropdown -->
+            <div class="relative" id="more-actions-container">
+              <button
+                id="more-actions-btn"
+                class="inline-flex items-center justify-center w-9 h-9 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
+                title="More actions"
+                aria-label="More actions"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                </svg>
+              </button>
+              <div
+                id="more-actions-menu"
+                class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50"
+              >
+                <button
+                  id="save-as-quiz-btn"
+                  class="save-as-quiz-btn w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                  </svg>
+                  <span>Simpan Sebagai</span>
+                </button>
+                <div class="border-t border-gray-100 my-1"></div>
+                <button
+                  id="delete-quiz-btn"
+                  class="delete-quiz-btn w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  <span>Hapus Kuis</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="flex items-center space-x-3">
-        <button
-          id="system-widescreen-toggle"
-          class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg transition-colors"
-          title="Toggle widescreen mode (system-wide)"
-        >
-          <svg id="system-widescreen-icon-normal" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
-          </svg>
-          <svg id="system-widescreen-icon-wide" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
-          </svg>
-          <span class="hidden sm:inline">Widescreen</span>
-        </button>
-        <a
-          href={`/admin/quizzes/${quiz.id}/submissions`}
-          class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600 transition-colors shadow-sm"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-        Panel Submission
-        </a>
-        <button
-          id="save-quiz-btn"
-          class="save-quiz-btn"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-          </svg>
-          Simpan Kuis
-        </button>
-        <button
-          id="save-as-quiz-btn"
-          class="save-as-quiz-btn"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
-          </svg>
-          Simpan Sebagai
-        </button>
-        <button
-          id="delete-quiz-btn"
-          class="delete-quiz-btn"
-        >
-          Hapus Kuis
-        </button>
       </div>
     </div>
 
@@ -432,9 +471,9 @@ const normalizedQuestions = Array.isArray(questions)
           </svg>
         </button>
       </div>
-      <div class="w-80 border-l px-4 py-4 flex items-center justify-between gap-2">
-        <div class="flex items-center gap-2">
-          <select id="question-type-select" class="px-3 py-2 border border-gray-300 rounded-md text-sm">
+      <div class="w-80 border-l px-4 py-4 flex items-center justify-between gap-2 min-w-0">
+        <div class="flex items-center gap-2 min-w-0 flex-1">
+          <select id="question-type-select" class="px-3 py-2 border border-gray-300 rounded-md text-sm flex-shrink-0">
             <option value="multiple-choice">Multiple Choice</option>
             <option value="complex-multiple-choice">Complex Multiple Choice</option>
             <option value="essay">Esai</option>
@@ -442,12 +481,13 @@ const normalizedQuestions = Array.isArray(questions)
           </select>
           <button
             id="add-question-btn"
-            class="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-semibold shadow-sm hover:shadow-md transition-all whitespace-nowrap"
+            class="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-semibold shadow-sm hover:shadow-md transition-all whitespace-nowrap flex-shrink-0"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
             </svg>
-            Tambah
+            <span class="hidden sm:inline">Tambah</span>
+            <span class="sm:hidden">+</span>
           </button>
         </div>
       </div>
@@ -501,6 +541,16 @@ const normalizedQuestions = Array.isArray(questions)
         <!-- Quick Actions -->
         <div class="p-4 space-y-3">
           <button
+          id="duplicate-question-btn"
+          class="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+          Duplikat Soal Ini
+          </button>
+          <button
             id="save-quiz-sidebar-btn"
             class="save-quiz-btn w-full justify-center"
           >
@@ -508,6 +558,16 @@ const normalizedQuestions = Array.isArray(questions)
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
             </svg>
             Simpan Kuis
+          </button>
+          <button
+            id="discard-changes-btn"
+            class="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Batalkan Perubahan
           </button>
           <button
             id="delete-current-btn"
@@ -787,6 +847,9 @@ const normalizedQuestions = Array.isArray(questions)
     }
     
     .preview-container .refresh-preview-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
       background: white;
       color: #4b5563;
       border: 1px solid #d1d5db;
@@ -817,6 +880,8 @@ const normalizedQuestions = Array.isArray(questions)
     }
     
     .preview-section-title {
+      display: flex;
+      align-items: center;
       font-size: 0.875rem;
       font-weight: 700;
       color: #6b7280;
@@ -825,6 +890,48 @@ const normalizedQuestions = Array.isArray(questions)
       margin-bottom: 0.75rem;
       padding-bottom: 0.5rem;
       border-bottom: 2px solid #e5e7eb;
+    }
+    
+    .preview-section-title svg {
+      flex-shrink: 0;
+    }
+
+    /* Question Type Change Select */
+    .question-type-change-select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+      background-position: right 0.5rem center;
+      background-repeat: no-repeat;
+      background-size: 1em 1em;
+      padding-right: 2rem;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    /* Blue for MC types */
+    .question-type-change-select.bg-blue-100:hover {
+      background-color: #bfdbfe;
+    }
+
+    /* Green for Essay */
+    .question-type-change-select.bg-green-100:hover {
+      background-color: #bbf7d0;
+    }
+
+    /* Orange for Fill-in-the-blank */
+    .question-type-change-select.bg-orange-100:hover {
+      background-color: #fed7aa;
+    }
+
+    .question-type-change-select:focus {
+      outline: 2px solid currentColor;
+      outline-offset: 2px;
+    }
+
+    .question-type-change-select option:disabled {
+      color: #9ca3af;
+      font-style: italic;
     }
 
     .preview-question {
@@ -1078,7 +1185,6 @@ const normalizedQuestions = Array.isArray(questions)
       margin-top: 0.875rem;
       margin-right: 0.75rem;
       border: 2px solid #cbd5e1;
-      border-radius: 50%;
       cursor: pointer;
       position: relative;
       flex-shrink: 0;
@@ -1086,6 +1192,12 @@ const normalizedQuestions = Array.isArray(questions)
       background: white;
     }
     
+    /* Radio button - circular */
+    .correct-answer-check[type="radio"] {
+      border-radius: 50%;
+    }
+    
+    /* Checkbox - square with rounded corners */
     .correct-answer-check[type="checkbox"] {
       border-radius: 0.25rem;
     }
@@ -1100,7 +1212,8 @@ const normalizedQuestions = Array.isArray(questions)
       background: #3b82f6;
     }
     
-    .correct-answer-check:checked::after {
+    /* Radio button checked state (circle) */
+    .correct-answer-check[type="radio"]:checked::after {
       content: '';
       position: absolute;
       top: 50%;
@@ -1112,6 +1225,7 @@ const normalizedQuestions = Array.isArray(questions)
       background: white;
     }
     
+    /* Checkbox checked state (checkmark) - must override radio */
     .correct-answer-check[type="checkbox"]:checked::after {
       content: '✓';
       position: absolute;
@@ -1122,6 +1236,15 @@ const normalizedQuestions = Array.isArray(questions)
       font-size: 0.75rem;
       font-weight: bold;
       line-height: 1;
+      width: auto;
+      height: auto;
+      border-radius: 0;
+      background: transparent;
+    }
+    
+    /* Ensure checkbox doesn't show radio circle */
+    .correct-answer-check[type="checkbox"]:checked {
+      border-radius: 0.25rem;
     }
     
     .correct-answer-check:focus {
@@ -1192,30 +1315,30 @@ const normalizedQuestions = Array.isArray(questions)
       cursor: not-allowed;
     }
     
-    /* Save As Quiz Button */
+    /* Save As Quiz Button - Now in dropdown */
     .save-as-quiz-btn {
-      display: inline-flex;
+      display: flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.625rem 1.25rem;
-      background: white;
-      color: #059669;
-      border: 1.5px solid #6ee7b7;
-      border-radius: 0.5rem;
-      font-weight: 600;
+      width: 100%;
+      text-align: left;
+      padding: 0.625rem 1rem;
+      background: transparent;
+      color: #374151;
+      border: none;
+      font-weight: 500;
       font-size: 0.875rem;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.15s ease;
     }
     
     .save-as-quiz-btn:hover:not(:disabled) {
-      background: #ecfdf5;
-      border-color: #34d399;
-      color: #047857;
+      background: #f9fafb;
+      color: #111827;
     }
     
     .save-as-quiz-btn:active:not(:disabled) {
-      background: #d1fae5;
+      background: #f3f4f6;
     }
     
     .save-as-quiz-btn:disabled {
@@ -1223,25 +1346,25 @@ const normalizedQuestions = Array.isArray(questions)
       cursor: not-allowed;
     }
     
-    /* Delete Quiz Button - Simple Outline */
+    /* Delete Quiz Button - Now in dropdown */
     .delete-quiz-btn {
-      display: inline-flex;
+      display: flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.625rem 1.25rem;
-      background: white;
+      width: 100%;
+      text-align: left;
+      padding: 0.625rem 1rem;
+      background: transparent;
       color: #dc2626;
-      border: 1.5px solid #fca5a5;
-      border-radius: 0.5rem;
-      font-weight: 600;
+      border: none;
+      font-weight: 500;
       font-size: 0.875rem;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.15s ease;
     }
     
     .delete-quiz-btn:hover:not(:disabled) {
       background: #fef2f2;
-      border-color: #f87171;
       color: #b91c1c;
     }
     
@@ -1585,12 +1708,27 @@ const normalizedQuestions = Array.isArray(questions)
       }
     }
     
+    // Update button states based on current state
+    function updateButtonStates() {
+      // Update duplicate button - enabled if there's at least one question
+      if (duplicateQuestionBtn) {
+        duplicateQuestionBtn.disabled = questionsData.length === 0;
+      }
+      
+      // Update discard button - enabled if there are unsaved changes
+      if (discardChangesBtn) {
+        const hasChanges = hasUnsavedChanges || localStorage.getItem(STORAGE_KEY) !== null;
+        discardChangesBtn.disabled = !hasChanges;
+      }
+    }
+    
     // Update unsaved changes indicator
     function updateUnsavedIndicator(hasChanges) {
       const indicator = document.getElementById('unsaved-indicator');
       if (indicator) {
         indicator.style.display = hasChanges ? 'flex' : 'none';
       }
+      updateButtonStates(); // Also update button states
     }
     
     // Initialize from storage or server
@@ -1599,6 +1737,7 @@ const normalizedQuestions = Array.isArray(questions)
     let questionsData = stored?.questionsData || [...questions];
     let currentQuestionIndex = stored?.currentQuestionIndex || 0;
     let draggedIndex = null;
+    let hasUnsavedChanges = stored?.hasUnsavedChanges || false;
     
     // Delta save tracking
     const originalQuestionsMap = new Map(); // id -> JSON snapshot for dirty detection
@@ -1628,7 +1767,12 @@ const normalizedQuestions = Array.isArray(questions)
     const saveAsQuizBtn = document.getElementById('save-as-quiz-btn');
     const deleteQuizBtn = document.getElementById('delete-quiz-btn');
     const deleteCurrentBtn = document.getElementById('delete-current-btn');
+    const duplicateQuestionBtn = document.getElementById('duplicate-question-btn');
+    const discardChangesBtn = document.getElementById('discard-changes-btn');
     const saveErrorAlert = document.getElementById('save-error-alert');
+    
+    // Store original questions for discard functionality
+    const originalQuestions = JSON.parse(JSON.stringify(questions));
 
     // Settings toggle
     const toggleSettingsBtn = document.getElementById('toggle-settings-btn');
@@ -1645,6 +1789,46 @@ const normalizedQuestions = Array.isArray(questions)
         settingsChevron.classList.remove('rotate-180');
       }
     });
+
+    // More Actions Dropdown Menu Toggle
+    const moreActionsBtn = document.getElementById('more-actions-btn');
+    const moreActionsMenu = document.getElementById('more-actions-menu');
+    
+    if (moreActionsBtn && moreActionsMenu) {
+      // Toggle dropdown on button click
+      moreActionsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isHidden = moreActionsMenu.classList.contains('hidden');
+        if (isHidden) {
+          moreActionsMenu.classList.remove('hidden');
+        } else {
+          moreActionsMenu.classList.add('hidden');
+        }
+      });
+
+      // Close dropdown when clicking outside
+      document.addEventListener('click', (e) => {
+        const container = document.getElementById('more-actions-container');
+        if (container && !container.contains(e.target)) {
+          moreActionsMenu.classList.add('hidden');
+        }
+      });
+
+      // Close dropdown when clicking on menu items
+      saveAsQuizBtn?.addEventListener('click', () => {
+        moreActionsMenu.classList.add('hidden');
+      });
+      deleteQuizBtn?.addEventListener('click', () => {
+        moreActionsMenu.classList.add('hidden');
+      });
+
+      // Close dropdown on Escape key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !moreActionsMenu.classList.contains('hidden')) {
+          moreActionsMenu.classList.add('hidden');
+        }
+      });
+    }
 
     // System-wide Widescreen mode toggle - Initialize immediately
     (function initSystemWidescreen() {
@@ -2248,6 +2432,9 @@ const normalizedQuestions = Array.isArray(questions)
 
         questionGrid.appendChild(btn);
       });
+      
+      // Update button states after rendering
+      updateButtonStates();
     }
 
     // Render navigation
@@ -2303,7 +2490,7 @@ const normalizedQuestions = Array.isArray(questions)
       if (questionsData.length === 0) return;
       
       const question = questionsData[currentQuestionIndex];
-      const editor = questionEditor.querySelector('.question-edit-form');
+      const editor = questionEditor.querySelector('.question-editor-form') || questionEditor.querySelector('.question-edit-form');
       if (!editor) return;
       
       // Flag to track if any changes were made
@@ -2313,11 +2500,17 @@ const normalizedQuestions = Array.isArray(questions)
         question.question = editor.querySelector('.question-text')?.value || '';
         question.metadata.solution = editor.querySelector('.solution-text')?.value || '';
         
+        // Preserve all option inputs (including empty ones) to maintain structure
         const options = [];
         editor.querySelectorAll('.option-text').forEach(input => {
-          const val = input.value.trim();
-          if (val) options.push(val);
+          options.push(input.value); // Keep original value, don't trim or filter
         });
+        // Ensure at least 2 options
+        if (options.length < 2) {
+          while (options.length < 2) {
+            options.push('');
+          }
+        }
         question.options = options;
 
         if (question.type === 'complex-multiple-choice') {
@@ -2426,11 +2619,17 @@ const normalizedQuestions = Array.isArray(questions)
                 <div class="flex items-center justify-between">
                   <div>
                     <h3 class="text-xl font-bold text-gray-900">Soal ${questionNumber}</h3>
-                    <p class="text-sm text-gray-500 mt-1">
-                      <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200">
-                        ${typeLabels[question.type]}
-                      </span>
-                    </p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <select 
+                      class="question-type-change-select inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200 cursor-pointer hover:bg-blue-200 transition-colors"
+                      data-current-type="${question.type}"
+                    >
+                      <option value="multiple-choice" ${question.type === 'multiple-choice' ? 'selected' : ''}>Pilihan Tunggal</option>
+                      <option value="complex-multiple-choice" ${question.type === 'complex-multiple-choice' ? 'selected' : ''}>Pilihan Ganda</option>
+                      <option value="essay" disabled>Esai (akan menghapus pilihan)</option>
+                      <option value="fill-in-the-blank" disabled>Isian Singkat (akan menghapus pilihan)</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -2514,7 +2713,11 @@ const normalizedQuestions = Array.isArray(questions)
               <div>
                 <h4>Live Preview</h4>
                 <button type="button" class="refresh-preview-btn">
-                  🔄 Refresh
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-9-9"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 3v9h-9"></path>
+                  </svg>
+                  <span>Refresh</span>
                 </button>
               </div>
               <div class="preview-content">
@@ -2538,11 +2741,17 @@ const normalizedQuestions = Array.isArray(questions)
                 <div class="flex items-center justify-between">
                   <div>
                     <h3 class="text-xl font-bold text-gray-900">Soal ${questionNumber}</h3>
-                    <p class="text-sm text-gray-500 mt-1">
-                      <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-green-100 text-green-700 border border-green-200">
-                        Soal Essay
-                      </span>
-                    </p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <select 
+                      class="question-type-change-select inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-green-100 text-green-700 border border-green-200 cursor-pointer hover:bg-green-200 transition-colors"
+                      data-current-type="${question.type}"
+                    >
+                      <option value="multiple-choice">Pilihan Tunggal</option>
+                      <option value="complex-multiple-choice">Pilihan Ganda</option>
+                      <option value="essay" selected>Esai</option>
+                      <option value="fill-in-the-blank">Isian Singkat</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -2620,11 +2829,17 @@ const normalizedQuestions = Array.isArray(questions)
                 <div class="flex items-center justify-between">
                   <div>
                     <h3 class="text-xl font-bold text-gray-900">Soal ${questionNumber}</h3>
-                    <p class="text-sm text-gray-500 mt-1">
-                      <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-orange-100 text-orange-700 border border-orange-200">
-                        Isian Singkat
-                      </span>
-                    </p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <select 
+                      class="question-type-change-select inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-orange-100 text-orange-700 border border-orange-200 cursor-pointer hover:bg-orange-200 transition-colors"
+                      data-current-type="${question.type}"
+                    >
+                      <option value="multiple-choice">Pilihan Tunggal</option>
+                      <option value="complex-multiple-choice">Pilihan Ganda</option>
+                      <option value="essay">Esai</option>
+                      <option value="fill-in-the-blank" selected>Isian Singkat</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -2708,7 +2923,7 @@ const normalizedQuestions = Array.isArray(questions)
     }
 
     function setupQuestionEventListeners(question) {
-      const editor = questionEditor.querySelector('.question-edit-form');
+      const editor = questionEditor.querySelector('.question-editor-form') || questionEditor.querySelector('.question-edit-form');
 
       // Auto-update preview
       const questionTextarea = editor.querySelector('.question-text, .question-template');
@@ -2728,6 +2943,130 @@ const normalizedQuestions = Array.isArray(questions)
       const refreshBtn = editor.querySelector('.refresh-preview-btn');
       if (refreshBtn) {
         refreshBtn.addEventListener('click', () => updatePreview(question));
+      }
+
+      // Question type change dropdown
+      const typeChangeSelect = editor.querySelector('.question-type-change-select');
+      if (typeChangeSelect) {
+        typeChangeSelect.addEventListener('change', (e) => {
+          const newType = e.target.value;
+          const currentType = e.target.dataset.currentType;
+          
+          // If changing to same type, do nothing
+          if (newType === currentType) {
+            e.target.value = currentType; // Reset to current
+            return;
+          }
+          
+          // Show warning for destructive changes
+          let showWarning = false;
+          let warningMessage = '';
+          
+          // Changing FROM MC TO Essay/Fill-in-the-blank (will delete options)
+          if ((currentType === 'multiple-choice' || currentType === 'complex-multiple-choice') && 
+              (newType === 'essay' || newType === 'fill-in-the-blank')) {
+            showWarning = true;
+            warningMessage = `⚠️ PERINGATAN: Mengubah tipe soal ke "${newType === 'essay' ? 'Esai' : 'Isian Singkat'}" akan menghapus semua pilihan jawaban yang sudah ada.\n\nApakah Anda yakin ingin melanjutkan?`;
+          }
+          // Changing FROM Essay/Fill-in-the-blank TO MC (will delete essay/fill data)
+          else if ((currentType === 'essay' || currentType === 'fill-in-the-blank') && 
+                   (newType === 'multiple-choice' || newType === 'complex-multiple-choice')) {
+            showWarning = true;
+            const currentTypeName = currentType === 'essay' ? 'Esai' : 'Isian Singkat';
+            warningMessage = `⚠️ PERINGATAN: Mengubah tipe soal dari "${currentTypeName}" ke "${newType === 'multiple-choice' ? 'Pilihan Tunggal' : 'Pilihan Ganda'}" akan menghapus data ${currentTypeName} yang sudah ada.\n\nApakah Anda yakin ingin melanjutkan?`;
+          }
+          // Changing between Essay and Fill-in-the-blank
+          else if ((currentType === 'essay' && newType === 'fill-in-the-blank') || 
+                   (currentType === 'fill-in-the-blank' && newType === 'essay')) {
+            showWarning = true;
+            warningMessage = `⚠️ PERINGATAN: Mengubah tipe soal akan menghapus data tipe sebelumnya.\n\nApakah Anda yakin ingin melanjutkan?`;
+          }
+          
+          if (showWarning) {
+            const confirmed = confirm(warningMessage);
+            if (!confirmed) {
+              e.target.value = currentType; // Reset to current
+              return;
+            }
+          }
+          
+          // Save current question first
+          saveCurrentQuestion();
+          
+          // Change question type
+          const currentQuestion = questionsData[currentQuestionIndex];
+          const oldType = currentQuestion.type;
+          currentQuestion.type = newType;
+          
+          // Clean up old type data and initialize new type data
+          if (oldType === 'essay' || oldType === 'fill-in-the-blank') {
+            // Remove essay/fill-in-the-blank specific data
+            delete currentQuestion.maxWords;
+            delete currentQuestion.allowFileUpload;
+            delete currentQuestion.rubric;
+            delete currentQuestion.questionTemplate;
+            delete currentQuestion.blanks;
+          }
+          
+          // Handle switching between MC types - preserve options!
+          if ((oldType === 'multiple-choice' || oldType === 'complex-multiple-choice') &&
+              (newType === 'multiple-choice' || newType === 'complex-multiple-choice')) {
+            // IMPORTANT: Options are already saved by saveCurrentQuestion() above
+            // Just ensure we have at least empty options if somehow missing
+            if (!currentQuestion.options) {
+              currentQuestion.options = ['', ''];
+            }
+            
+            // Convert between single and multiple answer formats
+            if (oldType === 'multiple-choice' && newType === 'complex-multiple-choice') {
+              // Convert from single to multiple: preserve the selected answer
+              if (currentQuestion.correctAnswer !== undefined) {
+                currentQuestion.correctAnswers = [currentQuestion.correctAnswer];
+              } else {
+                currentQuestion.correctAnswers = [1];
+              }
+              delete currentQuestion.correctAnswer;
+            } else if (oldType === 'complex-multiple-choice' && newType === 'multiple-choice') {
+              // Convert from multiple to single: use first selected answer, or default to 1
+              if (currentQuestion.correctAnswers && currentQuestion.correctAnswers.length > 0) {
+                currentQuestion.correctAnswer = currentQuestion.correctAnswers[0];
+              } else {
+                currentQuestion.correctAnswer = 1;
+              }
+              delete currentQuestion.correctAnswers;
+            }
+          } else {
+            // Switching to/from non-MC types - clean up MC data
+            if (oldType === 'multiple-choice' || oldType === 'complex-multiple-choice') {
+              delete currentQuestion.options;
+              delete currentQuestion.correctAnswer;
+              delete currentQuestion.correctAnswers;
+            }
+          }
+          
+          // Initialize new type data (only if not MC to MC switch)
+          if (newType === 'essay') {
+            currentQuestion.maxWords = undefined;
+            currentQuestion.allowFileUpload = false;
+            currentQuestion.rubric = '';
+          } else if (newType === 'fill-in-the-blank') {
+            currentQuestion.questionTemplate = currentQuestion.question || '';
+            currentQuestion.blanks = [];
+          } else if (newType === 'multiple-choice' || newType === 'complex-multiple-choice') {
+            // Only initialize if not switching from another MC type
+            if (oldType !== 'multiple-choice' && oldType !== 'complex-multiple-choice') {
+              currentQuestion.options = ['', ''];
+              if (newType === 'complex-multiple-choice') {
+                currentQuestion.correctAnswers = [1];
+              } else {
+                currentQuestion.correctAnswer = 1;
+              }
+            }
+          }
+          
+          // Re-render the question editor
+          renderCurrentQuestion();
+        });
       }
 
       // Add option
@@ -2828,7 +3167,7 @@ const normalizedQuestions = Array.isArray(questions)
       const previewContent = questionEditor.querySelector('.preview-content');
       if (!previewContent) return;
 
-      const editor = questionEditor.querySelector('.question-edit-form');
+      const editor = questionEditor.querySelector('.question-editor-form') || questionEditor.querySelector('.question-edit-form');
       const questionText = editor.querySelector('.question-text')?.value || '';
       const questionHtml = renderMarkdown(questionText || 'No question entered');
 
@@ -2861,18 +3200,37 @@ const normalizedQuestions = Array.isArray(questions)
 
         previewContent.innerHTML = `
           <div class="preview-section">
-            <div class="preview-section-title">📝 Pertanyaan</div>
+            <div class="preview-section-title">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 20h4l10.5-10.5a2.828 2.828 0 10-4-4L4 16v4z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 6.5l4 4"></path>
+              </svg>
+              <span>Pertanyaan</span>
+            </div>
             <div class="preview-question">${questionHtml}</div>
           </div>
           
           <div class="preview-section">
-            <div class="preview-section-title">✓ Pilihan Jawaban</div>
+            <div class="preview-section-title">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21a9 9 0 100-18 9 9 0 000 18z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"></path>
+              </svg>
+              <span>Pilihan Jawaban</span>
+            </div>
             ${optionsHtml || '<p class="text-sm text-gray-500 italic">No options yet</p>'}
           </div>
           
           ${solutionHtml ? `
             <div class="preview-section preview-solution">
-              <div class="preview-section-title">💡 Pembahasan</div>
+              <div class="preview-section-title">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 18h6"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 22h4"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2a7 7 0 017 7c0 2.3-1.2 4.3-3 5.5-.7.5-1 1.2-1 2v1h-6v-1c0-.8-.4-1.5-1-2A6.97 6.97 0 015 9a7 7 0 017-7z"></path>
+                </svg>
+                <span>Pembahasan</span>
+              </div>
               <div class="preview-solution-content">${solutionHtml}</div>
             </div>
           ` : ''}
@@ -2919,6 +3277,8 @@ const normalizedQuestions = Array.isArray(questions)
       newQuestionIds.add(newQuestion.id); // Track as new question for delta save
       currentQuestionIndex = questionsData.length - 1;
       
+      hasUnsavedChanges = true;
+      saveToStorage();
       renderQuestionGrid();
       renderCurrentQuestion();
     });
@@ -2950,6 +3310,76 @@ const normalizedQuestions = Array.isArray(questions)
       
       renderQuestionGrid();
       renderCurrentQuestion();
+      updateButtonStates();
+    });
+
+    // Duplicate current question
+    duplicateQuestionBtn?.addEventListener('click', () => {
+      if (questionsData.length === 0) return;
+      
+      // Save current question first
+      saveCurrentQuestion();
+      
+      const currentQuestion = questionsData[currentQuestionIndex];
+      if (!currentQuestion) return;
+      
+      // Deep clone the question
+      const duplicatedQuestion = JSON.parse(JSON.stringify(currentQuestion));
+      
+      // Generate new ID and update counter
+      duplicatedQuestion.id = ++questionCounter;
+      
+      // Remove any server-side IDs from nested objects
+      if (duplicatedQuestion.metadata) {
+        delete duplicatedQuestion.metadata.id;
+      }
+      
+      // Mark as new question for delta save
+      newQuestionIds.add(duplicatedQuestion.id);
+      
+      // Insert after current question
+      questionsData.splice(currentQuestionIndex + 1, 0, duplicatedQuestion);
+      currentQuestionIndex = currentQuestionIndex + 1;
+      
+      hasUnsavedChanges = true;
+      saveToStorage();
+      renderQuestionGrid();
+      renderCurrentQuestion();
+      updateButtonStates();
+    });
+
+    // Discard all changes
+    discardChangesBtn?.addEventListener('click', () => {
+      if (!confirm('Apakah Anda yakin ingin membatalkan semua perubahan? Semua perubahan yang belum disimpan akan hilang.')) {
+        return;
+      }
+      
+      // Reset to original questions
+      questionsData = JSON.parse(JSON.stringify(originalQuestions));
+      
+      // Reset tracking
+      questionCounter = questions.length > 0 ? Math.max(...questions.map(q => q.id || 0)) : 0;
+      currentQuestionIndex = 0;
+      newQuestionIds.clear();
+      deletedQuestionIds.clear();
+      questionsReordered = false;
+      
+      // Rebuild original snapshots
+      originalQuestionsMap.clear();
+      questions.forEach(q => {
+        if (q.id !== undefined) {
+          originalQuestionsMap.set(q.id, JSON.stringify(q));
+        }
+      });
+      
+      // Clear localStorage
+      clearStorage();
+      hasUnsavedChanges = false;
+      
+      // Re-render everything
+      renderQuestionGrid();
+      renderCurrentQuestion();
+      updateButtonStates();
     });
 
     // Save quiz (shared function)
@@ -3214,6 +3644,9 @@ const normalizedQuestions = Array.isArray(questions)
     if (stored?.hasUnsavedChanges) {
       updateUnsavedIndicator(true);
     }
+    
+    // Initialize button states
+    updateButtonStates();
     
     // Auto-save on input changes (debounced)
     let saveTimeout = null;

@@ -309,6 +309,19 @@ const icons = {
       { d: 'M4 12h16', strokeLinecap: 'round' },
       { d: 'M4 18h16', strokeLinecap: 'round' }
     ]
+  },
+  'check-circle': {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M12 21a9 9 0 100-18 9 9 0 000 18z' },
+      { d: 'M9 12l2 2 4-4', strokeLinecap: 'round', strokeLinejoin: 'round' }
+    ]
+  },
+  check: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M5 13l4 4L19 7', strokeLinecap: 'round', strokeLinejoin: 'round' }
+    ]
   }
 } as const satisfies Record<string, IconDef>;
 

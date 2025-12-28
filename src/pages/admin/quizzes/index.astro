@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import Layout from '../../../components/Layout.astro';
+import Icon from '../../../components/icons/Icon.astro';
 import { getAllQuizzes } from '../../../lib/quizzes';
 import { prisma } from '../../../lib/db';
 import { requireAdmin } from '../../../lib/auth-guard';
@@ -155,6 +156,8 @@ if (quizIds.length > 0) {
               const quizType = quiz.quizType || settings.quizType || 'latihan';
               const isTryout = quizType === 'tryout';
               const pendingCount = pendingCounts[quiz.id] || 0;
+              const visibility = quiz.visibility || 'PUBLIC';
+              const isPublic = visibility === 'PUBLIC';
               
               return (
                 <div class="group bg-white rounded-xl border border-slate-200 p-5 hover:border-green-300 hover:shadow-md transition-all duration-200 flex flex-col h-full">
@@ -164,13 +167,32 @@ if (quizIds.length > 0) {
                         {quiz.title}
                       </h3>
                     </a>
-                    <span class={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                      isTryout 
-                        ? 'bg-purple-100 text-purple-700' 
-                        : 'bg-green-100 text-green-700'
-                    }`}>
-                      {isTryout ? 'Try Out' : 'Latihan'}
-                    </span>
+                    <div class="flex items-center gap-2 ml-2 flex-shrink-0">
+                      <span class={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        isTryout 
+                          ? 'bg-purple-100 text-purple-700' 
+                          : 'bg-green-100 text-green-700'
+                      }`}>
+                        {isTryout ? 'Try Out' : 'Latihan'}
+                      </span>
+                      <span class={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                        isPublic
+                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                          : 'bg-slate-50 text-slate-700 border border-slate-200'
+                      }`} title={isPublic ? 'Publik - Dapat diakses semua pengguna' : 'Privat - Hanya dapat diakses admin atau melalui kelas'}>
+                        {isPublic ? (
+                          <>
+                            <Icon name="globe" class="w-3 h-3" />
+                            <span class="hidden sm:inline">Publik</span>
+                          </>
+                        ) : (
+                          <>
+                            <Icon name="lock" class="w-3 h-3" />
+                            <span class="hidden sm:inline">Privat</span>
+                          </>
+                        )}
+                      </span>
+                    </div>
                   </div>
                   
                   {settings.description && (
