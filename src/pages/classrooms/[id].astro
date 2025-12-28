@@ -141,31 +141,13 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
                   </span>
                 )}
                 {(membership?.role === 'TEACHER' || user?.role === 'admin') && (
-                  <div class="flex items-center gap-2">
-                    <button
-                      type="button"
-                      id="edit-class-btn"
-                      class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-800 transition"
-                    >
-                      Edit kelas
-                    </button>
-                    <button
-                      type="button"
-                      id="toggle-privacy-btn"
-                      class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition"
-                    >
-                      {classroom.isPrivate ? 'Jadikan publik' : 'Jadikan privat'}
-                    </button>
-                    {user?.role === 'admin' && (
-                      <button
-                        type="button"
-                        id="delete-class-btn"
-                        class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition"
-                      >
-                        Hapus
-                      </button>
-                    )}
-                  </div>
+                  <a
+                    href={`/classrooms/${classroom.id}/settings`}
+                    class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-800 transition"
+                  >
+                    <Icon name="settings-sliders" class="w-4 h-4" />
+                    Pengaturan
+                  </a>
                 )}
               </div>
             </div>
@@ -201,11 +183,10 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
           </div>
         </header>
 
-        <div class="sticky top-[70px] md:top-[84px] lg:top-[90px] z-30 -mx-2 px-3 py-2 text-sm font-semibold flex items-center gap-4 rounded-xl border border-slate-200 bg-white/95 backdrop-blur shadow-sm">
-          <button type="button" class="tab-btn text-slate-600 hover:text-blue-700" data-tab="stream">Stream</button>
-          <button type="button" class="tab-btn text-slate-600 hover:text-blue-700" data-tab="classwork">Classwork</button>
-          <button type="button" class="tab-btn text-slate-600 hover:text-blue-700" data-tab="people">People</button>
-          <span class="ml-auto hidden text-xs text-slate-500 md:inline">Tab bar stays visible while scrolling</span>
+        <div class="sticky top-[70px] md:top-[84px] lg:top-[90px] z-30 mt-4 px-4 py-2.5 text-sm font-semibold flex items-center gap-6 rounded-xl border border-slate-200 bg-white/95 backdrop-blur shadow-sm">
+          <button type="button" class="tab-btn text-slate-600 hover:text-blue-700 transition-colors" data-tab="stream">Stream</button>
+          <button type="button" class="tab-btn text-slate-600 hover:text-blue-700 transition-colors" data-tab="classwork">Classwork</button>
+          <button type="button" class="tab-btn text-slate-600 hover:text-blue-700 transition-colors" data-tab="people">People</button>
         </div>
 
         {user && (membership?.status === 'ACTIVE' || user.role === 'admin') ? (
@@ -440,9 +421,9 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
                   <div class="flex items-center justify-between flex-wrap gap-2">
                     <div>
                       <h3 class="text-sm font-semibold text-slate-800">Tambah anggota langsung</h3>
-                      <p class="text-xs text-slate-500">Masukkan ID atau email, bisa pisahkan dengan koma untuk banyak sekaligus.</p>
+                      <p class="text-xs text-slate-500">Masukkan ID atau email, bisa pisahkan dengan koma untuk banyak sekaligus. Anggota baru akan ditambahkan sebagai siswa.</p>
                     </div>
-                    <span class="text-[11px] rounded-full bg-blue-50 px-2 py-1 text-blue-700 border border-blue-100">Admin/Guru</span>
+                    <span class="text-[11px] rounded-full bg-slate-100 px-2 py-1 text-slate-700 border border-slate-200">Default: Siswa</span>
                   </div>
                   <div class="flex flex-col gap-2 sm:flex-row">
                     <input
@@ -488,6 +469,7 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
                         {members.filter((m) => m.role !== 'STUDENT').map((m) => {
                       const displayName = (m.user.name && m.user.name.trim()) ? m.user.name.trim() : (m.user.email || '');
                           const initial = (displayName || m.user.email || '?').trim().charAt(0).toUpperCase();
+                          const canKick = user?.role === 'admin' && m.userId !== user.id;
                           return (
                             <div
                               class="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
@@ -498,13 +480,24 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
                               <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-blue-500 text-white font-semibold flex items-center justify-center">
                                 {initial}
                               </div>
-                              <div class="min-w-0">
+                              <div class="min-w-0 flex-1">
                                 <div class="font-semibold text-slate-900 truncate">{displayName}</div>
                                 <div class="text-xs text-slate-500 truncate">{m.user.email}</div>
                               </div>
-                              <span class="ml-auto text-[11px] px-2 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-100">
+                              <span class="text-[11px] px-2 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-100">
                                 {m.role}
                               </span>
+                              {canKick && (
+                                <button
+                                  type="button"
+                                  class="kick-member-btn px-2.5 py-1 text-xs font-semibold rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition-colors border border-red-100"
+                                  data-user-id={m.userId}
+                                  data-classroom={classroom.id}
+                                  title="Keluarkan anggota"
+                                >
+                                  Keluarkan
+                                </button>
+                              )}
                             </div>
                           );
                         })}
@@ -517,6 +510,8 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
                         {members.filter((m) => m.role === 'STUDENT').map((m) => {
                       const displayName = (m.user.name && m.user.name.trim()) ? m.user.name.trim() : (m.user.email || '');
                           const initial = (displayName || m.user.email || '?').trim().charAt(0).toUpperCase();
+                          const canKick = user?.role === 'admin' && m.userId !== user.id;
+                          const canPromote = (membership?.role === 'TEACHER' || user?.role === 'admin') && m.userId !== user.id;
                           return (
                             <div
                               class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2"
@@ -527,13 +522,35 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
                               <div class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 text-slate-700 font-semibold flex items-center justify-center">
                                 {initial}
                               </div>
-                              <div class="min-w-0">
+                              <div class="min-w-0 flex-1">
                                 <div class="font-semibold text-slate-900 truncate">{displayName}</div>
                                 <div class="text-xs text-slate-500 truncate">{m.user.email}</div>
                               </div>
-                              <span class="ml-auto text-[11px] px-2 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                              <span class="text-[11px] px-2 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
                                 Siswa
                               </span>
+                              {canPromote && (
+                                <button
+                                  type="button"
+                                  class="promote-member-btn px-2.5 py-1 text-xs font-semibold rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors border border-blue-100"
+                                  data-user-id={m.userId}
+                                  data-classroom={classroom.id}
+                                  title="Promosikan menjadi guru"
+                                >
+                                  Jadikan Guru
+                                </button>
+                              )}
+                              {canKick && (
+                                <button
+                                  type="button"
+                                  class="kick-member-btn px-2.5 py-1 text-xs font-semibold rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition-colors border border-red-100"
+                                  data-user-id={m.userId}
+                                  data-classroom={classroom.id}
+                                  title="Keluarkan anggota"
+                                >
+                                  Keluarkan
+                                </button>
+                              )}
                             </div>
                           );
                         })}
@@ -866,6 +883,62 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
     });
   });
 
+  // Promote students to teacher
+  document.querySelectorAll('.promote-member-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const uid = btn.getAttribute('data-user-id');
+      const cid = btn.getAttribute('data-classroom');
+      if (!uid || !cid) return;
+      if (!confirm('Promosikan siswa ini menjadi guru kelas?')) return;
+      btn.textContent = 'Mempromosikan...';
+      btn.setAttribute('disabled', 'true');
+      try {
+        const res = await fetch(`/api/classrooms/${cid}/members`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: uid, role: 'TEACHER', status: 'ACTIVE' })
+        });
+        if (res.ok) {
+          window.location.reload();
+        } else {
+          const body = await res.json().catch(() => ({}));
+          alert(body.error || 'Gagal mempromosikan anggota');
+        }
+      } finally {
+        btn.textContent = 'Jadikan Guru';
+        btn.removeAttribute('disabled');
+      }
+    });
+  });
+
+  // Kick members (admin only)
+  document.querySelectorAll('.kick-member-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const uid = btn.getAttribute('data-user-id');
+      const cid = btn.getAttribute('data-classroom');
+      if (!uid || !cid) return;
+      if (!confirm('Keluarkan anggota ini dari kelas?')) return;
+      btn.textContent = 'Mengeluarkan...';
+      btn.setAttribute('disabled', 'true');
+      try {
+        const res = await fetch(`/api/classrooms/${cid}/members`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: uid })
+        });
+        if (res.ok) {
+          window.location.reload();
+        } else {
+          const body = await res.json().catch(() => ({}));
+          alert(body.error || 'Gagal mengeluarkan anggota');
+        }
+      } finally {
+        btn.textContent = 'Keluarkan';
+        btn.removeAttribute('disabled');
+      }
+    });
+  });
+
   // Approve all pending
   const approveAllBtn = document.querySelector('#approve-all-btn');
   if (approveAllBtn) {
@@ -893,80 +966,6 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
     });
   }
 
-  // Toggle privacy (teacher/admin)
-  const toggleBtn = document.querySelector('#toggle-privacy-btn');
-  if (toggleBtn && classId) {
-    toggleBtn.addEventListener('click', async () => {
-      const makePrivate = toggleBtn.textContent?.includes('privat');
-      toggleBtn.textContent = 'Menyimpan...';
-      toggleBtn.setAttribute('disabled', 'true');
-      try {
-        const res = await fetch(`/api/classrooms/${classId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: classTitle || 'Kelas',
-            description: classDesc || '',
-            isPrivate: makePrivate
-          })
-        });
-        if (res.ok) {
-          window.location.reload();
-        } else {
-          const data = await res.json().catch(() => ({}));
-          alert(data.error || 'Gagal mengubah privasi');
-        }
-      } finally {
-        toggleBtn.textContent = makePrivate ? 'Jadikan publik' : 'Jadikan privat';
-        toggleBtn.removeAttribute('disabled');
-      }
-    });
-  }
-
-      const deleteBtn = document.querySelector('#delete-class-btn');
-      if (deleteBtn) {
-        deleteBtn.addEventListener('click', async () => {
-          if (!confirm('Hapus kelas ini? Semua post dan membership akan hilang.')) return;
-          deleteBtn.textContent = 'Menghapus...';
-          deleteBtn.setAttribute('disabled', 'true');
-          try {
-            const res = await fetch(`/api/classrooms/${classId}`, { method: 'DELETE' });
-            if (res.ok) {
-              window.location.href = '/admin/classrooms';
-            } else {
-              const data = await res.json().catch(() => ({}));
-              alert(data.error || 'Gagal menghapus kelas');
-            }
-          } finally {
-            deleteBtn.textContent = 'Hapus kelas';
-            deleteBtn.removeAttribute('disabled');
-          }
-        });
-      }
-
-      const editBtn = document.querySelector('#edit-class-btn');
-      if (editBtn) {
-        editBtn.addEventListener('click', async () => {
-          const newTitle = prompt('Judul kelas', classTitle);
-          if (!newTitle || !newTitle.trim()) return;
-          const newDesc = prompt('Deskripsi kelas (opsional)', classDesc);
-          try {
-            const res = await fetch(`/api/classrooms/${classId}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ title: newTitle.trim(), description: newDesc?.toString() })
-            });
-            if (res.ok) {
-              window.location.reload();
-            } else {
-              const data = await res.json().catch(() => ({}));
-              alert(data.error || 'Gagal menyimpan perubahan');
-            }
-          } catch (err) {
-            alert('Gagal menyimpan perubahan');
-          }
-        });
-      }
     </script>
   )}
 </Layout>

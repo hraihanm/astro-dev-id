@@ -1,0 +1,331 @@
+---
+import Layout from '../../../components/Layout.astro';
+import Icon from '../../../components/icons/Icon.astro';
+import { prisma } from '../../../lib/db';
+import { getSessionUser } from '../../../lib/auth-guard';
+
+export const prerender = false;
+
+const idParam = Astro.params.id;
+const classroomId = idParam ? parseInt(idParam, 10) : NaN;
+const user = await getSessionUser(Astro.cookies);
+
+const classroom = Number.isNaN(classroomId)
+  ? null
+  : await prisma.classroom.findUnique({
+      where: { id: classroomId },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        isPrivate: true,
+        createdAt: true,
+        updatedAt: true,
+        createdBy: true
+      }
+    });
+
+let membership = null;
+
+if (classroom && user) {
+  membership = await prisma.classroomMembership.findFirst({
+    where: { classroomId, userId: user.id }
+  });
+}
+
+// Guard: private classrooms only visible to admin or active members
+if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && membership.status === 'ACTIVE')) {
+  return Astro.redirect('/classrooms');
+}
+
+// Guard: only teachers and admins can access settings
+const canEdit = membership?.role === 'TEACHER' || user?.role === 'admin';
+if (!canEdit) {
+  return Astro.redirect(`/classrooms/${classroomId}`);
+}
+---
+
+<Layout title={`Pengaturan - ${classroom?.title || 'Classroom'}`} description="Pengaturan kelas">
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    {!classroom && (
+      <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+        <p class="text-slate-700">Kelas tidak ditemukan.</p>
+      </div>
+    )}
+
+    {classroom && (
+      <>
+        <div class="flex items-center gap-4 mb-6">
+          <a
+            href={`/classrooms/${classroom.id}`}
+            class="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors"
+          >
+            <Icon name="arrow-left" class="w-4 h-4" />
+            Kembali ke kelas
+          </a>
+        </div>
+
+        <header class="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md">
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-indigo-500/10 to-purple-600/10 pointer-events-none"></div>
+          <div class="relative p-6 space-y-4">
+            <div class="flex items-start justify-between gap-4">
+              <div class="space-y-2">
+                <div class="flex items-center gap-2 text-xs uppercase tracking-wide text-slate-500 flex-wrap">
+                  <span>Pengaturan Kelas</span>
+                  <span class="h-4 w-px bg-slate-200"></span>
+                  <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                    Kode: #{classroom.id}
+                  </span>
+                </div>
+                <h1 class="text-2xl md:text-3xl font-bold text-slate-900">{classroom.title}</h1>
+                {classroom.description && <p class="text-slate-700 max-w-3xl">{classroom.description}</p>}
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-900 mb-2">Informasi Kelas</h2>
+            <p class="text-sm text-slate-600 mb-4">Ubah judul dan deskripsi kelas.</p>
+          </div>
+
+          <div class="space-y-4">
+            <div>
+              <label for="class-title" class="block text-sm font-medium text-slate-700 mb-2">
+                Judul Kelas
+              </label>
+              <input
+                type="text"
+                id="class-title"
+                value={classroom.title}
+                class="w-full border border-slate-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                placeholder="Masukkan judul kelas"
+              />
+            </div>
+
+            <div>
+              <label for="class-description" class="block text-sm font-medium text-slate-700 mb-2">
+                Deskripsi Kelas
+              </label>
+              <textarea
+                id="class-description"
+                rows="4"
+                class="w-full border border-slate-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                placeholder="Masukkan deskripsi kelas (opsional)"
+              >{classroom.description || ''}</textarea>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <button
+                type="button"
+                id="save-info-btn"
+                class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
+              >
+                Simpan Perubahan
+              </button>
+              <span id="save-info-status" class="text-sm text-slate-500"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-900 mb-2">Privasi Kelas</h2>
+            <p class="text-sm text-slate-600 mb-4">Atur apakah kelas ini dapat diakses oleh semua orang atau hanya anggota yang disetujui.</p>
+          </div>
+
+          <div class="space-y-4">
+            <div class="flex items-center justify-between p-4 rounded-lg border border-slate-200 bg-slate-50">
+              <div>
+                <div class="font-medium text-slate-900">
+                  {classroom.isPrivate ? 'Kelas Privat' : 'Kelas Publik'}
+                </div>
+                <div class="text-sm text-slate-600 mt-1">
+                  {classroom.isPrivate
+                    ? 'Hanya anggota yang disetujui yang dapat mengakses kelas ini.'
+                    : 'Semua orang dapat bergabung ke kelas ini tanpa persetujuan.'}
+                </div>
+              </div>
+              <span class={`inline-flex items-center gap-1 px-3 py-1 rounded-full border text-sm font-semibold ${classroom.isPrivate ? 'bg-rose-50 text-rose-700 border-rose-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>
+                {classroom.isPrivate ? 'Privat' : 'Publik'}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              id="toggle-privacy-btn"
+              class="px-4 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors text-sm font-semibold"
+            >
+              {classroom.isPrivate ? 'Jadikan publik' : 'Jadikan privat'}
+            </button>
+            <span id="toggle-privacy-status" class="block text-sm text-slate-500"></span>
+          </div>
+        </div>
+
+        {user?.role === 'admin' && (
+          <div class="bg-white border border-red-200 rounded-2xl p-6 shadow-sm space-y-6">
+            <div>
+              <h2 class="text-lg font-semibold text-red-900 mb-2">Zona Berbahaya</h2>
+              <p class="text-sm text-red-700 mb-4">Tindakan ini tidak dapat dibatalkan. Semua post, komentar, dan membership akan dihapus secara permanen.</p>
+            </div>
+
+            <button
+              type="button"
+              id="delete-class-btn"
+              class="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors"
+            >
+              Hapus Kelas
+            </button>
+          </div>
+        )}
+      </>
+    )}
+  </main>
+
+  {user && classroom && (
+    <div
+      id="class-meta"
+      data-class-id={classroom.id}
+      data-class-title={classroom.title || ''}
+      data-class-desc={classroom.description || ''}
+      data-class-private={classroom.isPrivate ? 'true' : 'false'}
+      class="hidden"
+    ></div>
+    <script type="module">
+      const metaEl = document.querySelector('#class-meta');
+      const classIdAttr = metaEl ? metaEl.getAttribute('data-class-id') : null;
+      const classId = classIdAttr ? parseInt(classIdAttr, 10) : null;
+      const classTitle = metaEl ? metaEl.getAttribute('data-class-title') || '' : '';
+      const classDesc = metaEl ? metaEl.getAttribute('data-class-desc') || '' : '';
+      const classPrivate = metaEl ? metaEl.getAttribute('data-class-private') === 'true' : true;
+
+      // Save class info
+      const saveInfoBtn = document.querySelector('#save-info-btn');
+      const saveInfoStatus = document.querySelector('#save-info-status');
+      const titleInput = document.querySelector('#class-title');
+      const descInput = document.querySelector('#class-description');
+
+      if (saveInfoBtn && titleInput && descInput && classId) {
+        saveInfoBtn.addEventListener('click', async () => {
+          const newTitle = titleInput instanceof HTMLInputElement ? titleInput.value.trim() : '';
+          const newDesc = descInput instanceof HTMLTextAreaElement ? descInput.value.trim() : '';
+
+          if (!newTitle) {
+            alert('Judul kelas tidak boleh kosong.');
+            return;
+          }
+
+          saveInfoBtn.textContent = 'Menyimpan...';
+          saveInfoBtn.setAttribute('disabled', 'true');
+          if (saveInfoStatus) saveInfoStatus.textContent = '';
+
+          try {
+            const res = await fetch(`/api/classrooms/${classId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ title: newTitle, description: newDesc })
+            });
+
+            if (res.ok) {
+              if (saveInfoStatus) {
+                saveInfoStatus.textContent = 'Perubahan berhasil disimpan!';
+                saveInfoStatus.className = 'text-sm text-emerald-600';
+              }
+              setTimeout(() => {
+                window.location.reload();
+              }, 1000);
+            } else {
+              const data = await res.json().catch(() => ({}));
+              alert(data.error || 'Gagal menyimpan perubahan');
+              if (saveInfoStatus) {
+                saveInfoStatus.textContent = 'Gagal menyimpan perubahan.';
+                saveInfoStatus.className = 'text-sm text-red-600';
+              }
+            }
+          } catch (err) {
+            alert('Gagal menyimpan perubahan');
+            if (saveInfoStatus) {
+              saveInfoStatus.textContent = 'Gagal menyimpan perubahan.';
+              saveInfoStatus.className = 'text-sm text-red-600';
+            }
+          } finally {
+            saveInfoBtn.textContent = 'Simpan Perubahan';
+            saveInfoBtn.removeAttribute('disabled');
+          }
+        });
+      }
+
+      // Toggle privacy
+      const togglePrivacyBtn = document.querySelector('#toggle-privacy-btn');
+      const togglePrivacyStatus = document.querySelector('#toggle-privacy-status');
+
+      if (togglePrivacyBtn && classId) {
+        togglePrivacyBtn.addEventListener('click', async () => {
+          const makePrivate = togglePrivacyBtn.textContent?.includes('privat');
+          togglePrivacyBtn.textContent = 'Menyimpan...';
+          togglePrivacyBtn.setAttribute('disabled', 'true');
+          if (togglePrivacyStatus) togglePrivacyStatus.textContent = '';
+
+          try {
+            const res = await fetch(`/api/classrooms/${classId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                title: classTitle || 'Kelas',
+                description: classDesc || '',
+                isPrivate: makePrivate
+              })
+            });
+
+            if (res.ok) {
+              if (togglePrivacyStatus) {
+                togglePrivacyStatus.textContent = 'Privasi berhasil diubah!';
+                togglePrivacyStatus.className = 'text-sm text-emerald-600';
+              }
+              setTimeout(() => {
+                window.location.reload();
+              }, 1000);
+            } else {
+              const data = await res.json().catch(() => ({}));
+              alert(data.error || 'Gagal mengubah privasi');
+              if (togglePrivacyStatus) {
+                togglePrivacyStatus.textContent = 'Gagal mengubah privasi.';
+                togglePrivacyStatus.className = 'text-sm text-red-600';
+              }
+            }
+          } finally {
+            togglePrivacyBtn.textContent = makePrivate ? 'Jadikan publik' : 'Jadikan privat';
+            togglePrivacyBtn.removeAttribute('disabled');
+          }
+        });
+      }
+
+      // Delete class
+      const deleteBtn = document.querySelector('#delete-class-btn');
+      if (deleteBtn && classId) {
+        deleteBtn.addEventListener('click', async () => {
+          if (!confirm('Hapus kelas ini? Semua post dan membership akan hilang. Tindakan ini tidak dapat dibatalkan.')) return;
+          deleteBtn.textContent = 'Menghapus...';
+          deleteBtn.setAttribute('disabled', 'true');
+          try {
+            const res = await fetch(`/api/classrooms/${classId}`, { method: 'DELETE' });
+            if (res.ok) {
+              window.location.href = '/admin/classrooms';
+            } else {
+              const data = await res.json().catch(() => ({}));
+              alert(data.error || 'Gagal menghapus kelas');
+              deleteBtn.textContent = 'Hapus Kelas';
+              deleteBtn.removeAttribute('disabled');
+            }
+          } catch (err) {
+            alert('Gagal menghapus kelas');
+            deleteBtn.textContent = 'Hapus Kelas';
+            deleteBtn.removeAttribute('disabled');
+          }
+        });
+      }
+    </script>
+  )}
+</Layout>
+
