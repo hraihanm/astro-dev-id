@@ -92,6 +92,57 @@ const normalizedQuestions = Array.isArray(questions)
   
   <!-- Load Marked for Markdown rendering -->
   <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+  
+  <!-- Load MathLive for live math editing -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mathlive@0.108.2/mathlive-static.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/mathlive@0.108.2/mathlive.min.js"></script>
+  <script is:inline>
+    // Configure MathLive to use correct base URL for sounds
+    if (typeof window !== 'undefined') {
+      window.addEventListener('load', function() {
+        if (window.MathLive && window.MathLive.MathfieldElement) {
+          // Set the base URL for sound files
+          window.MathLive.MathfieldElement.soundsDirectory = 'https://cdn.jsdelivr.net/npm/mathlive@0.108.2/sounds';
+          // Disable sounds if you prefer (optional)
+          // window.MathLive.MathfieldElement.soundsDirectory = '';
+        }
+      });
+    }
+  </script>
+  
+  <!-- Load Nerdamer for symbolic math operations - load sequentially -->
+  <script is:inline>
+    (function() {
+      if (typeof window !== 'undefined' && !window.nerdamer) {
+        const scripts = [
+          'https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/nerdamer.core.js',
+          'https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/Algebra.js',
+          'https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/Calculus.js',
+          'https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/Solve.js'
+        ];
+        
+        function loadScript(index) {
+          if (index >= scripts.length) return;
+          
+          const script = document.createElement('script');
+          script.src = scripts[index];
+          script.onload = function() {
+            // Wait a bit to ensure the script is fully initialized
+            setTimeout(function() {
+              loadScript(index + 1);
+            }, 100);
+          };
+          script.onerror = function() {
+            console.warn('Failed to load Nerdamer script:', scripts[index]);
+            loadScript(index + 1);
+          };
+          document.head.appendChild(script);
+        }
+        
+        loadScript(0);
+      }
+    })();
+  </script>
 
   <!-- Apply widescreen mode immediately before render -->
   <script is:inline>
@@ -243,8 +294,14 @@ const normalizedQuestions = Array.isArray(questions)
             />
           </div>
           <div>
-            <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
-              Deskripsi (Markdown didukung)
+            <label for="description" class="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
+              Deskripsi
+              <div class="tooltip-wrapper relative">
+                <svg class="w-4 h-4 text-gray-400 cursor-help hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div class="tooltip">Gunakan deskripsi panjang untuk konteks atau instruksi. Markdown didukung</div>
+              </div>
             </label>
             <textarea
               id="description"
@@ -252,50 +309,71 @@ const normalizedQuestions = Array.isArray(questions)
               value={settings.description || ''}
               class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
             ></textarea>
-            <p class="text-xs text-gray-500 mt-1">Gunakan deskripsi panjang untuk konteks atau instruksi.</p>
           </div>
           <div>
-            <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">
-              Catatan / Peraturan (Markdown + LaTeX)
+            <label for="notes" class="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
+              Catatan / Peraturan
+              <div class="tooltip-wrapper relative">
+                <svg class="w-4 h-4 text-gray-400 cursor-help hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div class="tooltip">Tulis aturan, panduan, atau informasi penting. Markdown & LaTeX didukung</div>
+              </div>
             </label>
             <textarea
               id="notes"
               rows="4"
               value={settings.notes || ''}
-              placeholder="Tulis aturan, panduan, atau informasi penting. Markdown & LaTeX didukung."
+              placeholder="Tulis aturan, panduan, atau informasi penting"
               class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
             ></textarea>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label for="quizType" class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="quizType" class="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
               Tipe Kuis
+              <div class="tooltip-wrapper relative">
+                <svg class="w-4 h-4 text-gray-400 cursor-help hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div class="tooltip">Latihan: selalu terbuka. Try Out: dapat dijadwalkan & dibatasi percobaan</div>
+              </div>
             </label>
             <select
               id="quizType"
               class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
             >
-                <option value="exercise" selected={quizType === 'exercise'}>Latihan (Exercise - selalu terbuka)</option>
-                <option value="exam" selected={quizType === 'exam'}>Try Out (Exam - terjadwal)</option>
+                <option value="exercise" selected={quizType === 'exercise'}>Latihan</option>
+                <option value="exam" selected={quizType === 'exam'}>Try Out</option>
             </select>
-              <p class="text-xs text-gray-500 mt-1">Exercise = selalu terbuka, Exam = dapat dijadwalkan & dibatasi percobaan.</p>
           </div>
             <div>
-              <label for="visibility" class="block text-sm font-medium text-gray-700 mb-1">
+              <label for="visibility" class="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
                 Visibilitas
+                <div class="tooltip-wrapper relative">
+                  <svg class="w-4 h-4 text-gray-400 cursor-help hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <div class="tooltip"><p>Publik: semua user dapat mengakses.</p><p>Privat: hanya admin atau melalui kelas</p></div>
+                </div>
               </label>
               <select
                 id="visibility"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
               >
                 <option value="PUBLIC" selected={!quiz.visibility || quiz.visibility === 'PUBLIC'}>Publik</option>
-                <option value="PRIVATE" selected={quiz.visibility === 'PRIVATE'}>Privat (hanya admin/kelas)</option>
+                <option value="PRIVATE" selected={quiz.visibility === 'PRIVATE'}>Privat</option>
               </select>
-              <p class="text-xs text-gray-500 mt-1">Publik = semua user; Privat = hanya admin atau melalui kelas.</p>
             </div>
             <div>
-              <label for="timeLimit" class="block text-sm font-medium text-gray-700 mb-1">
+              <label for="timeLimit" class="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
                 Batas Waktu (menit)
+                <div class="tooltip-wrapper relative">
+                  <svg class="w-4 h-4 text-gray-400 cursor-help hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <div class="tooltip">Batas waktu dalam menit. Kosongkan jika tidak ada batas waktu</div>
+                </div>
               </label>
               <input
                 type="number"
@@ -307,23 +385,26 @@ const normalizedQuestions = Array.isArray(questions)
               />
             </div>
             <div>
-              <label for="scoreReleaseMode" class="block text-sm font-medium text-gray-700 mb-1">
+              <label for="scoreReleaseMode" class="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
                 Pelepasan Skor
+                <div class="tooltip-wrapper relative">
+                  <svg class="w-4 h-4 text-gray-400 cursor-help hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <div class="tooltip">Langsung: siswa langsung melihat skor setelah selesai. Admin: admin harus melepaskan skor terlebih dahulu</div>
+                </div>
               </label>
               <select
                 id="scoreReleaseMode"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
               >
                 <option value="immediate" selected={quiz.scoreReleaseMode === 'immediate' || !quiz.scoreReleaseMode}>
-                  Langsung (Otomatis)
+                  Langsung
                 </option>
                 <option value="admin" selected={quiz.scoreReleaseMode === 'admin'}>
-                  Admin (Manual)
+                  Admin
                 </option>
               </select>
-              <p class="text-xs text-gray-500 mt-1">
-                Langsung = siswa langsung melihat skor, Admin = admin harus melepaskan skor terlebih dahulu
-              </p>
             </div>
           </div>
 
@@ -334,8 +415,14 @@ const normalizedQuestions = Array.isArray(questions)
           </div>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label for="quizScope" class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="quizScope" class="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
                 Mode Keterkaitan
+                <div class="tooltip-wrapper relative">
+                  <svg class="w-4 h-4 text-gray-400 cursor-help hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <div class="tooltip">Mandiri: kuis berdiri sendiri. Terhubung ke Kursus: kuis milik kursus. Terhubung ke Bab: kuis milik bab tertentu</div>
+                </div>
             </label>
             <select
               id="quizScope"
@@ -345,7 +432,6 @@ const normalizedQuestions = Array.isArray(questions)
                 <option value="course">Terhubung ke Kursus</option>
                 <option value="chapter">Terhubung ke Bab</option>
             </select>
-            <p class="text-xs text-gray-500 mt-1">Pilih apakah kuis berdiri sendiri, milik kursus, atau bab.</p>
           </div>
           <div id="course-select-wrapper" class={`w-full ${initialScope === 'standalone' ? 'hidden' : ''}`}>
             <label for="courseSelect" class="block text-sm font-medium text-gray-700 mb-1">
@@ -1584,6 +1670,120 @@ const normalizedQuestions = Array.isArray(questions)
       max-width: 100% !important;
       width: 100% !important;
     }
+
+    /* Math input wrapper and preview */
+    .math-input-wrapper {
+      position: relative;
+    }
+
+    .math-input {
+      font-family: 'Courier New', monospace;
+    }
+
+    .math-preview {
+      min-height: 2rem;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+    }
+
+    .math-preview .math-inline {
+      display: inline-block;
+      vertical-align: baseline;
+    }
+
+    .math-preview .katex {
+      font-size: 1rem;
+    }
+
+    /* Blank answer preview in question template */
+    .preview-question .math-inline {
+      display: inline-block;
+      vertical-align: baseline;
+    }
+
+    /* MathLive styling */
+    math-field {
+      font-size: 1rem;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      background: white;
+      min-height: 2.5rem;
+      display: block;
+      width: 100%;
+    }
+
+    math-field:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    math-field:focus-within {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    /* Math mode toggle styling */
+    .math-mode-toggle {
+      cursor: pointer;
+    }
+
+    /* Tolerance input styling */
+    .blank-tolerance {
+      font-size: 0.75rem;
+    }
+
+    /* Tooltip styles */
+    .tooltip-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+
+    .tooltip-wrapper .tooltip {
+      visibility: hidden;
+      opacity: 0;
+      background-color: #1f2937;
+      color: #fff;
+      text-align: left;
+      border-radius: 6px;
+      padding: 10px 14px;
+      position: fixed;
+      z-index: 99999;
+      font-size: 0.75rem;
+      line-height: 1.5;
+      min-width: 200px;
+      max-width: 350px;
+      white-space: normal;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      transition: opacity 0.2s, visibility 0.2s;
+      pointer-events: none;
+    }
+
+    .tooltip-wrapper .tooltip::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: #1f2937;
+    }
+
+    .tooltip-wrapper:hover .tooltip {
+      visibility: visible;
+      opacity: 1;
+    }
+    
+    /* Ensure tooltip containers don't clip */
+    .blank-group,
+    .question-editor-container,
+    .question-editor-form,
+    .question-edit-form {
+      overflow: visible !important;
+    }
   </style>
 
   <script define:vars={{questions: normalizedQuestions, quizId: id, currentCourseId: quiz.courseId ?? null, currentChapterId: quiz.chapterId ?? null}}>
@@ -1984,18 +2184,26 @@ const normalizedQuestions = Array.isArray(questions)
 
     quizScopeSelect?.addEventListener('change', () => {
       const scope = quizScopeSelect.value;
+      const courseWrap = document.getElementById('course-select-wrapper');
+      
       if (scope === 'standalone') {
         courseSelect && (courseSelect.value = '');
         chapterSelect && (chapterSelect.value = '');
+        courseWrap?.classList.add('hidden');
         chapterWrapper?.classList.add('hidden');
       } else if (scope === 'course') {
+        courseWrap?.classList.remove('hidden');
         chapterWrapper?.classList.add('hidden');
         chapterSelect && (chapterSelect.value = '');
       } else if (scope === 'chapter') {
+        courseWrap?.classList.remove('hidden');
         chapterWrapper?.classList.remove('hidden');
         const selectedCourse = courseSelect?.value;
         if (selectedCourse) {
           renderChapterOptions(selectedCourse, null);
+        } else {
+          // If no course selected, clear chapter
+          chapterSelect && (chapterSelect.value = '');
         }
       }
       hasUnsavedChanges = true;
@@ -2082,10 +2290,15 @@ const normalizedQuestions = Array.isArray(questions)
 
     // LaTeX rendering
     function renderLatex(container) {
-      if (!window.katex) return;
+      if (!window.katex) {
+        // Wait for KaTeX to load
+        setTimeout(() => renderLatex(container), 100);
+        return;
+      }
       
       const mathElements = container.querySelectorAll('.math-display, .math-inline');
       mathElements.forEach((element) => {
+        // Skip if already rendered
         if (element.querySelector('.katex')) return;
         
         const latex = element.getAttribute('data-latex') || '';
@@ -2102,7 +2315,8 @@ const normalizedQuestions = Array.isArray(questions)
             macros: { '\\degree': '^{\\circ}' }
           });
         } catch (err) {
-          element.innerHTML = `<span style="color: red;">LaTeX Error</span>`;
+          console.warn('KaTeX rendering error:', err, 'for LaTeX:', latex);
+          element.innerHTML = `<span style="color: red;">LaTeX Error: ${escapeHtml(latex)}</span>`;
         }
       });
     }
@@ -2535,15 +2749,85 @@ const normalizedQuestions = Array.isArray(questions)
         
         const blanks = [];
         editor.querySelectorAll('.blank-group').forEach((blankGroup, idx) => {
-          const answersInput = blankGroup.querySelector('.blank-answers')?.value || '';
+          // Get math mode setting for this specific blank
+          const inputModeSelect = blankGroup.querySelector('.blank-input-mode');
+          const isMathMode = inputModeSelect?.value === 'math';
+          let answersInput = '';
+          
+          if (isMathMode) {
+            // Get value from MathLive field
+            const mathField = blankGroup.querySelector('math-field');
+            if (mathField) {
+              // Try different formats to get the value
+              try {
+                // MathLive 0.108.2 supports 'latex' format
+                if (mathField.getValue && typeof mathField.getValue === 'function') {
+                  try {
+                    const latexValue = mathField.getValue('latex') || '';
+                    answersInput = latexValue || '';
+                  } catch (e) {
+                    // If 'latex' format fails, try without format parameter
+                    try {
+                      answersInput = mathField.getValue() || '';
+                    } catch (e2) {
+                      // Fallback to value property
+                      answersInput = mathField.value || '';
+                    }
+                  }
+                } else if (mathField.value) {
+                  answersInput = mathField.value || '';
+                } else {
+                  // Last resort: get text content
+                  answersInput = mathField.textContent || mathField.innerText || '';
+                }
+              } catch (e) {
+                console.warn('Error getting MathLive value:', e);
+                // Fallback: try to get the inner text
+                answersInput = mathField.textContent || mathField.innerText || '';
+              }
+            }
+          } else {
+            // Get value from text input
+            const textInput = blankGroup.querySelector('.blank-answers.text-input');
+            answersInput = textInput?.value || '';
+          }
+          
           const caseSensitive = blankGroup.querySelector('.blank-case-sensitive')?.checked || false;
+          const toleranceInput = blankGroup.querySelector('.blank-tolerance');
+          // Convert percentage to decimal (e.g., 1% = 0.01)
+          const tolerancePercent = toleranceInput ? parseFloat(toleranceInput.value) : 1;
+          const tolerance = tolerancePercent / 100; // Store as decimal (1% = 0.01)
+          const algebraModeSelect = blankGroup.querySelector('.blank-algebra-mode');
+          const algebraMode = algebraModeSelect ? (algebraModeSelect.value === 'algebra') : true; // Default to algebra mode
+          
+          // Store both natural and LaTeX versions
           const answers = answersInput.split(',').map(a => a.trim()).filter(a => a);
+          const latexAnswers = answers.map(a => {
+            if (isMathMode && typeof window !== 'undefined' && window.MathLive) {
+              const mathField = blankGroup.querySelector('math-field');
+              if (mathField) {
+                try {
+                  if (mathField.getValue) {
+                    const latex = mathField.getValue('latex') || '';
+                    return latex || convertMathToLatex(a);
+                  }
+                } catch (e) {
+                  console.warn('Error getting LaTeX from MathLive:', e);
+                }
+              }
+            }
+            return convertMathToLatex(a);
+          });
 
           if (answers.length > 0) {
             blanks.push({
               index: idx,
-              correctAnswers: answers,
-              caseSensitive: caseSensitive
+              correctAnswers: answers, // Store natural form for matching
+              latexAnswers: latexAnswers, // Store LaTeX form for display
+              caseSensitive: caseSensitive,
+              tolerance: isNaN(tolerance) ? 0.0001 : tolerance,
+              mathMode: isMathMode, // Store math mode per blank
+              algebraMode: algebraMode // Store algebra mode (true = algebra, false = value)
             });
           }
         });
@@ -2875,27 +3159,89 @@ const normalizedQuestions = Array.isArray(questions)
                   </div>
                   <div class="blanks-container space-y-3">
                     ${blanks.length > 0 ? blanks.map((blank, idx) => `
-                      <div class="blank-group border border-gray-200 rounded-lg p-4 bg-gray-50">
-                        <div class="flex items-center justify-between mb-2">
-                          <span class="text-sm font-medium text-gray-700">Isian {${blank.index}}</span>
+                      <div class="blank-group border border-gray-200 rounded-lg p-4 bg-white hover:border-gray-300 transition-colors" data-blank-index="${blank.index}">
+                        <div class="flex items-center justify-between mb-3">
+                          <span class="text-sm font-semibold text-gray-800">Isian {${blank.index}}</span>
                           <button
                             type="button"
-                            class="delete-blank-btn text-red-600 hover:text-red-800 text-xs font-medium"
+                            class="delete-blank-btn text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1 rounded text-xs font-medium transition-colors"
                           >
                             Hapus
                           </button>
                         </div>
-                        <input
-                          type="text"
-                          class="blank-answers w-full px-4 py-2 border border-gray-300 rounded-md text-base mb-2"
-                          value="${escapeHtml((blank.correctAnswers || []).join(', '))}"
-                          placeholder="Jawaban benar (pisahkan dengan koma)"
-                          required
-                        />
-                        <label class="flex items-center space-x-2">
-                          <input type="checkbox" class="blank-case-sensitive w-4 h-4" ${blank.caseSensitive ? 'checked' : ''} />
-                          <span class="text-xs text-gray-600">Case sensitive</span>
-                        </label>
+                        <div class="math-input-wrapper mb-3" data-mode="${(blank.mathMode === true) ? 'math' : 'text'}">
+                          <!-- Text Mode Input -->
+                          <input
+                            type="text"
+                            class="blank-answers text-input w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${(blank.mathMode === true) ? 'hidden' : ''}"
+                            value="${escapeHtml((blank.correctAnswers || blank.latexAnswers || []).join(', '))}"
+                            placeholder="Masukkan jawaban benar (pisahkan dengan koma)"
+                            data-blank-index="${blank.index}"
+                            required
+                          />
+                          <!-- Math Mode Input (MathLive) -->
+                          <div class="math-input-container ${(blank.mathMode === true) ? '' : 'hidden'}">
+                            <math-field
+                              class="blank-answers-math w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500"
+                              data-blank-index="${blank.index}"
+                              placeholder="Masukkan jawaban benar (contoh: 2\\cdot10^{5})"
+                            >${escapeHtml((blank.correctAnswers || blank.latexAnswers || [])[0] || '')}</math-field>
+                          </div>
+                        </div>
+                        <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-gray-100">
+                          <div class="flex items-center gap-3">
+                            <label class="flex items-center gap-1.5 text-xs text-gray-600">
+                              <span>Mode Input:</span>
+                              <select class="blank-input-mode px-2.5 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500" data-blank-index="${blank.index}">
+                                <option value="text" ${(blank.mathMode !== true) ? 'selected' : ''}>Teks</option>
+                                <option value="math" ${(blank.mathMode === true) ? 'selected' : ''}>Matematika</option>
+                              </select>
+                            </label>
+                            <label class="blank-case-sensitive-container flex items-center gap-2 cursor-pointer ${(blank.mathMode === true) ? 'hidden' : ''}">
+                              <input type="checkbox" class="blank-case-sensitive w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" ${blank.caseSensitive ? 'checked' : ''} />
+                              <span class="text-xs text-gray-600">Sensitif huruf</span>
+                            </label>
+                          </div>
+                          <div class="flex items-center gap-3">
+                            ${(blank.mathMode === true) ? `
+                            <label class="flex items-center gap-1.5 text-xs text-gray-600 relative group">
+                              <span>Mode:</span>
+                              <select class="blank-algebra-mode px-2.5 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="algebra" ${blank.algebraMode !== false ? 'selected' : ''}>Aljabar</option>
+                                <option value="value" ${blank.algebraMode === false ? 'selected' : ''}>Nilai</option>
+                              </select>
+                              <div class="tooltip-wrapper relative">
+                                <svg class="w-3.5 h-3.5 text-gray-400 cursor-help hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <div class="tooltip">${blank.algebraMode !== false ? 'Mode Aljabar: Menerima ekspresi setara seperti 12*12 = 144' : 'Mode Nilai: Hanya menerima nilai numerik eksak seperti 144, bukan 12*12'}</div>
+                              </div>
+                            </label>
+                            ${(blank.algebraMode === false) ? `
+                            <label class="blank-tolerance-container flex items-center gap-1.5 text-xs text-gray-600 relative group">
+                              <span>Toleransi:</span>
+                              <div class="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  class="blank-tolerance w-16 px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                  value="${blank.tolerance !== undefined ? Math.round(blank.tolerance * 100) : 1}"
+                                  step="1"
+                                  min="0"
+                                  placeholder="1"
+                                />
+                                <span class="text-xs text-gray-500">%</span>
+                              </div>
+                              <div class="tooltip-wrapper relative">
+                                <svg class="w-3.5 h-3.5 text-gray-400 cursor-help hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <div class="tooltip">Toleransi untuk perbandingan numerik dalam persen. Contoh: 1% berarti perbedaan hingga 1% masih dianggap benar</div>
+                              </div>
+                            </label>
+                            ` : '<label class="blank-tolerance-container hidden"></label>'}
+                            ` : ''}
+                          </div>
+                        </div>
                       </div>
                     `).join('') : '<p class="text-sm text-gray-500 py-4 text-center">No blanks yet</p>'}
                   </div>
@@ -2915,8 +3261,23 @@ const normalizedQuestions = Array.isArray(questions)
             </div>
           </div>
           
-          <!-- Preview Section (empty for fill-in-the-blank) -->
-          <div class="question-preview-section hidden">
+          <!-- Preview Section -->
+          <div class="question-preview-section">
+            <div class="preview-container">
+              <div>
+                <h4>Live Preview</h4>
+                <button type="button" class="refresh-preview-btn">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-9-9"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 3v9h-9"></path>
+                  </svg>
+                  <span>Refresh</span>
+                </button>
+              </div>
+              <div class="preview-content">
+                <!-- Preview will be rendered here -->
+              </div>
+            </div>
           </div>
         </div>
       `;
@@ -2936,6 +3297,262 @@ const normalizedQuestions = Array.isArray(questions)
       editor.querySelectorAll('.option-text, .correct-answer-check').forEach(el => {
         el.addEventListener('change', () => {
           setTimeout(() => updatePreview(question), 300);
+        });
+      });
+      
+      // Input mode dropdown handlers (one per field)
+      editor.querySelectorAll('.blank-input-mode').forEach(select => {
+        select.addEventListener('change', (e) => {
+          const isMathMode = e.target.value === 'math';
+          const blankIndex = parseInt(e.target.dataset.blankIndex);
+          const blankGroup = e.target.closest('.blank-group');
+          
+          if (!blankGroup) return;
+          
+          const textInput = blankGroup.querySelector('.blank-answers.text-input');
+          const mathContainer = blankGroup.querySelector('.math-input-container');
+          const mathField = mathContainer?.querySelector('math-field');
+          const algebraModeContainer = blankGroup.querySelector('.blank-algebra-mode-container');
+          const caseSensitiveContainer = blankGroup.querySelector('.blank-case-sensitive-container');
+          const toleranceContainer = blankGroup.querySelector('.blank-tolerance-container');
+          const algebraModeSelect = blankGroup.querySelector('.blank-algebra-mode');
+          
+          // Toggle visibility
+          if (textInput) {
+            if (isMathMode) {
+              textInput.classList.add('hidden');
+            } else {
+              textInput.classList.remove('hidden');
+            }
+          }
+          if (mathContainer) {
+            if (isMathMode) {
+              mathContainer.classList.remove('hidden');
+            } else {
+              mathContainer.classList.add('hidden');
+            }
+          }
+          if (caseSensitiveContainer) {
+            if (isMathMode) {
+              caseSensitiveContainer.classList.add('hidden');
+            } else {
+              caseSensitiveContainer.classList.remove('hidden');
+            }
+          }
+          if (algebraModeContainer) {
+            if (isMathMode) {
+              algebraModeContainer.classList.remove('hidden');
+            } else {
+              algebraModeContainer.classList.add('hidden');
+            }
+          }
+          
+          // Show/hide tolerance based on algebra mode
+          if (isMathMode && algebraModeSelect) {
+            const algebraMode = algebraModeSelect.value === 'value';
+            if (toleranceContainer) {
+              if (algebraMode) {
+                toleranceContainer.classList.remove('hidden');
+              } else {
+                toleranceContainer.classList.add('hidden');
+              }
+            }
+          } else {
+            if (toleranceContainer) {
+              toleranceContainer.classList.add('hidden');
+            }
+          }
+          
+          // Initialize MathLive for math mode input
+          if (isMathMode && mathField) {
+            // Wait for MathLive to be available
+            function initMathField() {
+              if (typeof window !== 'undefined' && window.MathLive) {
+                // MathLive auto-initializes math-field elements
+                // Ensure it's properly set up
+                if (mathField && !mathField._mathlive) {
+                  // Force re-initialization if needed
+                  mathField.dispatchEvent(new Event('focus'));
+                }
+              } else {
+                // Retry after a short delay
+                setTimeout(initMathField, 100);
+              }
+            }
+            initMathField();
+          }
+          
+          // Update preview
+          setTimeout(() => updatePreview(question), 100);
+        });
+      });
+      
+      // Algebra mode change handler - show/hide tolerance
+      editor.querySelectorAll('.blank-algebra-mode').forEach(select => {
+        select.addEventListener('change', (e) => {
+          const blankGroup = e.target.closest('.blank-group');
+          if (!blankGroup) return;
+          
+          const toleranceContainer = blankGroup.querySelector('.blank-tolerance-container');
+          const isValueMode = e.target.value === 'value';
+          
+          if (toleranceContainer) {
+            if (isValueMode) {
+              toleranceContainer.classList.remove('hidden');
+            } else {
+              toleranceContainer.classList.add('hidden');
+            }
+          }
+          
+          setTimeout(() => updatePreview(question), 100);
+        });
+      });
+      
+      // Setup tooltip positioning with fixed positioning
+      function setupTooltipPositioning(container = editor) {
+        container.querySelectorAll('.tooltip-wrapper').forEach(wrapper => {
+          // Skip if already set up
+          if (wrapper.dataset.tooltipSetup === 'true') return;
+          
+          const icon = wrapper.querySelector('svg');
+          const tooltip = wrapper.querySelector('.tooltip');
+          if (!icon || !tooltip) return;
+          
+          function updateTooltipPosition() {
+            const iconRect = icon.getBoundingClientRect();
+            
+            // For position: fixed, we don't add scroll offsets - it's relative to viewport
+            // Position tooltip above the icon, centered horizontally
+            const left = iconRect.left + iconRect.width / 2;
+            const top = iconRect.top - 8;
+            
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = top + 'px';
+            tooltip.style.transform = 'translate(-50%, -100%)';
+            tooltip.style.bottom = 'auto';
+          }
+          
+          // Remove any existing listeners to avoid duplicates
+          const existingHandler = wrapper._tooltipHandler;
+          if (existingHandler) {
+            wrapper.removeEventListener('mouseenter', existingHandler);
+          }
+          
+          const handler = () => {
+            // Use requestAnimationFrame to ensure DOM is ready
+            requestAnimationFrame(() => {
+              updateTooltipPosition();
+            });
+          };
+          wrapper._tooltipHandler = handler;
+          wrapper.addEventListener('mouseenter', handler);
+          
+          // Update position on scroll/resize
+          const updateOnScroll = () => {
+            // Check if tooltip is visible
+            const isVisible = tooltip.style.visibility === 'visible' || 
+                            window.getComputedStyle(tooltip).visibility === 'visible';
+            if (isVisible) {
+              updateTooltipPosition();
+            }
+          };
+          window.addEventListener('scroll', updateOnScroll, true);
+          window.addEventListener('resize', updateOnScroll);
+          
+          // Mark as set up
+          wrapper.dataset.tooltipSetup = 'true';
+        });
+      }
+      setupTooltipPositioning();
+      
+      // Initialize inputs for blanks that are already configured
+      editor.querySelectorAll('.blank-group').forEach(blankGroup => {
+        const mathField = blankGroup.querySelector('math-field');
+        const inputModeSelect = blankGroup.querySelector('.blank-input-mode');
+        const isMathMode = inputModeSelect?.value === 'math';
+        const algebraModeSelect = blankGroup.querySelector('.blank-algebra-mode');
+        const isValueMode = algebraModeSelect?.value === 'value';
+        
+        // Ensure initial visibility is correct
+        const textInput = blankGroup.querySelector('.blank-answers.text-input');
+        const mathContainer = blankGroup.querySelector('.math-input-container');
+        const algebraModeContainer = blankGroup.querySelector('.blank-algebra-mode-container');
+        const caseSensitiveContainer = blankGroup.querySelector('.blank-case-sensitive-container');
+        const toleranceContainer = blankGroup.querySelector('.blank-tolerance-container');
+        
+        if (textInput) {
+          if (isMathMode) {
+            textInput.classList.add('hidden');
+          } else {
+            textInput.classList.remove('hidden');
+          }
+        }
+        if (mathContainer) {
+          if (isMathMode) {
+            mathContainer.classList.remove('hidden');
+          } else {
+            mathContainer.classList.add('hidden');
+          }
+        }
+        if (caseSensitiveContainer) {
+          if (isMathMode) {
+            caseSensitiveContainer.classList.add('hidden');
+          } else {
+            caseSensitiveContainer.classList.remove('hidden');
+          }
+        }
+        if (algebraModeContainer) {
+          if (isMathMode) {
+            algebraModeContainer.classList.remove('hidden');
+          } else {
+            algebraModeContainer.classList.add('hidden');
+          }
+        }
+        if (toleranceContainer) {
+          if (isMathMode && isValueMode) {
+            toleranceContainer.classList.remove('hidden');
+          } else {
+            toleranceContainer.classList.add('hidden');
+          }
+        }
+        
+        if (isMathMode && mathField) {
+          // Wait for MathLive to load
+          function initMathField() {
+            if (typeof window !== 'undefined' && window.MathLive) {
+              // MathLive auto-initializes math-field elements
+              // Set up event listeners
+              mathField.addEventListener('input', () => {
+                setTimeout(() => updatePreview(question), 300);
+              });
+            } else {
+              setTimeout(initMathField, 100);
+            }
+          }
+          initMathField();
+        }
+      });
+      
+      // Text input handlers (for text mode)
+      editor.querySelectorAll('.blank-answers.text-input').forEach(input => {
+        input.addEventListener('input', () => {
+          setTimeout(() => updatePreview(question), 300);
+        });
+        
+        // Copy LaTeX version when copying from input
+        input.addEventListener('copy', (e) => {
+          const start = input.selectionStart;
+          const end = input.selectionEnd;
+          if (start !== null && end !== null && start !== end) {
+            const selection = input.value.substring(start, end);
+            if (selection) {
+              const latex = convertMathToLatex(selection);
+              if (latex !== selection) {
+                e.clipboardData.setData('text/plain', latex);
+                e.preventDefault();
+              }
+            }
+          }
         });
       });
 
@@ -3132,26 +3749,191 @@ const normalizedQuestions = Array.isArray(questions)
           
           const newBlank = document.createElement('div');
           newBlank.className = 'blank-group border border-gray-200 rounded-lg p-4 bg-gray-50';
+          newBlank.setAttribute('data-blank-index', blankCount.toString());
           newBlank.innerHTML = `
             <div class="flex items-center justify-between mb-2">
               <span class="text-sm font-medium text-gray-700">Isian {${blankCount}}</span>
               <button type="button" class="delete-blank-btn text-red-600 hover:text-red-800 text-xs font-medium">Hapus</button>
             </div>
-            <input type="text" class="blank-answers w-full px-4 py-2 border border-gray-300 rounded-md text-base mb-2" placeholder="Jawaban benar (pisahkan dengan koma)" required />
-            <label class="flex items-center space-x-2">
-              <input type="checkbox" class="blank-case-sensitive w-4 h-4" />
-              <span class="text-xs text-gray-600">Case sensitive</span>
-            </label>
+            <div class="math-input-wrapper mb-2" data-mode="text">
+              <!-- Text Mode Input -->
+              <input
+                type="text"
+                class="blank-answers text-input w-full px-4 py-2 border border-gray-300 rounded-md text-base"
+                placeholder="Jawaban benar (pisahkan dengan koma, contoh: 2*10^5)"
+                data-blank-index="${blankCount}"
+                required
+              />
+              <!-- Math Mode Input (MathLive) -->
+              <div class="math-input-container hidden">
+                <math-field
+                  class="blank-answers-math w-full px-4 py-2 border border-gray-300 rounded-md text-base"
+                  data-blank-index="${blankCount}"
+                  placeholder=" \"Jawaban benar\" (contoh: 2\\cdot10^{5})"
+                ></math-field>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-gray-100">
+              <div class="flex items-center gap-3">
+                <label class="flex items-center gap-1.5 text-xs text-gray-600">
+                  <span>Mode Input:</span>
+                  <select class="blank-input-mode px-2.5 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500" data-blank-index="${blankCount}">
+                    <option value="text" selected>Teks</option>
+                    <option value="math">Matematika</option>
+                  </select>
+                </label>
+                <label class="blank-case-sensitive-container flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" class="blank-case-sensitive w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                  <span class="text-xs text-gray-600">Sensitif huruf</span>
+                </label>
+              </div>
+              <div class="flex items-center gap-3">
+                <label class="blank-algebra-mode-container hidden flex items-center gap-1.5 text-xs text-gray-600 relative group">
+                  <span>Mode:</span>
+                  <select class="blank-algebra-mode px-2.5 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="algebra" selected>Aljabar</option>
+                    <option value="value">Nilai</option>
+                  </select>
+                  <div class="tooltip-wrapper relative">
+                    <svg class="w-3.5 h-3.5 text-gray-400 cursor-help hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div class="tooltip">Mode Aljabar: Menerima ekspresi setara seperti 12*12 = 144. Mode Nilai: Hanya menerima nilai numerik eksak seperti 144, bukan 12*12</div>
+                  </div>
+                </label>
+                <label class="blank-tolerance-container hidden flex items-center gap-1.5 text-xs text-gray-600 relative group">
+                  <span>Toleransi:</span>
+                  <div class="flex items-center gap-1">
+                    <input
+                      type="number"
+                      class="blank-tolerance w-16 px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      value="1"
+                      step="1"
+                      min="0"
+                      placeholder="1"
+                    />
+                    <span class="text-xs text-gray-500">%</span>
+                  </div>
+                  <div class="tooltip-wrapper relative">
+                    <svg class="w-3.5 h-3.5 text-gray-400 cursor-help hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div class="tooltip">Toleransi untuk perbandingan numerik dalam persen. Contoh: 1% berarti perbedaan hingga 1% masih dianggap benar</div>
+                  </div>
+                </label>
+              </div>
+            </div>
           `;
+          
+          // Setup input mode dropdown for new blank
+          const inputModeSelect = newBlank.querySelector('.blank-input-mode');
+          if (inputModeSelect) {
+            inputModeSelect.addEventListener('change', (e) => {
+              const isMathMode = e.target.value === 'math';
+              const textInput = newBlank.querySelector('.blank-answers.text-input');
+              const mathContainer = newBlank.querySelector('.math-input-container');
+              const mathField = mathContainer?.querySelector('math-field');
+              const algebraModeContainer = newBlank.querySelector('.blank-algebra-mode-container');
+              const caseSensitiveContainer = newBlank.querySelector('.blank-case-sensitive-container');
+              const toleranceContainer = newBlank.querySelector('.blank-tolerance-container');
+              const algebraModeSelect = newBlank.querySelector('.blank-algebra-mode');
+              
+              if (textInput) {
+                textInput.classList.toggle('hidden', isMathMode);
+              }
+              if (mathContainer) {
+                mathContainer.classList.toggle('hidden', !isMathMode);
+              }
+              if (caseSensitiveContainer) {
+                caseSensitiveContainer.classList.toggle('hidden', isMathMode);
+              }
+              if (algebraModeContainer) {
+                algebraModeContainer.classList.toggle('hidden', !isMathMode);
+              }
+              
+              // Show/hide tolerance based on algebra mode
+              if (isMathMode && algebraModeSelect) {
+                const isValueMode = algebraModeSelect.value === 'value';
+                if (toleranceContainer) {
+                  toleranceContainer.classList.toggle('hidden', !isValueMode);
+                }
+              } else {
+                if (toleranceContainer) {
+                  toleranceContainer.classList.add('hidden');
+                }
+              }
+              
+              if (isMathMode && mathField && typeof window !== 'undefined' && window.MathLive) {
+                // MathLive auto-initializes
+              }
+              
+              setTimeout(() => updatePreview(question), 100);
+            });
+          }
+          
+          // Setup algebra mode change handler for new blank
+          const newAlgebraModeSelect = newBlank.querySelector('.blank-algebra-mode');
+          if (newAlgebraModeSelect) {
+            newAlgebraModeSelect.addEventListener('change', (e) => {
+              const toleranceContainer = newBlank.querySelector('.blank-tolerance-container');
+              const isValueMode = e.target.value === 'value';
+              if (toleranceContainer) {
+                toleranceContainer.classList.toggle('hidden', !isValueMode);
+              }
+              setTimeout(() => updatePreview(question), 100);
+            });
+          }
+          
+          // Setup event listeners for new blank
+          const newInput = newBlank.querySelector('.blank-answers.text-input');
+          const newMathField = newBlank.querySelector('math-field');
+          
+          if (newInput) {
+            // Text mode - set up input listener
+            newInput.addEventListener('input', () => {
+              setTimeout(() => updatePreview(question), 300);
+            });
+            
+            // Copy LaTeX version when copying from input
+            newInput.addEventListener('copy', (e) => {
+              const start = newInput.selectionStart;
+              const end = newInput.selectionEnd;
+              if (start !== null && end !== null && start !== end) {
+                const selection = newInput.value.substring(start, end);
+                if (selection) {
+                  const latex = convertMathToLatex(selection);
+                  if (latex !== selection) {
+                    e.clipboardData.setData('text/plain', latex);
+                    e.preventDefault();
+                  }
+                }
+              }
+            });
+          }
+          
+          if (newMathField) {
+            newMathField.addEventListener('input', () => {
+              setTimeout(() => updatePreview(question), 300);
+            });
+          }
 
           newBlank.querySelector('.delete-blank-btn')?.addEventListener('click', () => {
             newBlank.remove();
+            updatePreview(question);
           });
 
           if (container.querySelector('p')) {
             container.innerHTML = '';
           }
           container.appendChild(newBlank);
+          
+          // Setup tooltip positioning for the new blank
+          setupTooltipPositioning(newBlank);
+          
+          // Update preview after a short delay to ensure MathLive is initialized
+          setTimeout(() => {
+            updatePreview(question);
+          }, 100);
         });
       }
 
@@ -3163,13 +3945,190 @@ const normalizedQuestions = Array.isArray(questions)
       });
     }
 
+    // Convert natural math expression to LaTeX (Perseus-style)
+    function convertMathToLatex(input) {
+      if (!input || typeof input !== 'string') return '';
+      
+      let result = input.trim();
+      
+      // Handle dot notation: 2.5 -> 2.5 (keep decimal points)
+      // But replace * with \cdot for multiplication
+      // Pattern: number or ) or variable followed by * followed by number or ( or variable
+      // Don't replace if it's part of ** (which might be exponentiation in some contexts)
+      result = result.replace(/(\d+|[a-zA-Z\)])\s*\*\s*(\d+|[a-zA-Z\(])/g, (match, p1, p2) => {
+        // Don't replace if it's ** (double asterisk)
+        if (match.includes('**')) return match;
+        return p1 + '\\cdot' + p2;
+      });
+      
+      // Handle ^ for exponents - convert to ^{...}
+      // Pattern: ^ followed by number or expression in parentheses
+      // Handle simple cases: 10^5 -> 10^{5}
+      result = result.replace(/\^(\d+)/g, '^{$1}');
+      // Handle parentheses: 10^(2+3) -> 10^{2+3}
+      result = result.replace(/\^\(([^)]+)\)/g, '^{$1}');
+      // Handle variables: x^2 -> x^{2}
+      result = result.replace(/([a-zA-Z])\^(\d+)/g, '$1^{$2}');
+      
+      // Handle fractions: a/b -> \frac{a}{b}
+      // But be careful - only convert if it looks like a fraction (not URLs, dates, etc.)
+      // Pattern: number or variable / number or variable, but not if preceded by : or other context
+      result = result.replace(/(\d+|[a-zA-Z]+)\s*\/\s*(\d+|[a-zA-Z]+)/g, (match, num, den) => {
+        // Don't convert if it's part of a date or time (e.g., 12/31/2024)
+        if (/\d+\/\d+\/\d+/.test(match)) return match;
+        return '\\frac{' + num + '}{' + den + '}';
+      });
+      
+      // Handle sqrt: sqrt(x) -> \sqrt{x}
+      result = result.replace(/sqrt\s*\(([^)]+)\)/gi, '\\sqrt{$1}');
+      
+      // Handle common functions (sin, cos, tan, log, ln, exp)
+      result = result.replace(/\b(sin|cos|tan|log|ln|exp)\s*\(/gi, '\\$1(');
+      
+      // Handle pi, e (Euler's number)
+      result = result.replace(/\bpi\b/gi, '\\pi');
+      result = result.replace(/\be\b/g, (match, offset, str) => {
+        // Only replace if it's not part of a number (like 2e5)
+        const before = str[offset - 1];
+        const after = str[offset + 1];
+        if ((before && /[\d.]/.test(before)) || (after && /[\d.]/.test(after))) {
+          return match; // Keep as is if part of scientific notation
+        }
+        return 'e'; // Could be \mathrm{e} but e is fine
+      });
+      
+      return result;
+    }
+
     function updatePreview(question) {
       const previewContent = questionEditor.querySelector('.preview-content');
       if (!previewContent) return;
 
       const editor = questionEditor.querySelector('.question-editor-form') || questionEditor.querySelector('.question-edit-form');
-      const questionText = editor.querySelector('.question-text')?.value || '';
+      const questionText = editor.querySelector('.question-text, .question-template')?.value || '';
       const questionHtml = renderMarkdown(questionText || 'No question entered');
+
+      if (question.type === 'fill-in-the-blank') {
+        // Render fill-in-the-blank preview
+        const template = questionText;
+        const blanks = [];
+        
+        editor.querySelectorAll('.blank-group').forEach((blankGroup, idx) => {
+          // Check if math mode is enabled for this blank
+          const inputModeSelect = blankGroup.querySelector('.blank-input-mode');
+          const isMathMode = inputModeSelect?.value === 'math';
+          
+          let answersInput = '';
+          if (isMathMode) {
+            // Get value from MathLive field
+            const mathField = blankGroup.querySelector('math-field');
+            if (mathField && mathField.getValue) {
+              try {
+                answersInput = mathField.getValue('latex') || '';
+              } catch (e) {
+                answersInput = '';
+              }
+            }
+          } else {
+            // Get value from text input
+            const textInput = blankGroup.querySelector('.blank-answers.text-input');
+            answersInput = textInput?.value || '';
+          }
+          
+          const answers = answersInput.split(',').map(a => a.trim()).filter(a => a);
+          if (answers.length > 0) {
+            blanks.push({
+              index: idx,
+              answers: answers,
+              mathMode: isMathMode
+            });
+          }
+        });
+        
+        // Replace {0}, {1}, etc. with input fields or sample answers
+        let previewTemplate = template;
+        blanks.forEach(blank => {
+          const placeholder = `{${blank.index}}`;
+          const sampleAnswer = blank.answers[0] || '';
+          
+          if (blank.mathMode) {
+            // Math mode: render as LaTeX
+            const latexAnswer = sampleAnswer; // Already in LaTeX format from MathLive
+            previewTemplate = previewTemplate.replace(
+              placeholder,
+              `<span class="inline-block px-2 py-1 mx-1 bg-blue-100 border border-blue-300 rounded text-sm"><span class="math-inline" data-latex="${escapeHtml(latexAnswer)}"></span></span>`
+            );
+          } else {
+            // Text mode: render as plain text (no LaTeX conversion)
+            previewTemplate = previewTemplate.replace(
+              placeholder,
+              `<span class="inline-block px-2 py-1 mx-1 bg-blue-100 border border-blue-300 rounded text-sm font-mono">${escapeHtml(sampleAnswer)}</span>`
+            );
+          }
+        });
+        
+        const solutionText = editor.querySelector('.solution-text')?.value || '';
+        const solutionHtml = solutionText ? renderMarkdown(solutionText) : '';
+        
+        previewContent.innerHTML = `
+          <div class="preview-section">
+            <div class="preview-section-title">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 20h4l10.5-10.5a2.828 2.828 0 10-4-4L4 16v4z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 6.5l4 4"></path>
+              </svg>
+              <span>Pertanyaan</span>
+            </div>
+            <div class="preview-question">${renderMarkdown(previewTemplate)}</div>
+          </div>
+          
+          <div class="preview-section">
+            <div class="preview-section-title">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+              </svg>
+              <span>Jawaban Benar</span>
+            </div>
+            <div class="space-y-2">
+              ${blanks.length > 0 ? blanks.map((blank, idx) => {
+                const answersHtml = blank.answers.map(answer => {
+                  if (blank.mathMode) {
+                    // Math mode: render as LaTeX
+                    const latex = answer; // Already in LaTeX format from MathLive
+                    return `<span class="math-inline" data-latex="${escapeHtml(latex)}"></span>`;
+                  } else {
+                    // Text mode: render as plain text (no LaTeX)
+                    return `<span class="font-mono">${escapeHtml(answer)}</span>`;
+                  }
+                }).join(' <span class="text-gray-400 mx-1">atau</span> ');
+                return `
+                  <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div class="text-xs font-semibold text-green-700 mb-1">Isian {${blank.index}}:</div>
+                    <div class="text-sm text-green-800">${answersHtml}</div>
+                  </div>
+                `;
+              }).join('') : '<p class="text-sm text-gray-500 italic">Belum ada jawaban yang ditentukan</p>'}
+            </div>
+          </div>
+          
+          ${solutionHtml ? `
+            <div class="preview-section preview-solution">
+              <div class="preview-section-title">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 18h6"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 22h4"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2a7 7 0 017 7c0 2.3-1.2 4.3-3 5.5-.7.5-1 1.2-1 2v1h-6v-1c0-.8-.4-1.5-1-2A6.97 6.97 0 015 9a7 7 0 017-7z"></path>
+                </svg>
+                <span>Pembahasan</span>
+              </div>
+              <div class="preview-solution-content">${solutionHtml}</div>
+            </div>
+          ` : ''}
+        `;
+        
+        requestAnimationFrame(() => renderLatex(previewContent));
+        return;
+      }
 
       if (question.type === 'multiple-choice' || question.type === 'complex-multiple-choice') {
         const options = [];

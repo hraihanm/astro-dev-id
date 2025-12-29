@@ -46,3 +46,4 @@ local.dump
 DEPLOYMENT.md
 docs/architecture/api-rest-vs-graphql-analysis.md
 DEPLOYMENT.md
+.cursor/plans/*

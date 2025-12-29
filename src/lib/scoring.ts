@@ -1,4 +1,5 @@
 import { prisma } from './db';
+import { compareMathExpressions } from './math-symbolic';
 
 export interface QuizAnswer {
   questionId: number;
@@ -38,15 +39,15 @@ function normalizeArrayOptions(arr: any[]): number[] {
   return arr.map((v) => normalizeOption(v));
 }
 
-export function calculateScore(questions: any[], answers: QuizAnswer[]): QuizResult {
+export async function calculateScore(questions: any[], answers: QuizAnswer[]): Promise<QuizResult> {
   let correctAnswers = 0;
   let totalPoints = 0;
   let earnedPoints = 0;
   const detailedResults: QuestionResult[] = [];
 
-  questions.forEach((question, index) => {
+  for (const [index, question] of questions.entries()) {
     const userAnswer = answers.find(a => a.questionId === index);
-    const questionResult = evaluateQuestion(question, userAnswer);
+    const questionResult = await evaluateQuestion(question, userAnswer);
     
     detailedResults.push(questionResult);
     
@@ -56,7 +57,7 @@ export function calculateScore(questions: any[], answers: QuizAnswer[]): QuizRes
     
     totalPoints += questionResult.maxPoints;
     earnedPoints += questionResult.points;
-  });
+  }
 
   const percentage = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
   
@@ -71,7 +72,7 @@ export function calculateScore(questions: any[], answers: QuizAnswer[]): QuizRes
   };
 }
 
-function evaluateQuestion(question: any, userAnswer?: QuizAnswer): QuestionResult {
+async function evaluateQuestion(question: any, userAnswer?: QuizAnswer): Promise<QuestionResult> {
   const maxPoints = 1;
   let points = 0;
   let isCorrect = false;
@@ -136,7 +137,7 @@ function evaluateQuestion(question: any, userAnswer?: QuizAnswer): QuestionResul
       break;
     
     case 'fill-in-the-blank':
-      points = evaluateFillInTheBlank(question, userAnswer);
+      points = await evaluateFillInTheBlank(question, userAnswer);
       isCorrect = points === maxPoints;
       break;
   }
@@ -194,8 +195,9 @@ function evaluateComplexMultipleChoice(question: any, userAnswer: QuizAnswer): n
 /**
  * Evaluate fill-in-the-blank questions
  * Each blank must match one of the accepted answers
+ * Uses symbolic comparison for math mode questions
  */
-function evaluateFillInTheBlank(question: any, userAnswer: QuizAnswer): number {
+async function evaluateFillInTheBlank(question: any, userAnswer: QuizAnswer): Promise<number> {
   if (!question.blanks || question.blanks.length === 0) {
     return 0;
   }
@@ -205,27 +207,81 @@ function evaluateFillInTheBlank(question: any, userAnswer: QuizAnswer): number {
   
   let correctBlanks = 0;
   
-  blanks.forEach((blank: any, index: number) => {
-    const userBlankAnswer = (userAnswers[index] || '').toString().trim();
+  // Partial scoring: Each blank has equal weight (1/n of total points)
+  // Example: 3 blanks, 2 correct = 2/3 = 0.67 points
+  for (const [index, blank] of blanks.entries()) {
+    // Use blank.index to retrieve the answer, not the array index
+    // This ensures that blank {3} maps to userAnswers[3], not userAnswers[index]
+    const blankIndex = blank.index !== undefined ? blank.index : index;
+    const userBlankAnswer = (userAnswers[blankIndex] || '').toString().trim();
     const correctAnswers = blank.correctAnswers || [];
     const caseSensitive = blank.caseSensitive || false;
+    const tolerance = blank.tolerance !== undefined ? blank.tolerance : 0.0001;
+    
+    // Check math mode per blank (not per question)
+    const blankMathMode = blank.mathMode === true;
     
     // Check if user's answer matches any of the correct answers
-    const isMatch = correctAnswers.some((correctAns: string) => {
-      const correct = correctAns.trim();
-      if (caseSensitive) {
-        return userBlankAnswer === correct;
+    let isMatch = false;
+    
+    if (blankMathMode) {
+      // Check algebra mode: true = symbolic comparison, false = exact value comparison
+      const algebraMode = blank.algebraMode !== false; // Default to true (algebra mode)
+      
+      if (algebraMode) {
+        // Algebra mode: Use symbolic comparison (12*12 = 144)
+        // User answer might be in LaTeX format, correct answers are in natural form
+        // compareMathExpressions can handle both
+        // Use Promise.all to check all correct answers
+        const matchResults = await Promise.all(
+          correctAnswers.map(async (correctAns: string) => {
+            const correct = correctAns.trim();
+            return await compareMathExpressions(userBlankAnswer, correct, tolerance);
+          })
+        );
+        isMatch = matchResults.some(result => result === true);
       } else {
-        return userBlankAnswer.toLowerCase() === correct.toLowerCase();
+        // Value mode: Only exact numeric values match (144 only, not 12*12)
+        // Convert both to numbers and compare
+        isMatch = correctAnswers.some((correctAns: string) => {
+          const correct = correctAns.trim();
+          try {
+            // Try to evaluate both as numbers
+            const userNum = parseFloat(userBlankAnswer);
+            const correctNum = parseFloat(correct);
+            
+            if (!isNaN(userNum) && !isNaN(correctNum)) {
+              // Both are numeric - compare with tolerance
+              return Math.abs(userNum - correctNum) <= tolerance;
+            }
+            
+            // If not both numeric, fall back to string comparison
+            return userBlankAnswer.toLowerCase() === correct.toLowerCase();
+          } catch (e) {
+            // Fallback to string comparison
+            return userBlankAnswer.toLowerCase() === correct.toLowerCase();
+          }
+        });
       }
-    });
+    } else {
+      // Text mode - use string comparison
+      isMatch = correctAnswers.some((correctAns: string) => {
+        const correct = correctAns.trim();
+        if (caseSensitive) {
+          return userBlankAnswer === correct;
+        } else {
+          return userBlankAnswer.toLowerCase() === correct.toLowerCase();
+        }
+      });
+    }
     
     if (isMatch) {
       correctBlanks++;
     }
-  });
+  }
   
-  // Return proportional score (e.g., 3/4 blanks correct = 0.75 points)
+  // Return proportional score with equal weights per blank
+  // Each blank contributes 1/n of the total points (where n = number of blanks)
   return correctBlanks / blanks.length;
 }
 

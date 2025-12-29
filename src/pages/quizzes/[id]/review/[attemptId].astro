@@ -304,6 +304,68 @@ const userEmail = attemptUser?.email || '';
 <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<!-- Load Nerdamer for symbolic math comparison in review page -->
+<script>
+  (function() {
+    if (typeof window !== 'undefined' && !window.nerdamer) {
+      const scripts = [
+        'https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/nerdamer.core.js',
+        'https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/Algebra.js',
+        'https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/Calculus.js',
+        'https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/Solve.js'
+      ];
+      
+      function loadScript(index) {
+        if (index >= scripts.length) return;
+        
+        const script = document.createElement('script');
+        script.src = scripts[index];
+        script.onload = function() {
+          setTimeout(function() {
+            loadScript(index + 1);
+          }, 100);
+        };
+        script.onerror = function() {
+          console.warn('Failed to load Nerdamer script:', scripts[index]);
+          loadScript(index + 1);
+        };
+        document.head.appendChild(script);
+      }
+      
+      loadScript(0);
+      
+      // Notify when nerdamer is fully loaded
+      const checkNerdamer = setInterval(() => {
+        if (typeof window !== 'undefined' && window.nerdamer) {
+          clearInterval(checkNerdamer);
+          // Dispatch event when nerdamer is ready
+          window.dispatchEvent(new CustomEvent('nerdamerReady'));
+        }
+      }, 100);
+    }
+  })();
+  
+  // Helper function to wait for nerdamer to be available
+  window.waitForNerdamer = function(timeout = 5000) {
+    return new Promise((resolve, reject) => {
+      if (typeof window !== 'undefined' && window.nerdamer) {
+        resolve(window.nerdamer);
+        return;
+      }
+      
+      const startTime = Date.now();
+      const checkInterval = setInterval(() => {
+        if (typeof window !== 'undefined' && window.nerdamer) {
+          clearInterval(checkInterval);
+          resolve(window.nerdamer);
+        } else if (Date.now() - startTime > timeout) {
+          clearInterval(checkInterval);
+          reject(new Error('Nerdamer loading timeout'));
+        }
+      }, 100);
+    });
+  };
+</script>
 
 <script define:vars={{ quiz, attempt }}>
   const questions = quiz.questions;
@@ -311,8 +373,8 @@ const userEmail = attemptUser?.email || '';
   const rawAnswers = attempt.answers;
   const isReleased = !!attempt.scoreReleasedAt;
 
-  // Normalize answers to a per-question array of numeric selections (1-based where applicable)
-  const userAnswers = questions.map((_, idx) => {
+  // Normalize answers - handle different question types
+  const userAnswers = questions.map((q, idx) => {
     if (!rawAnswers) return null;
     const entry = Array.isArray(rawAnswers)
       ? rawAnswers.find(a =>
@@ -322,7 +384,21 @@ const userEmail = attemptUser?.email || '';
            a.questionId === questions[idx]?.id))
       : null;
     if (!entry || entry.answer === undefined || entry.answer === null) return null;
+    
     const ansArr = Array.isArray(entry.answer) ? entry.answer : [entry.answer];
+    
+    // For fill-in-the-blank, preserve array indices (don't filter out empty strings)
+    // This is critical for maintaining correct blank index mapping
+    if (q.type === 'fill-in-the-blank') {
+      return ansArr; // Keep as-is to preserve indices
+    }
+    
+    // For essay, filter out empty values
+    if (q.type === 'essay') {
+      return ansArr.filter(v => v !== null && v !== undefined && v !== '');
+    }
+    
+    // For multiple choice, convert to numbers
     const normalized = ansArr
       .map(v => parseInt(v, 10))
       .filter(v => !Number.isNaN(v));
@@ -528,9 +604,9 @@ const userEmail = attemptUser?.email || '';
     }).join('');
     
     grid.querySelectorAll('.question-number').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         currentQuestionIndex = parseInt(btn.dataset.index);
-        renderQuestion();
+        await renderQuestion();
         renderQuestionGrid();
         closeSidebar();
       });
@@ -599,10 +675,10 @@ const userEmail = attemptUser?.email || '';
     if (flaggedEl) flaggedEl.textContent = flagged;
   }
   
-  function goToQuestion(index) {
+  async function goToQuestion(index) {
     if (index >= 0 && index < questions.length) {
       currentQuestionIndex = index;
-      renderQuestion();
+      await renderQuestion();
       renderQuestionGrid();
       renderNavBar();
       updateMobileNav();
@@ -617,7 +693,7 @@ const userEmail = attemptUser?.email || '';
     document.getElementById('mobile-next-btn')?.toggleAttribute('disabled', currentQuestionIndex >= questions.length - 1);
   }
   
-  function renderQuestion() {
+  async function renderQuestion() {
     const container = document.getElementById('question-container');
     if (!container) return;
     
@@ -625,8 +701,21 @@ const userEmail = attemptUser?.email || '';
     const result = detailedResults[currentQuestionIndex];
     const userAnswer = userAnswers[currentQuestionIndex];
     
+    // Wait for nerdamer if needed for this question
+    const needsNerdamer = question?.type === 'fill-in-the-blank' && 
+      question?.blanks?.some(blank => blank.mathMode === true && blank.algebraMode !== false);
+    
+    if (needsNerdamer && typeof window !== 'undefined' && window.waitForNerdamer) {
+      try {
+        await window.waitForNerdamer(5000);
+      } catch (e) {
+        // Nerdamer not available, will use fallback comparison
+        console.warn('Nerdamer not available for comparison');
+      }
+    }
+    
     const hasAnswer = userAnswer !== undefined && userAnswer !== null && 
-                      (Array.isArray(userAnswer) ? userAnswer.length > 0 : true);
+                      (Array.isArray(userAnswer) ? userAnswer.length > 0 : (typeof userAnswer === 'string' ? userAnswer.trim() !== '' : true));
     
     let statusBadge = '';
     if (isReleased) {
@@ -643,8 +732,380 @@ const userEmail = attemptUser?.email || '';
         : '<span class="px-3 py-1 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg">Belum dijawab</span>';
     }
     
+    // Handle different question types
+    let questionHtml = '';
     let optionsHtml = '';
-    if (question.options) {
+    let fillInBlanksHtml = '';
+    let essayHtml = '';
+    let correctAnswersHtml = '';
+    
+    if (question.type === 'fill-in-the-blank') {
+      // Render fill-in-the-blank with user answers and correct answers
+      const template = question.questionTemplate || question.question || '';
+      const blanks = question.blanks || [];
+      const userAnswersArray = Array.isArray(userAnswer) ? userAnswer : [];
+      
+      // Extract placeholders and replace with answers
+      const placeholderRegex = /\{(\d+)\}/g;
+      const foundPlaceholders = new Set();
+      let match;
+      placeholderRegex.lastIndex = 0;
+      while ((match = placeholderRegex.exec(template)) !== null) {
+        foundPlaceholders.add(parseInt(match[1]));
+      }
+      
+      const sortedBlanks = [...blanks].sort((a, b) => a.index - b.index);
+      const blanksToUse = sortedBlanks.length > 0 
+        ? sortedBlanks 
+        : Array.from(foundPlaceholders).sort((a, b) => a - b).map((index) => ({ 
+            index, 
+            correctAnswers: []
+          }));
+      
+      // Process markdown first
+      let processedHtml = processMarkdownAndLatex(template);
+      
+      // Helper function to check if a blank answer is correct
+      // Helper function to normalize math expressions for comparison
+      function normalizeForNerdamer(expr) {
+        if (!expr || typeof expr !== 'string') return '';
+        
+        let normalized = expr.trim();
+        
+        // FIRST: Normalize double operators early (before other processing)
+        // This prevents parsing errors with invalid syntax like "++", "--", etc.
+        normalized = normalized.replace(/\+\+/g, '+');  // Double plus -> single plus
+        normalized = normalized.replace(/--/g, '-');     // Double minus -> single minus
+        normalized = normalized.replace(/\*\*/g, '*');   // Double multiply -> single multiply
+        normalized = normalized.replace(/\/\//g, '/');   // Double divide -> single divide
+        normalized = normalized.replace(/\+-/g, '-');    // Plus minus -> minus
+        normalized = normalized.replace(/-\+/g, '-');     // Minus plus -> minus
+        
+        // Convert LaTeX to natural form
+        normalized = normalized
+          .replace(/\\cdot/g, '*')
+          .replace(/\\times/g, '*')
+          .replace(/\\div/g, '/')
+          .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)')
+          // Handle {base}^{exp} -> (base)^(exp)
+          .replace(/\{([^}]+)\}\^\{([^}]+)\}/g, '($1)^($2)')
+          // Handle ^{exp} -> ^exp (without parentheses for simple exponents)
+          .replace(/\^\{(\d+)\}/g, '^$1')  // ^{2} -> ^2 (simple numeric exponent)
+          .replace(/\^\{([^}]+)\}/g, '^($1)')  // ^{x+1} -> ^(x+1) (complex exponent)
+          // Remove remaining braces
+          .replace(/\{([^}]+)\}/g, '$1')
+          .replace(/\\left\(/g, '(')
+          .replace(/\\right\)/g, ')')
+          .replace(/\\left\[/g, '[')
+          .replace(/\\right\]/g, ']')
+          // Remove backslashes from variable names
+          .replace(/\\([a-zA-Z]+)/g, '$1');
+        
+        // Normalize Unicode superscripts (², ³, etc.)
+        const superscriptMap = {
+          '²': '^2', '³': '^3', '¹': '^1', '⁰': '^0', '⁴': '^4', '⁵': '^5',
+          '⁶': '^6', '⁷': '^7', '⁸': '^8', '⁹': '^9'
+        };
+        for (const [sup, replacement] of Object.entries(superscriptMap)) {
+          normalized = normalized.replace(new RegExp(sup, 'g'), replacement);
+        }
+        
+        // Normalize implicit multiplication (handles both with and without spaces)
+        // This converts "12x" -> "12*x", "x2" -> "x*2", "xy" -> "x*y"
+        normalized = normalized.replace(/(\d+)\s*([a-zA-Z])/g, '$1*$2');
+        normalized = normalized.replace(/([a-zA-Z])\s*(\d+)/g, '$1*$2');
+        normalized = normalized.replace(/([a-zA-Z])\s*([a-zA-Z])/g, '$1*$2');
+        // Also handle cases with no space at all (e.g., "12x" -> "12*x")
+        normalized = normalized.replace(/(\d+)([a-zA-Z])/g, '$1*$2');
+        normalized = normalized.replace(/([a-zA-Z])(\d+)/g, '$1*$2');
+        normalized = normalized.replace(/([a-zA-Z])([a-zA-Z])/g, '$1*$2');
+        
+        // Remove whitespace
+        normalized = normalized.replace(/\s+/g, '');
+        
+        return normalized;
+      }
+      
+      function isBlankCorrect(userAnswer, blank) {
+        if (!userAnswer || !userAnswer.trim()) return false;
+        
+        const correctAnswers = blank.correctAnswers || [];
+        if (correctAnswers.length === 0) return false;
+        
+        const userAnswerTrimmed = userAnswer.toString().trim();
+        const caseSensitive = blank.caseSensitive || false;
+        const tolerance = blank.tolerance !== undefined ? blank.tolerance : 0.0001;
+        const isMathMode = blank.mathMode === true;
+        
+        if (isMathMode) {
+          // Check algebra mode: true = symbolic comparison, false = exact value comparison
+          const algebraMode = blank.algebraMode !== false; // Default to true (algebra mode)
+          
+          if (algebraMode) {
+            // Algebra mode: Use symbolic comparison - let nerdamer be the source of truth
+            // If nerdamer can parse and compare successfully, trust it
+            if (typeof window !== 'undefined' && window.nerdamer) {
+              try {
+                return correctAnswers.some((correctAns) => {
+                  const correct = correctAns.trim();
+                  
+                  // Try to parse both expressions directly first
+                  let userExpr = null;
+                  let correctExpr = null;
+                  
+                  // Try parsing user expression
+                  try {
+                    userExpr = window.nerdamer(userAnswerTrimmed);
+                  } catch (e) {
+                    // If direct parse fails, try with normalization
+                    try {
+                      const userNormalized = normalizeForNerdamer(userAnswerTrimmed);
+                      userExpr = window.nerdamer(userNormalized);
+                    } catch (e2) {
+                      // Can't parse user expression, not equivalent
+                      return false;
+                    }
+                  }
+                  
+                  // Try parsing correct expression
+                  try {
+                    correctExpr = window.nerdamer(correct);
+                  } catch (e) {
+                    // If direct parse fails, try with normalization
+                    try {
+                      const correctNormalized = normalizeForNerdamer(correct);
+                      correctExpr = window.nerdamer(correctNormalized);
+                    } catch (e2) {
+                      // Can't parse correct expression, not equivalent
+                      return false;
+                    }
+                  }
+                  
+                  // If we got here, both expressions parsed successfully
+                  // Now check if they're equivalent using nerdamer's comparison methods
+                  
+                  // Method 1: Check if difference simplifies to zero
+                  try {
+                    const diff = userExpr.subtract(correctExpr).simplify();
+                    const diffStr = diff.toString();
+                    if (diffStr === '0' || diffStr === '-0' || diffStr === '+0') {
+                      return true;
+                    }
+                    
+                    // Try expanding the difference
+                    try {
+                      const diffExpanded = diff.expand().toString();
+                      if (diffExpanded === '0' || diffExpanded === '-0') {
+                        return true;
+                      }
+                    } catch (e) {}
+                    
+                    // Try evaluating the difference numerically
+                    try {
+                      const diffValue = diff.evaluate();
+                      const diffNum = parseFloat(diffValue.toString());
+                      if (!isNaN(diffNum) && Math.abs(diffNum) < tolerance) {
+                        return true;
+                      }
+                    } catch (e) {}
+                  } catch (e) {
+                    // Subtraction method failed, try other methods
+                  }
+                  
+                  // Method 2: Expand and compare
+                  try {
+                    const userExpanded = userExpr.expand().toString();
+                    const correctExpanded = correctExpr.expand().toString();
+                    if (userExpanded === correctExpanded) {
+                      return true;
+                    }
+                  } catch (e) {
+                    // Expansion failed
+                  }
+                  
+                  // Method 3: Collect and compare
+                  try {
+                    const userCollected = userExpr.collect().toString();
+                    const correctCollected = correctExpr.collect().toString();
+                    if (userCollected === correctCollected) {
+                      return true;
+                    }
+                  } catch (e) {
+                    // Collection failed
+                  }
+                  
+                  // Method 4: Expand and collect both, then compare
+                  try {
+                    const userExpandedCollected = userExpr.expand().collect().toString();
+                    const correctExpandedCollected = correctExpr.expand().collect().toString();
+                    if (userExpandedCollected === correctExpandedCollected) {
+                      return true;
+                    }
+                  } catch (e) {
+                    // Expand+collect failed
+                  }
+                  
+                  // If all methods failed, they're not equivalent
+                  return false;
+                });
+              } catch (e) {
+                // Fallback to string comparison if nerdamer fails entirely
+                return correctAnswers.some((correctAns) => {
+                  return userAnswerTrimmed.toLowerCase() === correctAns.trim().toLowerCase();
+                });
+              }
+            } else {
+              // Fallback: simple string comparison if nerdamer not available
+              return correctAnswers.some((correctAns) => {
+                return userAnswerTrimmed.toLowerCase() === correctAns.trim().toLowerCase();
+              });
+            }
+          } else {
+            // Value mode: Only exact numeric values match (144 only, not 12*12)
+            return correctAnswers.some((correctAns) => {
+              const correct = correctAns.trim();
+              try {
+                // Try to evaluate both as numbers
+                const userNum = parseFloat(userAnswerTrimmed);
+                const correctNum = parseFloat(correct);
+                
+                if (!isNaN(userNum) && !isNaN(correctNum)) {
+                  // Both are numeric - compare with tolerance
+                  return Math.abs(userNum - correctNum) <= tolerance;
+                }
+                
+                // If not both numeric, fall back to string comparison
+                return userAnswerTrimmed.toLowerCase() === correct.toLowerCase();
+              } catch (e) {
+                // Fallback to string comparison
+                return userAnswerTrimmed.toLowerCase() === correct.toLowerCase();
+              }
+            });
+          }
+        } else {
+          // Text mode - use string comparison
+          return correctAnswers.some((correctAns) => {
+            const correct = correctAns.trim();
+            if (caseSensitive) {
+              return userAnswerTrimmed === correct;
+            } else {
+              return userAnswerTrimmed.toLowerCase() === correct.toLowerCase();
+            }
+          });
+        }
+      }
+      
+      // Replace placeholders with answer displays
+      blanksToUse.forEach((blank, idx) => {
+        const userAnswerText = userAnswersArray[blank.index] !== undefined 
+          ? userAnswersArray[blank.index] 
+          : (userAnswersArray[idx] !== undefined ? userAnswersArray[idx] : '');
+        const correctAnswers = blank.correctAnswers || [];
+        
+        // Check if math mode is enabled for this specific blank
+        const isMathMode = blank.mathMode === true;
+        
+        // Check if this specific blank is correct (only if released)
+        const isBlankCorrectAnswer = isReleased && userAnswerText 
+          ? isBlankCorrect(userAnswerText, blank)
+          : false;
+        
+        // Helper function to render answer (LaTeX if math mode, plain text otherwise)
+        const renderAnswer = (answer) => {
+          if (!answer) return '';
+          if (isMathMode) {
+            // For math mode, render as LaTeX
+            return `<span class="math-inline" data-latex="${escapeHtml(answer)}">${escapeHtml(answer)}</span>`;
+          } else {
+            // For text mode, just escape HTML
+            return escapeHtml(answer);
+          }
+        };
+        
+        // Create display for this blank - check individual blank correctness
+        const userAnswerDisplay = userAnswerText 
+          ? `<span class="inline-block px-3 py-1.5 mx-1 border-2 rounded-md text-sm ${isMathMode ? '' : 'font-mono'} ${
+              isReleased && isBlankCorrectAnswer
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-800' 
+                : (isReleased && hasAnswer 
+                  ? 'bg-red-50 border-red-300 text-red-800' 
+                  : 'bg-blue-50 border-blue-300 text-blue-800')
+            }">${renderAnswer(userAnswerText)}</span>`
+          : '<span class="inline-block px-3 py-1.5 mx-1 border-2 border-dashed border-gray-300 rounded-md text-sm text-gray-400 italic">(kosong)</span>';
+        
+        const correctAnswerDisplay = isReleased && correctAnswers.length > 0 && !isBlankCorrectAnswer
+          ? `<span class="inline-block px-3 py-1.5 mx-1 border-2 border-emerald-400 bg-emerald-50 rounded-md text-sm ${isMathMode ? '' : 'font-mono'} text-emerald-800">${renderAnswer(correctAnswers[0])}</span>`
+          : '';
+        
+        const blankDisplay = `
+          <div class="fill-blank-review my-2">
+            ${userAnswerDisplay}
+            ${correctAnswerDisplay ? `
+              <span class="text-xs text-gray-500 mx-2">→</span>
+              ${correctAnswerDisplay}
+            ` : ''}
+          </div>
+        `;
+        
+        // Replace placeholder in HTML
+        const placeholderRegex = new RegExp(`\\{${blank.index}\\}`, 'g');
+        processedHtml = processedHtml.replace(placeholderRegex, blankDisplay);
+      });
+      
+      questionHtml = processedHtml;
+      
+      // Show all correct answers if released and any blank is incorrect/unanswered
+      // Check if all blanks are correct
+      const allBlanksCorrect = blanksToUse.every((blank, idx) => {
+        const userAnswerText = userAnswersArray[blank.index] !== undefined 
+          ? userAnswersArray[blank.index] 
+          : (userAnswersArray[idx] !== undefined ? userAnswersArray[idx] : '');
+        return userAnswerText && isBlankCorrect(userAnswerText, blank);
+      });
+      
+      if (isReleased && (!hasAnswer || !allBlanksCorrect) && blanksToUse.length > 0) {
+        correctAnswersHtml = `
+          <div class="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+            <div class="text-sm font-semibold text-emerald-800 mb-2">Jawaban Benar:</div>
+            <div class="space-y-2">
+              ${blanksToUse.map((blank, idx) => {
+                const correctAnswers = blank.correctAnswers || [];
+                if (correctAnswers.length === 0) return '';
+                const isMathMode = blank.mathMode === true;
+                const renderAnswer = (answer) => {
+                  if (isMathMode) {
+                    return `<span class="math-inline" data-latex="${escapeHtml(answer)}">${escapeHtml(answer)}</span>`;
+                  } else {
+                    return escapeHtml(answer);
+                  }
+                };
+                return `
+                  <div class="text-sm">
+                    <span class="font-medium text-emerald-700">Isian {${blank.index}}:</span>
+                    <span class="ml-2 ${isMathMode ? '' : 'font-mono'} text-emerald-800">${correctAnswers.map(a => renderAnswer(a)).join(', ')}</span>
+                  </div>
+                `;
+              }).filter(Boolean).join('')}
+            </div>
+          </div>
+        `;
+      }
+    } else if (question.type === 'essay') {
+      // Render essay answer
+      const userAnswerText = typeof userAnswer === 'string' ? userAnswer : '';
+      questionHtml = processMarkdownAndLatex(question.question);
+      essayHtml = `
+        <div class="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+          <div class="text-sm font-semibold text-slate-700 mb-2">Jawaban Anda:</div>
+          <div class="prose prose-slate max-w-none text-sm">
+            ${userAnswerText ? processMarkdownAndLatex(userAnswerText) : '<p class="text-gray-400 italic">(Tidak ada jawaban)</p>'}
+          </div>
+        </div>
+      `;
+    } else {
+      // Multiple choice questions
+      questionHtml = processMarkdownAndLatex(question.question);
+      
       const isComplex = question.type === 'complex-multiple-choice' || question.type === 'complex';
       const inputType = isComplex ? 'checkbox' : 'radio';
       
@@ -660,8 +1121,8 @@ const userEmail = attemptUser?.email || '';
           if (isCorrect && isSelected) {
             // Correct answer that was chosen - green
             optionClass += ' correct';
-          } else if (isCorrect && !isSelected && isComplex) {
-            // Correct answer that was NOT chosen (only for complex MC) - light green/blue
+          } else if (isCorrect && !isSelected) {
+            // Correct answer that was NOT chosen - show it (for both simple and complex MC)
             optionClass += ' correct-not-selected';
           } else if (isSelected && !isCorrect) {
             // Wrong answer that was selected - red
@@ -688,8 +1149,11 @@ const userEmail = attemptUser?.email || '';
         </div>
         <div class="p-6">
           <div class="prose prose-slate max-w-none mb-6 text-lg leading-relaxed">
-            ${processMarkdownAndLatex(question.question)}
+            ${questionHtml}
           </div>
+          ${fillInBlanksHtml}
+          ${essayHtml}
+          ${correctAnswersHtml}
           <div class="space-y-3">
             ${optionsHtml}
           </div>
@@ -800,10 +1264,19 @@ const userEmail = attemptUser?.email || '';
   }
 
   // Initialize
-  function initReview() {
+  async function initReview() {
     renderQuestionGrid();
     renderNavBar();
-    renderQuestion();
+    // Wait for nerdamer to load before initial render (if needed)
+    await renderQuestion();
+    
+    // Re-render when nerdamer becomes available (in case it loads after initial render)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('nerdamerReady', async () => {
+        await renderQuestion();
+        renderQuestionGrid();
+      }, { once: true });
+    }
     
     // Always remove from queue when viewing review page (user has seen the result)
     syncQueueStatus();
@@ -811,14 +1284,20 @@ const userEmail = attemptUser?.email || '';
     document.getElementById('sidebar-toggle')?.addEventListener('click', openSidebar);
     document.getElementById('close-sidebar')?.addEventListener('click', closeSidebar);
     document.getElementById('sidebar-overlay')?.addEventListener('click', closeSidebar);
-    document.getElementById('mobile-prev-btn')?.addEventListener('click', () => goToQuestion(currentQuestionIndex - 1));
-    document.getElementById('mobile-next-btn')?.addEventListener('click', () => goToQuestion(currentQuestionIndex + 1));
+    document.getElementById('mobile-prev-btn')?.addEventListener('click', async () => await goToQuestion(currentQuestionIndex - 1));
+    document.getElementById('mobile-next-btn')?.addEventListener('click', async () => await goToQuestion(currentQuestionIndex + 1));
   }
   
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initReview);
+    document.addEventListener('DOMContentLoaded', () => {
+      (async () => {
+        await initReview();
+      })();
+    });
   } else {
-    initReview();
+    (async () => {
+      await initReview();
+    })();
   }
 </script>
 

@@ -51,7 +51,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     }
 
     // Calculate score
-    const result = calculateScore(quiz.questions, answers);
+    const result = await calculateScore(quiz.questions, answers);
     result.timeSpent = timeSpent || 0;
 
     // Determine if score should be released immediately

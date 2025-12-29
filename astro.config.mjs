@@ -47,6 +47,13 @@ export default defineConfig({
     },
     build: {
       chunkSizeWarningLimit: 2000
+    },
+    // Ensure nerdamer (CommonJS) is properly bundled for SSR
+    ssr: {
+      noExternal: ['nerdamer']
+    },
+    optimizeDeps: {
+      include: ['nerdamer', 'nerdamer/Algebra', 'nerdamer/Calculus', 'nerdamer/Solve']
     }
   }
 });

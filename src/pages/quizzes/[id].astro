@@ -94,14 +94,37 @@ try {
         userAttemptCount,
         userAttemptCount: userAttemptCount,
         isEssay: quiz.isEssay,
-        questions: quiz.questions.map((q: any, idx: number) => ({
+        questions: quiz.questions.map((q: any, idx: number) => {
+          const sanitized: any = {
           id: q.id || idx + 1,
           type: q.type,
           question: q.question,
-          options: q.options,
-          images: q.images,
+            images: q.images || [],
           // SECURITY: Do NOT include correctAnswer or metadata.solution
-        }))
+          };
+          
+          // Include type-specific fields
+          if (q.type === 'fill-in-the-blank') {
+            sanitized.questionTemplate = q.questionTemplate || q.question || '';
+            sanitized.blanks = (q.blanks || []).map((blank: any) => ({
+              index: blank.index,
+              // Don't include correctAnswers for security - only structure
+              correctAnswers: [], // Empty array - answers are checked server-side
+              caseSensitive: blank.caseSensitive || false,
+              mathMode: blank.mathMode === true, // Include math mode setting
+              tolerance: blank.tolerance !== undefined ? blank.tolerance : 0.0001, // Include tolerance for math mode
+              algebraMode: blank.algebraMode !== false // Include algebra mode (default true)
+            }));
+          } else if (q.type === 'essay') {
+            sanitized.maxWords = q.maxWords;
+            sanitized.allowFileUpload = q.allowFileUpload || false;
+          } else {
+            // Multiple choice
+            sanitized.options = q.options || [];
+          }
+          
+          return sanitized;
+        })
       };
     } else {
       clientQuiz = quiz;
@@ -907,6 +930,78 @@ try {
       line-height: 1.8;
       color: #1e293b;
     }
+
+    /* Fill-in-the-blank input styling */
+    .fill-blank-wrapper {
+      display: inline-block;
+      vertical-align: middle;
+      margin: 0 0.25rem;
+    }
+
+    .fill-blank-input {
+      font-family: 'Courier New', 'Monaco', monospace;
+      vertical-align: baseline;
+    }
+
+    .math-preview-inline {
+      display: none;
+      margin-top: 0.25rem;
+      padding: 0.25rem 0.5rem;
+      background-color: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 0.375rem;
+      font-size: 0.75rem;
+      min-height: 1.25rem;
+    }
+
+    .math-preview-inline .math-inline {
+      display: inline-block;
+      vertical-align: baseline;
+    }
+
+    .math-preview-inline .katex {
+      font-size: 0.875rem;
+    }
+
+    /* Question text with blanks - ensure inputs are inline but paragraphs are block */
+    .question-text-with-blanks {
+      line-height: 1.75;
+    }
+
+    .question-text-with-blanks p {
+      display: block;
+      margin: 0.5rem 0;
+    }
+
+    .question-text-with-blanks .fill-blank-wrapper {
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    /* MathLive styling for quiz-taking page */
+    .fill-blank-math {
+      font-size: 1rem;
+      padding: 0.5rem 0.75rem;
+      border: 2px solid #60a5fa;
+      border-radius: 0.375rem;
+      background: white;
+      min-height: 2.5rem;
+      min-width: 120px;
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    .fill-blank-math:focus,
+    .fill-blank-math:focus-within {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+    }
+
+    /* Ensure MathLive fields align properly with text */
+    .question-text-with-blanks math-field {
+      vertical-align: baseline;
+    }
     
     /* Solution styling */
     .solution-panel {
@@ -987,6 +1082,154 @@ try {
         script.async = false; // Load synchronously for faster availability
         document.head.appendChild(script);
       }
+      
+      // Load MathLive for math input
+      if (typeof window !== 'undefined' && !(window as any).MathLive) {
+        const mathliveLink = document.createElement('link');
+        mathliveLink.rel = 'stylesheet';
+        mathliveLink.href = 'https://cdn.jsdelivr.net/npm/mathlive@0.108.2/mathlive-static.css';
+        document.head.appendChild(mathliveLink);
+        
+        const mathliveScript = document.createElement('script');
+        mathliveScript.src = 'https://cdn.jsdelivr.net/npm/mathlive@0.108.2/mathlive.min.js';
+        mathliveScript.defer = true;
+        mathliveScript.onload = function() {
+          // Configure MathLive to use correct base URL for sounds
+          if ((window as any).MathLive && (window as any).MathLive.MathfieldElement) {
+            (window as any).MathLive.MathfieldElement.soundsDirectory = 'https://cdn.jsdelivr.net/npm/mathlive@0.108.2/sounds';
+          }
+        };
+        document.head.appendChild(mathliveScript);
+      }
+      
+      // Load Nerdamer for symbolic math
+      if (typeof window !== 'undefined' && !(window as any).nerdamer) {
+        const nerdamerScripts = [
+          'https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/nerdamer.core.js',
+          'https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/Algebra.js',
+          'https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/Calculus.js',
+          'https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/Solve.js'
+        ];
+        
+        // Load scripts sequentially to ensure dependencies
+        function loadScript(index: number) {
+          if (index >= nerdamerScripts.length) return;
+          
+          const script = document.createElement('script');
+          script.src = nerdamerScripts[index];
+          script.onload = function() {
+            // Wait a bit to ensure the script is fully initialized before loading next
+            setTimeout(() => loadScript(index + 1), 100);
+          };
+          script.onerror = function() {
+            console.warn('Failed to load Nerdamer script:', nerdamerScripts[index]);
+            loadScript(index + 1); // Continue loading other scripts
+          };
+          document.head.appendChild(script);
+        }
+        
+        loadScript(0);
+      }
+      
+      // Make compareMathExpressions available globally for scoring
+      // This is a simplified version that works in the browser
+      (window as any).compareMathExpressions = function(userAnswer: string, correctAnswer: string, tolerance: number = 0.0001): boolean {
+        if (!userAnswer || !correctAnswer) return false;
+        
+        const user = userAnswer.trim();
+        const correct = correctAnswer.trim();
+        
+        // Exact string match (case-insensitive for text mode)
+        if (user.toLowerCase() === correct.toLowerCase()) {
+          return true;
+        }
+        
+        // Try numeric comparison
+        const userNum = parseFloat(user);
+        const correctNum = parseFloat(correct);
+        
+        if (!isNaN(userNum) && !isNaN(correctNum)) {
+          return Math.abs(userNum - correctNum) < tolerance;
+        }
+        
+        // Try symbolic comparison using nerdamer if available
+        if (typeof window !== 'undefined' && (window as any).nerdamer) {
+          try {
+            const nerdamer = (window as any).nerdamer;
+            
+            // Normalize expressions
+            let userNorm = user;
+            let correctNorm = correct;
+            
+            try {
+              const userParsed = nerdamer(user);
+              const correctParsed = nerdamer(correct);
+              
+              userNorm = userParsed.simplify().toString();
+              correctNorm = correctParsed.simplify().toString();
+              
+              if (userNorm === correctNorm) {
+                return true;
+              }
+              
+              // Try checking if difference is zero
+              const diff = nerdamer(`(${userNorm})-(${correctNorm})`);
+              const simplified = diff.simplify();
+              const diffValue = simplified.evaluate();
+              const diffNum = parseFloat(diffValue.toString());
+              
+              if (!isNaN(diffNum) && Math.abs(diffNum) < tolerance) {
+                return true;
+              }
+            } catch (e) {
+              // Symbolic comparison failed, continue with other methods
+            }
+          } catch (e) {
+            // Nerdamer not available or error
+          }
+        }
+        
+        // Handle special cases manually
+        // e.g., "2*10^5" = "200000"
+        const specialCases = [
+          { pattern: /(\d+)\*10\^(\d+)/, handler: (match: RegExpMatchArray) => {
+            const base = parseFloat(match[1]);
+            const exp = parseFloat(match[2]);
+            return (base * Math.pow(10, exp)).toString();
+          }},
+          { pattern: /(\d+)\/(\d+)/, handler: (match: RegExpMatchArray) => {
+            const num = parseFloat(match[1]);
+            const den = parseFloat(match[2]);
+            if (den !== 0) {
+              return (num / den).toString();
+            }
+            return null;
+          }},
+        ];
+        
+        for (const { pattern, handler } of specialCases) {
+          const userMatch = user.match(pattern);
+          const correctMatch = correct.match(pattern);
+          
+          if (userMatch && correctMatch) {
+            const userConverted = handler(userMatch);
+            const correctConverted = handler(correctMatch);
+            
+            if (userConverted && correctConverted) {
+              const userNum = parseFloat(userConverted);
+              const correctNum = parseFloat(correctConverted);
+              
+              if (!isNaN(userNum) && !isNaN(correctNum)) {
+                if (Math.abs(userNum - correctNum) < tolerance) {
+                  return true;
+                }
+              }
+            }
+          }
+        }
+        
+        return false;
+      };
 
       // Create renderLatex function that will be available when quiz script runs
       (window as any).renderLatex = function() {
@@ -1174,6 +1417,41 @@ try {
         .replace(/'/g, '&#039;');
     }
     
+    // Convert natural math expression to LaTeX (Perseus-style)
+    function convertMathToLatex(input) {
+      if (!input || typeof input !== 'string') return '';
+      
+      let result = input.trim();
+      
+      // Replace * with \cdot for multiplication
+      result = result.replace(/(\d+|[a-zA-Z\)])\s*\*\s*(\d+|[a-zA-Z\(])/g, (match, p1, p2) => {
+        if (match.includes('**')) return match; // Don't replace **
+        return p1 + '\\cdot' + p2;
+      });
+      
+      // Handle ^ for exponents
+      result = result.replace(/\^(\d+)/g, '^{$1}');
+      result = result.replace(/\^\(([^)]+)\)/g, '^{$1}');
+      result = result.replace(/([a-zA-Z])\^(\d+)/g, '$1^{$2}');
+      
+      // Handle fractions: a/b -> \frac{a}{b}
+      result = result.replace(/(\d+|[a-zA-Z]+)\s*\/\s*(\d+|[a-zA-Z]+)/g, (match, num, den) => {
+        if (/\d+\/\d+\/\d+/.test(match)) return match; // Don't convert dates
+        return '\\frac{' + num + '}{' + den + '}';
+      });
+      
+      // Handle sqrt
+      result = result.replace(/sqrt\s*\(([^)]+)\)/gi, '\\sqrt{$1}');
+      
+      // Handle common functions
+      result = result.replace(/\b(sin|cos|tan|log|ln|exp)\s*\(/gi, '\\$1(');
+      
+      // Handle pi
+      result = result.replace(/\bpi\b/gi, '\\pi');
+      
+      return result;
+    }
+    
     // Simple LaTeX-only processor (legacy compatibility)
     function processLatex(text) {
       return renderMarkdown(text);
@@ -1208,7 +1486,25 @@ try {
         const saved = localStorage.getItem(PROGRESS_KEY);
         if (saved) {
           const progress = JSON.parse(saved);
-          answers = progress.answers || answers;
+          // Ensure answers array is properly initialized
+          const loadedAnswers = progress.answers || answers;
+          // For fill-in-the-blank questions, ensure arrays are properly sized
+          if (Array.isArray(loadedAnswers)) {
+            loadedAnswers.forEach((answer, qIdx) => {
+              const question = quiz.questions[qIdx];
+              if (question && question.type === 'fill-in-the-blank' && Array.isArray(answer)) {
+                // Ensure the array is large enough for all blank indices
+                const blanks = question.blanks || [];
+                if (blanks.length > 0) {
+                  const maxBlankIndex = Math.max(...blanks.map(b => b.index !== undefined ? b.index : 0));
+                  while (answer.length <= maxBlankIndex) {
+                    answer.push('');
+                  }
+                }
+              }
+            });
+          }
+          answers = loadedAnswers;
           flaggedQuestions = new Set(progress.flaggedQuestions || []);
           currentQuestionIndex = progress.currentQuestionIndex || 0;
           startTime = progress.startTime || startTime;
@@ -1605,6 +1901,20 @@ try {
     // Render question grid
     function renderQuestionGrid() {
       console.log('renderQuestionGrid called');
+      
+      // Helper function to check if a question is answered
+      function isQuestionAnswered(index) {
+        const answer = answers[index];
+        const question = quiz.questions[index];
+        
+        if (question?.type === 'fill-in-the-blank') {
+          return Array.isArray(answer) && answer.some(a => a && a.trim() !== '');
+        } else if (question?.type === 'essay') {
+          return answer && typeof answer === 'string' && answer.trim() !== '';
+        } else {
+          return answer !== null;
+        }
+      }
       const grid = document.getElementById('question-grid');
       
       if (!grid) {
@@ -1622,7 +1932,7 @@ try {
         const classes = ['question-number'];
         
         const isFlagged = flaggedQuestions.has(index);
-        const isAnswered = answers[index] !== null;
+        const isAnswered = isQuestionAnswered(index);
         
         // Add status class (current takes precedence)
         if (index === currentQuestionIndex) {
@@ -1656,8 +1966,21 @@ try {
       let unanswered = 0;
 
       answers.forEach((answer, index) => {
+        const question = quiz.questions[index];
         const isFlagged = flaggedQuestions.has(index);
-        const isAnswered = answer !== null;
+        
+        // Check if answered based on question type
+        let isAnswered = false;
+        if (question?.type === 'fill-in-the-blank') {
+          // For fill-in-the-blank, check if array has any non-empty answers
+          isAnswered = Array.isArray(answer) && answer.some(a => a && a.trim() !== '');
+        } else if (question?.type === 'essay') {
+          // For essay, check if string is non-empty
+          isAnswered = answer && typeof answer === 'string' && answer.trim() !== '';
+        } else {
+          // For multiple choice, check if not null
+          isAnswered = answer !== null;
+        }
 
         if (isFlagged) {
           // Flagged should be counted as ragu-ragu (even if answered)
@@ -1710,11 +2033,135 @@ try {
       const isComplex = question.type === 'complex-multiple-choice' || question.type === 'complex';
       const inputType = isComplex ? 'checkbox' : 'radio';
       
-      // Process question text with LaTeX
-      const questionHtml = processLatex(question.question || '');
+      // Handle different question types
+      let optionsHtml = '';
+      let fillInBlanksHtml = '';
+      let essayHtml = '';
+      let questionHtml = '';
       
-      // Process options with LaTeX
-      const optionsHtml = question.options.map((option, optIndex) => {
+      if (question.type === 'fill-in-the-blank') {
+        // Render fill-in-the-blank inputs
+        const template = question.questionTemplate || question.question || '';
+        const blanks = question.blanks || [];
+        const userAnswers = answers[currentQuestionIndex] || [];
+        const userAnswersArray = Array.isArray(userAnswers) ? userAnswers : [];
+        
+        if (!template) {
+          console.error('Fill-in-the-blank template is empty for question:', currentQuestionIndex);
+          questionHtml = '<p class="text-red-500">Error: Question template is missing</p>';
+          fillInBlanksHtml = '';
+        } else {
+          // Extract all placeholders from template (e.g., {0}, {1}, etc.)
+          const placeholderRegex = /\{(\d+)\}/g;
+          const foundPlaceholders = new Set();
+          let match;
+          // Reset regex lastIndex
+          placeholderRegex.lastIndex = 0;
+          while ((match = placeholderRegex.exec(template)) !== null) {
+            foundPlaceholders.add(parseInt(match[1]));
+          }
+          
+          // Sort blanks by index to ensure correct order
+          const sortedBlanks = [...blanks].sort((a, b) => a.index - b.index);
+          
+          // If no blanks defined but placeholders exist, create blanks for them
+          const blanksToUse = sortedBlanks.length > 0 
+            ? sortedBlanks 
+            : Array.from(foundPlaceholders).sort((a, b) => a - b).map((index) => ({ 
+                index, 
+                correctAnswers: []
+              }));
+          
+          // Process markdown/LaTeX normally - don't mess with the rendering
+          // Markdown will handle newlines correctly (double newlines = paragraphs)
+          let processedHtml = processLatex(template);
+          
+          // Fallback: if processedHtml is still empty, use the template directly
+          if (!processedHtml || !processedHtml.trim()) {
+            console.warn('processedHtml is empty, using template directly:', template);
+            processedHtml = `<p>${escapeHtml(template)}</p>`;
+          }
+          
+          // Now replace placeholders in the HTML with input fields
+          // We need to handle placeholders that might be inside <p> tags or other HTML
+          blanksToUse.forEach((blank, idx) => {
+            const placeholder = `{${blank.index}}`;
+            // Use blank.index to retrieve the answer, not array index
+            // This ensures that blank {3} maps to answers[3], not answers[idx]
+            const userAnswer = userAnswersArray[blank.index] !== undefined 
+              ? userAnswersArray[blank.index] 
+              : '';
+            
+            // Check if math mode is enabled for this specific blank
+            const isMathMode = blank.mathMode === true;
+            
+            let inputField = '';
+            
+            if (isMathMode) {
+              // Math mode: Use MathLive
+              inputField = `<span class="fill-blank-wrapper inline-block align-middle">
+                <math-field
+                  class="fill-blank-input fill-blank-math inline-block min-w-[120px] px-3 py-2 mx-1 border-2 border-blue-400 rounded-md text-base focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+                  data-blank-index="${blank.index}"
+                  data-blank-array-index="${idx}"
+                  data-question-index="${currentQuestionIndex}"
+                  placeholder="Jawaban"
+                >${escapeHtml(userAnswer)}</math-field>
+              </span>`;
+            } else {
+              // Text mode: Use regular input
+              inputField = `<span class="fill-blank-wrapper inline-block align-middle">
+                <input 
+                  type="text" 
+                  class="fill-blank-input fill-blank-text inline-block min-w-[120px] px-3 py-2 mx-1 border-2 border-blue-400 rounded-md text-base font-mono focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white" 
+                  data-blank-index="${blank.index}"
+                  data-blank-array-index="${idx}"
+                  data-question-index="${currentQuestionIndex}"
+                  value="${escapeHtml(userAnswer)}"
+                  placeholder="Jawaban"
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+              </span>`;
+            }
+            
+            // Replace all occurrences of the placeholder in the HTML
+            // Use a regex that matches {0} even if it's inside HTML tags
+            const placeholderRegex = new RegExp(`\\{${blank.index}\\}`, 'g');
+            processedHtml = processedHtml.replace(placeholderRegex, inputField);
+          });
+          
+          questionHtml = processedHtml;
+        }
+        
+        // Clean up any empty paragraphs that might have been created
+        questionHtml = questionHtml.replace(/<p>\s*<\/p>\s*/g, '');
+        questionHtml = questionHtml.replace(/\n\s*\n\s*\n/g, '\n\n'); // Clean up excessive newlines
+        
+        // For fill-in-the-blank, the question text already contains the inputs
+        fillInBlanksHtml = '';
+      } else if (question.type === 'essay') {
+        // Render essay textarea
+        const userAnswer = answers[currentQuestionIndex] || '';
+        const maxWords = question.maxWords || '';
+        essayHtml = `
+          <div class="essay-container space-y-4">
+            <textarea
+              class="essay-input w-full px-4 py-3 border-2 border-gray-300 rounded-md text-base focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 resize-y"
+              rows="8"
+              data-question-index="${currentQuestionIndex}"
+              placeholder="Tulis jawaban Anda di sini..."
+            >${escapeHtml(userAnswer)}</textarea>
+            ${maxWords ? `<div class="text-sm text-gray-500">Maksimum ${maxWords} kata</div>` : ''}
+          </div>
+        `;
+      } else {
+        // Multiple choice questions or default
+      // Process question text with LaTeX
+        questionHtml = processLatex(question.question || '');
+      
+        const options = question.options || [];
+        optionsHtml = options.map((option, optIndex) => {
         const optionHtml = processLatex(option || '');
         const isSelected = isAnswerSelected(currentQuestionIndex, optIndex + 1);
         const optionLetter = String.fromCharCode(65 + optIndex); // A, B, C, D...
@@ -1733,6 +2180,7 @@ try {
           </label>
         `;
       }).join('');
+      }
       
       // NOTE: Solutions are NOT sent to client for security
       // They are only shown on the results page after quiz submission
@@ -1779,14 +2227,30 @@ try {
                   <span class="hidden sm:inline">Pilihan Tunggal</span>
                   <span class="sm:hidden">Tunggal</span>
                 </span>
+              ` : question.type === 'fill-in-the-blank' ? `
+                <span class="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-orange-100 text-orange-700 border border-orange-200 whitespace-nowrap flex-shrink-0">
+                  <span class="hidden sm:inline">Isian Singkat</span>
+                  <span class="sm:hidden">Isian</span>
+                </span>
+              ` : question.type === 'essay' ? `
+                <span class="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-green-100 text-green-700 border border-green-200 whitespace-nowrap flex-shrink-0">
+                  <span class="hidden sm:inline">Esai</span>
+                  <span class="sm:hidden">Esai</span>
+                </span>
               ` : ''}
             </div>
           </div>
           
           <div class="question-body">
+            ${question.type === 'fill-in-the-blank' ? `
+              <div class="question-text-with-blanks prose max-w-none mb-8">
+                ${questionHtml}
+              </div>
+            ` : `
             <div class="question-text prose max-w-none mb-8">
               ${questionHtml}
             </div>
+            `}
 
             ${question.images && question.images.length > 0 ? `
               <div class="mb-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1796,9 +2260,13 @@ try {
               </div>
             ` : ''}
 
+            ${optionsHtml ? `
             <div class="space-y-1">
               ${optionsHtml}
             </div>
+            ` : ''}
+            ${fillInBlanksHtml}
+            ${essayHtml}
 
             <!-- Solution is hidden during quiz session, shown on results page -->
           </div>
@@ -1839,12 +2307,167 @@ try {
       requestAnimationFrame(() => {
         renderLatex();
       });
+      
+      // Setup event listeners for fill-in-the-blank inputs
+      if (question.type === 'fill-in-the-blank') {
+        const blanks = question.blanks || [];
+        
+        // Handle MathLive fields (math mode) - check per blank
+        container.querySelectorAll('.fill-blank-math').forEach((mathField) => {
+          const questionIndex = parseInt(mathField.dataset.questionIndex);
+          const blankIndex = parseInt(mathField.dataset.blankIndex);
+          const blankArrayIndex = parseInt(mathField.dataset.blankArrayIndex);
+          
+          // Initialize answer array if needed
+          // Use the maximum blank index + 1 to ensure all indices are covered
+          // This handles cases where blanks might have indices like [0, 1, 2, 3] but array was initialized with wrong size
+          const maxBlankIndex = blanks.length > 0 
+            ? Math.max(...blanks.map(b => b.index || 0), blankIndex || 0)
+            : blankIndex || 0;
+          const requiredArraySize = maxBlankIndex + 1;
+          
+          if (!Array.isArray(answers[questionIndex])) {
+            answers[questionIndex] = new Array(requiredArraySize).fill('');
+          }
+          
+          // Ensure array is the right size - expand if needed
+          while (answers[questionIndex].length < requiredArraySize) {
+            answers[questionIndex].push('');
+          }
+          
+          // Set initial value if exists (wait for MathLive to be ready)
+          const existingAnswer = answers[questionIndex][blankIndex];
+          if (existingAnswer) {
+            function setInitialValue() {
+              if (typeof window !== 'undefined' && window.MathLive && mathField.setValue) {
+                try {
+                  mathField.setValue(existingAnswer);
+                } catch (e) {
+                  console.warn('Error setting MathLive initial value:', e);
+                }
+              } else {
+                // Retry after a short delay if MathLive isn't ready yet
+                setTimeout(setInitialValue, 100);
+              }
+            }
+            setInitialValue();
+          }
+          
+          // Listen for input changes
+          mathField.addEventListener('input', () => {
+            updateActiveTime();
+            let value = '';
+            try {
+              // Try to get value as LaTeX first, then convert to natural form if needed
+              if (mathField.getValue) {
+                const latexValue = mathField.getValue('latex') || '';
+                // For now, store LaTeX - we can convert it back to natural form if needed
+                // Or use the LaTeX directly for comparison
+                value = latexValue;
+              } else if (mathField.value) {
+                value = mathField.value;
+              } else {
+                value = mathField.textContent || mathField.innerText || '';
+              }
+            } catch (e) {
+              console.warn('Error getting MathLive value:', e);
+              value = mathField.textContent || mathField.innerText || '';
+            }
+            
+            // Update the answer for this blank
+            answers[questionIndex][blankIndex] = value;
+            
+            // Save progress
+            saveProgress();
+            renderQuestionGrid();
+            updateStats();
+          });
+        });
+        
+        // Handle text inputs (text mode)
+        container.querySelectorAll('.fill-blank-text').forEach(input => {
+          const questionIndex = parseInt(input.dataset.questionIndex);
+          const blankArrayIndex = parseInt(input.dataset.blankArrayIndex);
+          const blankIndex = parseInt(input.dataset.blankIndex);
+          
+          // Initialize answer array if needed
+          if (!Array.isArray(answers[questionIndex])) {
+            answers[questionIndex] = [];
+          }
+          
+          // Calculate required array size based on all blank indices
+          const maxBlankIndex = blanks.length > 0 
+            ? Math.max(...blanks.map(b => (b.index !== undefined && b.index !== null) ? b.index : 0), blankIndex || 0)
+            : blankIndex || 0;
+          const requiredArraySize = maxBlankIndex + 1;
+          
+          // Ensure array is the right size - expand if needed
+          while (answers[questionIndex].length < requiredArraySize) {
+            answers[questionIndex].push('');
+          }
+          
+          input.addEventListener('input', () => {
+            updateActiveTime();
+            
+            // Update the answer for this blank using blank.index (not array index)
+            answers[questionIndex][blankIndex] = input.value.trim();
+            
+            // Save progress
+            saveProgress();
+            renderQuestionGrid();
+            updateStats();
+          });
+          
+          // Copy LaTeX version when copying from input
+          input.addEventListener('copy', (e) => {
+            const start = input.selectionStart;
+            const end = input.selectionEnd;
+            if (start !== null && end !== null && start !== end) {
+              const selection = input.value.substring(start, end);
+              if (selection) {
+                const latex = convertMathToLatex(selection);
+                if (latex !== selection) {
+                  e.clipboardData.setData('text/plain', latex);
+                  e.preventDefault();
+                }
+              }
+            }
+          });
+        });
+      }
+      
+      // Setup event listeners for essay inputs
+      if (question.type === 'essay') {
+        const essayInput = container.querySelector('.essay-input');
+        if (essayInput) {
+          essayInput.addEventListener('input', () => {
+            updateActiveTime();
+            const questionIndex = parseInt(essayInput.dataset.questionIndex);
+            answers[questionIndex] = essayInput.value;
+            
+            // Save progress
+            saveProgress();
+            renderQuestionGrid();
+            updateStats();
+          });
+        }
+      }
     }
 
     // Check if answer is selected
     function isAnswerSelected(questionIndex, optionValue) {
       const answer = answers[questionIndex];
-      if (answer === null) return false;
+      if (answer === null || answer === undefined) return false;
+      // For fill-in-the-blank and essay, answers are arrays/strings, not option values
+      const question = quiz.questions[questionIndex];
+      if (question && (question.type === 'fill-in-the-blank' || question.type === 'essay')) {
+        // For these types, check if answer exists (non-empty)
+        if (Array.isArray(answer)) {
+          return answer.some(a => a && a.trim() !== '');
+        }
+        return answer && answer.trim() !== '';
+      }
+      // For multiple choice questions
       if (Array.isArray(answer)) {
         return answer.includes(optionValue);
       }
@@ -1934,7 +2557,19 @@ try {
 
     // Submit quiz
     document.getElementById('submit-quiz-btn').onclick = () => {
-      const unanswered = answers.filter(a => a === null).length;
+      const unanswered = answers.map((answer, index) => {
+        const question = quiz.questions[index];
+        if (question?.type === 'fill-in-the-blank') {
+          // Check if array has any non-empty answers
+          return !Array.isArray(answer) || !answer.some(a => a && a.trim() !== '');
+        } else if (question?.type === 'essay') {
+          // Check if string is non-empty
+          return !answer || (typeof answer === 'string' && answer.trim() === '');
+        } else {
+          // Multiple choice
+          return answer === null;
+        }
+      }).filter(Boolean).length;
       showFinishModal(unanswered);
     };
 
@@ -2001,10 +2636,28 @@ try {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             quizId: parseInt(id),
-            answers: answers.map((answer, index) => ({
+            answers: answers.map((answer, index) => {
+              const question = quiz.questions[index];
+              // For fill-in-the-blank, answer is already an array
+              // For essay, answer is a string
+              // For multiple choice, answer is a number or array of numbers
+              if (question?.type === 'fill-in-the-blank') {
+                return {
+                  questionId: index,
+                  answer: Array.isArray(answer) ? answer : []
+                };
+              } else if (question?.type === 'essay') {
+                return {
+                  questionId: index,
+                  answer: answer ? [answer] : []
+                };
+              } else {
+                return {
               questionId: index,
               answer: answer === null ? [] : (Array.isArray(answer) ? answer : [answer])
-            })),
+                };
+              }
+            }),
             flaggedQuestions: Array.from(flaggedQuestions),
             timeSpent,
             endReason,
