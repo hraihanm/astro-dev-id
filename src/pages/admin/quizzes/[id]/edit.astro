@@ -2289,10 +2289,13 @@ const normalizedQuestions = Array.isArray(questions)
     })();
 
     // LaTeX rendering
-    function renderLatex(container) {
+    function renderLatex(container, retryCount = 0, maxRetries = 50) {
       if (!window.katex) {
-        // Wait for KaTeX to load
-        setTimeout(() => renderLatex(container), 100);
+        // Wait for KaTeX to load with exponential backoff
+        if (retryCount < maxRetries) {
+          const delay = Math.min(100 * (retryCount + 1), 500);
+          setTimeout(() => renderLatex(container, retryCount + 1, maxRetries), delay);
+        }
         return;
       }
       
@@ -2318,6 +2321,27 @@ const normalizedQuestions = Array.isArray(questions)
           console.warn('KaTeX rendering error:', err, 'for LaTeX:', latex);
           element.innerHTML = `<span style="color: red;">LaTeX Error: ${escapeHtml(latex)}</span>`;
         }
+      });
+    }
+    
+    // Helper function to wait for KaTeX to be available
+    function waitForKaTeX(timeout = 5000) {
+      return new Promise((resolve, reject) => {
+        if (typeof window !== 'undefined' && window.katex) {
+          resolve(window.katex);
+          return;
+        }
+        
+        const startTime = Date.now();
+        const checkInterval = setInterval(() => {
+          if (typeof window !== 'undefined' && window.katex) {
+            clearInterval(checkInterval);
+            resolve(window.katex);
+          } else if (Date.now() - startTime > timeout) {
+            clearInterval(checkInterval);
+            reject(new Error('KaTeX loading timeout'));
+          }
+        }, 100);
       });
     }
 
@@ -2875,8 +2899,16 @@ const normalizedQuestions = Array.isArray(questions)
       // Setup event listeners
       setupQuestionEventListeners(question);
 
-      // Initial preview update
-      updatePreview(question);
+      // Initial preview update - wait for KaTeX to be ready
+      (async () => {
+        try {
+          await waitForKaTeX(5000);
+          updatePreview(question);
+        } catch (e) {
+          // KaTeX not available yet, update anyway (will retry in renderLatex)
+          updatePreview(question);
+        }
+      })();
 
       // Render navigation
       renderNavigation();
@@ -4126,7 +4158,16 @@ const normalizedQuestions = Array.isArray(questions)
           ` : ''}
         `;
         
-        requestAnimationFrame(() => renderLatex(previewContent));
+        // Wait for KaTeX before rendering
+        (async () => {
+          try {
+            await waitForKaTeX(5000);
+            requestAnimationFrame(() => renderLatex(previewContent));
+          } catch (e) {
+            // KaTeX not available, try rendering anyway (will retry internally)
+            requestAnimationFrame(() => renderLatex(previewContent));
+          }
+        })();
         return;
       }
 
@@ -4196,7 +4237,16 @@ const normalizedQuestions = Array.isArray(questions)
         `;
       }
 
-      requestAnimationFrame(() => renderLatex(previewContent));
+      // Wait for KaTeX before rendering
+      (async () => {
+        try {
+          await waitForKaTeX(5000);
+          requestAnimationFrame(() => renderLatex(previewContent));
+        } catch (e) {
+          // KaTeX not available, try rendering anyway (will retry internally)
+          requestAnimationFrame(() => renderLatex(previewContent));
+        }
+      })();
     }
 
     // Add question
