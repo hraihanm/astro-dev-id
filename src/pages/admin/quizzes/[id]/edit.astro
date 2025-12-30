@@ -1771,6 +1771,14 @@ const normalizedQuestions = Array.isArray(questions)
       border: 5px solid transparent;
       border-top-color: #1f2937;
     }
+    
+    /* Arrow pointing up when tooltip is below icon */
+    .tooltip-wrapper .tooltip.tooltip-below::after {
+      top: auto;
+      bottom: 100%;
+      border-top-color: transparent;
+      border-bottom-color: #1f2937;
+    }
 
     .tooltip-wrapper:hover .tooltip {
       visibility: visible;
@@ -1787,6 +1795,34 @@ const normalizedQuestions = Array.isArray(questions)
   </style>
 
   <script define:vars={{questions: normalizedQuestions, quizId: id, currentCourseId: quiz.courseId ?? null, currentChapterId: quiz.chapterId ?? null}}>
+    // Client-side icon SVG generator (only includes icons needed for dynamic rendering)
+    // This keeps the bundle small by only including icons used in JavaScript templates
+    // For server-side rendering, use the Icon.astro component instead
+    function getIconSvg(iconName, className = 'w-4 h-4', strokeWidth = 2) {
+      // Only include icons that are actually used in client-side templates
+      // This minimizes bundle size - add more icons here only if needed
+      const icons = {
+        refresh: {
+          viewBox: '0 0 24 24',
+          path: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'
+        }
+      };
+      
+      const icon = icons[iconName];
+      if (!icon) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(`Icon "${iconName}" not found in client-side icons. Use Icon.astro component for server-side rendering.`);
+        }
+        return '';
+      }
+      
+      // Parse size from className (e.g., 'w-4 h-4' -> 4)
+      const sizeMatch = className.match(/[wh]-(\d+)/);
+      const size = sizeMatch ? sizeMatch[1] : '4';
+      
+      return `<svg class="${className}" width="${size}" height="${size}" viewBox="${icon.viewBox}" fill="none" stroke="currentColor" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round"><path d="${icon.path}"></path></svg>`;
+    }
+    
     const STORAGE_KEY = `quiz_editor_${quizId}`;
     const arrowLeftSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>';
     const arrowRightSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>';
@@ -1936,6 +1972,13 @@ const normalizedQuestions = Array.isArray(questions)
     let questionCounter = stored?.questionCounter || (questions.length > 0 ? Math.max(...questions.map(q => q.id || 0)) : 0);
     let questionsData = stored?.questionsData || [...questions];
     let currentQuestionIndex = stored?.currentQuestionIndex || 0;
+    
+    // Auto-update preview preference
+    let autoUpdateEnabled = true; // Default to enabled
+    const savedAutoUpdate = localStorage.getItem('quiz-editor-auto-update');
+    if (savedAutoUpdate !== null) {
+      autoUpdateEnabled = savedAutoUpdate === 'true';
+    }
     let draggedIndex = null;
     let hasUnsavedChanges = stored?.hasUnsavedChanges || false;
     
@@ -1984,11 +2027,31 @@ const normalizedQuestions = Array.isArray(questions)
       if (isHidden) {
         settingsContent.classList.remove('hidden');
         settingsChevron.classList.add('rotate-180');
+        // Setup tooltips when settings panel is opened
+        setTimeout(() => {
+          setupTooltipPositioning(settingsContent);
+        }, 100);
       } else {
         settingsContent.classList.add('hidden');
         settingsChevron.classList.remove('rotate-180');
       }
     });
+    
+    // Setup tooltips for settings panel on initial load
+    function initSettingsTooltips() {
+      if (settingsContent && !settingsContent.classList.contains('hidden')) {
+        setTimeout(() => {
+          setupTooltipPositioning(settingsContent);
+        }, 100);
+      }
+    }
+    
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initSettingsTooltips);
+    } else {
+      // DOM is already loaded
+      initSettingsTooltips();
+    }
 
     // More Actions Dropdown Menu Toggle
     const moreActionsBtn = document.getElementById('more-actions-btn');
@@ -2456,6 +2519,127 @@ const normalizedQuestions = Array.isArray(questions)
       const div = document.createElement('div');
       div.textContent = text || '';
       return div.innerHTML;
+    }
+
+    // Setup tooltip positioning with fixed positioning
+    function setupTooltipPositioning(container) {
+      if (!container) return;
+      
+      container.querySelectorAll('.tooltip-wrapper').forEach(wrapper => {
+        // Skip if already set up
+        if (wrapper.dataset.tooltipSetup === 'true') return;
+        
+        const icon = wrapper.querySelector('svg');
+        const tooltip = wrapper.querySelector('.tooltip');
+        if (!icon || !tooltip) return;
+        
+        function updateTooltipPosition() {
+          const iconRect = icon.getBoundingClientRect();
+          const viewportWidth = window.innerWidth;
+          const viewportHeight = window.innerHeight;
+          const padding = 8; // Space between icon and tooltip
+          const edgeMargin = 12; // Minimum margin from viewport edges
+          
+          // Temporarily show tooltip to measure it
+          const wasVisible = tooltip.style.visibility === 'visible';
+          tooltip.style.visibility = 'visible';
+          tooltip.style.opacity = '0';
+          
+          const tooltipRect = tooltip.getBoundingClientRect();
+          const tooltipWidth = tooltipRect.width;
+          const tooltipHeight = tooltipRect.height;
+          
+          // Reset visibility
+          if (!wasVisible) {
+            tooltip.style.visibility = '';
+            tooltip.style.opacity = '';
+          }
+          
+          // Calculate preferred position (above icon, centered)
+          let left = iconRect.left + iconRect.width / 2;
+          let top = iconRect.top - padding;
+          let transform = 'translate(-50%, -100%)';
+          let arrowPosition = 'bottom'; // Arrow points down (tooltip is above)
+          
+          // Check if tooltip would be cut off at the top
+          if (top - tooltipHeight < edgeMargin) {
+            // Position below icon instead
+            top = iconRect.bottom + padding;
+            transform = 'translate(-50%, 0)';
+            arrowPosition = 'top'; // Arrow points up (tooltip is below)
+          }
+          
+          // Check if tooltip would be cut off at the bottom
+          if (top + tooltipHeight > viewportHeight - edgeMargin) {
+            // Position above icon (back to default)
+            top = iconRect.top - padding;
+            transform = 'translate(-50%, -100%)';
+            arrowPosition = 'bottom';
+            // But if there's not enough space above either, position it in the middle vertically
+            if (top - tooltipHeight < edgeMargin) {
+              top = (viewportHeight - tooltipHeight) / 2;
+            }
+          }
+          
+          // Check if tooltip would be cut off on the left
+          const tooltipLeft = left - tooltipWidth / 2;
+          if (tooltipLeft < edgeMargin) {
+            left = tooltipWidth / 2 + edgeMargin;
+            transform = transform.replace('translate(-50%', 'translate(0');
+          }
+          
+          // Check if tooltip would be cut off on the right
+          const tooltipRight = left + tooltipWidth / 2;
+          if (tooltipRight > viewportWidth - edgeMargin) {
+            left = viewportWidth - tooltipWidth / 2 - edgeMargin;
+            transform = transform.replace('translate(-50%', 'translate(-100%');
+          }
+          
+          // Apply position
+          tooltip.style.left = left + 'px';
+          tooltip.style.top = top + 'px';
+          tooltip.style.transform = transform;
+          tooltip.style.bottom = 'auto';
+          
+          // Update arrow position if needed (the CSS already has arrow at bottom, 
+          // but we could add a class to flip it if tooltip is below)
+          if (arrowPosition === 'top') {
+            tooltip.classList.add('tooltip-below');
+          } else {
+            tooltip.classList.remove('tooltip-below');
+          }
+        }
+        
+        // Remove any existing listeners to avoid duplicates
+        const existingHandler = wrapper._tooltipHandler;
+        if (existingHandler) {
+          wrapper.removeEventListener('mouseenter', existingHandler);
+        }
+        
+        const handler = () => {
+          // Use requestAnimationFrame to ensure DOM is ready
+          requestAnimationFrame(() => {
+            updateTooltipPosition();
+          });
+        };
+        wrapper._tooltipHandler = handler;
+        wrapper.addEventListener('mouseenter', handler);
+        
+        // Update position on scroll/resize
+        const updateOnScroll = () => {
+          // Check if tooltip is visible
+          const isVisible = tooltip.style.visibility === 'visible' || 
+                          window.getComputedStyle(tooltip).visibility === 'visible';
+          if (isVisible) {
+            updateTooltipPosition();
+          }
+        };
+        window.addEventListener('scroll', updateOnScroll, true);
+        window.addEventListener('resize', updateOnScroll);
+        
+        // Mark as set up
+        wrapper.dataset.tooltipSetup = 'true';
+      });
     }
 
     function autoResizeTextarea(textarea) {
@@ -3028,13 +3212,16 @@ const normalizedQuestions = Array.isArray(questions)
             <div class="preview-container">
               <div>
                 <h4>Live Preview</h4>
-                <button type="button" class="refresh-preview-btn">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-9-9"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 3v9h-9"></path>
-                  </svg>
-                  <span>Refresh</span>
-                </button>
+                <div class="flex items-center gap-3">
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="auto-update-preview" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" ${autoUpdateEnabled ? 'checked' : ''}>
+                    <span class="text-sm text-gray-700">Auto-update</span>
+                  </label>
+                  <button type="button" class="refresh-preview-btn">
+                    ${getIconSvg('refresh', 'w-4 h-4')}
+                    <span>Refresh</span>
+                  </button>
+                </div>
               </div>
               <div class="preview-content">
                 <!-- Preview will be rendered here -->
@@ -3298,13 +3485,16 @@ const normalizedQuestions = Array.isArray(questions)
             <div class="preview-container">
               <div>
                 <h4>Live Preview</h4>
-                <button type="button" class="refresh-preview-btn">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-9-9"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 3v9h-9"></path>
-                  </svg>
-                  <span>Refresh</span>
-                </button>
+                <div class="flex items-center gap-3">
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="auto-update-preview" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" ${autoUpdateEnabled ? 'checked' : ''}>
+                    <span class="text-sm text-gray-700">Auto-update</span>
+                  </label>
+                  <button type="button" class="refresh-preview-btn">
+                    ${getIconSvg('refresh', 'w-4 h-4')}
+                    <span>Refresh</span>
+                  </button>
+                </div>
               </div>
               <div class="preview-content">
                 <!-- Preview will be rendered here -->
@@ -3322,15 +3512,29 @@ const normalizedQuestions = Array.isArray(questions)
       const questionTextarea = editor.querySelector('.question-text, .question-template');
       if (questionTextarea) {
         questionTextarea.addEventListener('input', () => {
-          setTimeout(() => updatePreview(question), 300);
+          if (autoUpdateEnabled) {
+            setTimeout(() => updatePreview(question), 300);
+          }
         });
       }
 
       editor.querySelectorAll('.option-text, .correct-answer-check').forEach(el => {
         el.addEventListener('change', () => {
-          setTimeout(() => updatePreview(question), 300);
+          if (autoUpdateEnabled) {
+            setTimeout(() => updatePreview(question), 300);
+          }
         });
       });
+      
+      // Solution text auto-update
+      const solutionTextarea = editor.querySelector('.solution-text');
+      if (solutionTextarea) {
+        solutionTextarea.addEventListener('input', () => {
+          if (autoUpdateEnabled) {
+            setTimeout(() => updatePreview(question), 300);
+          }
+        });
+      }
       
       // Input mode dropdown handlers (one per field)
       editor.querySelectorAll('.blank-input-mode').forEach(select => {
@@ -3415,7 +3619,9 @@ const normalizedQuestions = Array.isArray(questions)
           }
           
           // Update preview
-          setTimeout(() => updatePreview(question), 100);
+          if (autoUpdateEnabled) {
+            setTimeout(() => updatePreview(question), 100);
+          }
         });
       });
       
@@ -3436,66 +3642,14 @@ const normalizedQuestions = Array.isArray(questions)
             }
           }
           
-          setTimeout(() => updatePreview(question), 100);
+          if (autoUpdateEnabled) {
+            setTimeout(() => updatePreview(question), 100);
+          }
         });
       });
       
-      // Setup tooltip positioning with fixed positioning
-      function setupTooltipPositioning(container = editor) {
-        container.querySelectorAll('.tooltip-wrapper').forEach(wrapper => {
-          // Skip if already set up
-          if (wrapper.dataset.tooltipSetup === 'true') return;
-          
-          const icon = wrapper.querySelector('svg');
-          const tooltip = wrapper.querySelector('.tooltip');
-          if (!icon || !tooltip) return;
-          
-          function updateTooltipPosition() {
-            const iconRect = icon.getBoundingClientRect();
-            
-            // For position: fixed, we don't add scroll offsets - it's relative to viewport
-            // Position tooltip above the icon, centered horizontally
-            const left = iconRect.left + iconRect.width / 2;
-            const top = iconRect.top - 8;
-            
-            tooltip.style.left = left + 'px';
-            tooltip.style.top = top + 'px';
-            tooltip.style.transform = 'translate(-50%, -100%)';
-            tooltip.style.bottom = 'auto';
-          }
-          
-          // Remove any existing listeners to avoid duplicates
-          const existingHandler = wrapper._tooltipHandler;
-          if (existingHandler) {
-            wrapper.removeEventListener('mouseenter', existingHandler);
-          }
-          
-          const handler = () => {
-            // Use requestAnimationFrame to ensure DOM is ready
-            requestAnimationFrame(() => {
-              updateTooltipPosition();
-            });
-          };
-          wrapper._tooltipHandler = handler;
-          wrapper.addEventListener('mouseenter', handler);
-          
-          // Update position on scroll/resize
-          const updateOnScroll = () => {
-            // Check if tooltip is visible
-            const isVisible = tooltip.style.visibility === 'visible' || 
-                            window.getComputedStyle(tooltip).visibility === 'visible';
-            if (isVisible) {
-              updateTooltipPosition();
-            }
-          };
-          window.addEventListener('scroll', updateOnScroll, true);
-          window.addEventListener('resize', updateOnScroll);
-          
-          // Mark as set up
-          wrapper.dataset.tooltipSetup = 'true';
-        });
-      }
-      setupTooltipPositioning();
+      // Setup tooltip positioning for question editor
+      setupTooltipPositioning(editor);
       
       // Initialize inputs for blanks that are already configured
       editor.querySelectorAll('.blank-group').forEach(blankGroup => {
@@ -3555,7 +3709,9 @@ const normalizedQuestions = Array.isArray(questions)
               // MathLive auto-initializes math-field elements
               // Set up event listeners
               mathField.addEventListener('input', () => {
-                setTimeout(() => updatePreview(question), 300);
+                if (autoUpdateEnabled) {
+                  setTimeout(() => updatePreview(question), 300);
+                }
               });
             } else {
               setTimeout(initMathField, 100);
@@ -3568,7 +3724,9 @@ const normalizedQuestions = Array.isArray(questions)
       // Text input handlers (for text mode)
       editor.querySelectorAll('.blank-answers.text-input').forEach(input => {
         input.addEventListener('input', () => {
-          setTimeout(() => updatePreview(question), 300);
+          if (autoUpdateEnabled) {
+            setTimeout(() => updatePreview(question), 300);
+          }
         });
         
         // Copy LaTeX version when copying from input
@@ -3588,10 +3746,26 @@ const normalizedQuestions = Array.isArray(questions)
         });
       });
 
-      // Refresh preview button
+      // Auto-update checkbox handler
+      const autoUpdateCheckbox = editor.querySelector('#auto-update-preview');
+      if (autoUpdateCheckbox) {
+        autoUpdateCheckbox.checked = autoUpdateEnabled;
+        autoUpdateCheckbox.addEventListener('change', (e) => {
+          autoUpdateEnabled = e.target.checked;
+          localStorage.setItem('quiz-editor-auto-update', autoUpdateEnabled.toString());
+        });
+      }
+
+      // Refresh preview button - get current question dynamically
       const refreshBtn = editor.querySelector('.refresh-preview-btn');
       if (refreshBtn) {
-        refreshBtn.addEventListener('click', () => updatePreview(question));
+        refreshBtn.addEventListener('click', () => {
+          // Get the current question from questionsData to ensure we have the latest data
+          const currentQuestion = questionsData[currentQuestionIndex];
+          if (currentQuestion) {
+            updatePreview(currentQuestion);
+          }
+        });
       }
 
       // Question type change dropdown
@@ -3748,11 +3922,15 @@ const normalizedQuestions = Array.isArray(questions)
           });
 
           newOption.querySelector('.option-text')?.addEventListener('input', () => {
-            setTimeout(() => updatePreview(question), 300);
+            if (autoUpdateEnabled) {
+              setTimeout(() => updatePreview(question), 300);
+            }
           });
 
           newOption.querySelector('.correct-answer-check')?.addEventListener('change', () => {
-            updatePreview(question);
+            if (autoUpdateEnabled) {
+              updatePreview(question);
+            }
           });
 
           container.appendChild(newOption);
@@ -3899,7 +4077,9 @@ const normalizedQuestions = Array.isArray(questions)
                 // MathLive auto-initializes
               }
               
-              setTimeout(() => updatePreview(question), 100);
+              if (autoUpdateEnabled) {
+                setTimeout(() => updatePreview(question), 100);
+              }
             });
           }
           
@@ -3912,7 +4092,9 @@ const normalizedQuestions = Array.isArray(questions)
               if (toleranceContainer) {
                 toleranceContainer.classList.toggle('hidden', !isValueMode);
               }
-              setTimeout(() => updatePreview(question), 100);
+              if (autoUpdateEnabled) {
+                setTimeout(() => updatePreview(question), 100);
+              }
             });
           }
           
@@ -3945,7 +4127,9 @@ const normalizedQuestions = Array.isArray(questions)
           
           if (newMathField) {
             newMathField.addEventListener('input', () => {
-              setTimeout(() => updatePreview(question), 300);
+              if (autoUpdateEnabled) {
+                setTimeout(() => updatePreview(question), 300);
+              }
             });
           }
 
@@ -4809,3 +4993,4 @@ const normalizedQuestions = Array.isArray(questions)
     });
   </script>
 </Layout>
+

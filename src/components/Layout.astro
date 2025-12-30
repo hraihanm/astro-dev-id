@@ -207,6 +207,7 @@ const colors = {
       qqRemoveByKey?: (key: string) => boolean;
       qqRender?: () => void;
       qqCheckAllPending?: () => Promise<void>;
+      qqValidateAllItems?: () => Promise<boolean>;
       lastQueueCheck?: number;
     }
 
@@ -236,6 +237,12 @@ const colors = {
       
       try {
         const response = await fetch(`/api/quiz/attempt-status?attemptId=${item.attemptId}`);
+        if (response.status === 404) {
+          // Attempt not found - it was deleted, remove from queue
+          const key = item._key || `${QUEUE_PREFIX}${item.quizId}`;
+          localStorage.removeItem(key);
+          return true; // Return true to indicate we made a change (removed invalid entry)
+        }
         if (response.ok) {
           const data = await response.json();
           if (data.isReleased) {
@@ -260,6 +267,54 @@ const colors = {
       return false;
     }
     
+    async function qqValidateItem(item: QuizQueueItem): Promise<boolean> {
+      // Returns true if item is valid, false if it should be removed
+      // For items with attemptId (pending/released), check if attempt exists
+      if (item.attemptId) {
+        try {
+          const response = await fetch(`/api/quiz/attempt-status?attemptId=${item.attemptId}`);
+          if (response.status === 404) {
+            // Attempt not found - remove it
+            return false;
+          }
+          // If response is ok, attempt exists
+          return response.ok;
+        } catch (e) {
+          // On error, assume it's still valid (don't remove on network errors)
+          return true;
+        }
+      }
+      
+      // For active quizzes without attemptId, we could check quiz existence
+      // but that's more expensive. For now, we'll validate on click.
+      // Active quizzes are validated when user clicks on them.
+      return true;
+    }
+    
+    async function qqValidateAllItems(): Promise<boolean> {
+      // Validate all items and remove invalid ones
+      const items = qqRead();
+      if (items.length === 0) return false;
+      
+      // Only validate items with attemptId (pending/released)
+      // Active quizzes are validated on click
+      const itemsToValidate = items.filter(item => item.attemptId);
+      if (itemsToValidate.length === 0) return false;
+      
+      const validations = itemsToValidate.map(async (item) => {
+        const isValid = await qqValidateItem(item);
+        if (!isValid) {
+          const key = item._key || `${QUEUE_PREFIX}${item.quizId}`;
+          localStorage.removeItem(key);
+          return true; // Item was removed
+        }
+        return false; // Item is valid
+      });
+      
+      const results = await Promise.all(validations);
+      return results.some(r => r); // Return true if any items were removed
+    }
+    
     async function qqCheckAllPending() {
       const items = qqRead();
       const pendingItems = items.filter(item => item.status === 'pending_result' && item.attemptId);
@@ -270,7 +325,7 @@ const colors = {
       const checks = pendingItems.map(item => qqCheckReleasedStatus(item));
       const results = await Promise.all(checks);
       
-      // If any were updated, re-render
+      // If any were updated or removed, re-render
       if (results.some(r => r)) {
         qqRender();
       }
@@ -491,9 +546,39 @@ const colors = {
         
         // For released results, remove immediately and navigate
         const itemKey = item._key || `${QUEUE_PREFIX}${item.quizId}`;
-        const onClickHandler = isReleased 
-          ? `onclick="(e) => { e.preventDefault(); const key = '${itemKey}'; if (window.qqRemoveByKey) { window.qqRemoveByKey(key); } setTimeout(() => { window.location.href='${targetUrl}'; }, 150); }"` 
-          : '';
+        const attemptId = item.attemptId || null;
+        const itemStatus = item.status || '';
+        // Add click handler that validates before navigating
+        const onClickHandler = `onclick="(async (e) => { 
+          e.preventDefault(); 
+          const key = '${itemKey.replace(/'/g, "\\'")}'; 
+          const attemptId = ${attemptId ? `'${attemptId}'` : 'null'}; 
+          const itemStatus = '${itemStatus.replace(/'/g, "\\'")}'; 
+          
+          // Validate item before navigating
+          if (attemptId) {
+            try {
+              const response = await fetch('/api/quiz/attempt-status?attemptId=' + attemptId);
+              if (response.status === 404) {
+                // Attempt not found - remove from queue and show message
+                if (window.qqRemoveByKey) { window.qqRemoveByKey(key); }
+                alert('Kuis atau hasil kuis ini sudah tidak tersedia.');
+                return;
+              }
+            } catch (err) {
+              console.warn('Failed to validate attempt:', err);
+            }
+          }
+          
+          // For released results, remove immediately
+          if (itemStatus === 'released' && window.qqRemoveByKey) { 
+            window.qqRemoveByKey(key); 
+          }
+          
+          // Navigate after a short delay
+          setTimeout(() => { window.location.href='${targetUrl.replace(/'/g, "\\'")}'; }, 150); 
+        })(event)"`;
+        
         return `
           <div class="border border-slate-100 rounded-lg px-3 py-2.5 hover:border-blue-200 hover:shadow-sm transition" data-queue-key="${itemKey}">
             <div class="flex items-start justify-between gap-2">
@@ -523,9 +608,16 @@ const colors = {
       const wasHidden = qqPanel.classList.contains('hidden');
       qqPanel.classList.toggle('hidden');
       
-      // When opening the panel, check for released scores
+      // When opening the panel, validate all items and check for released scores
       if (wasHidden) {
+        // First validate all items (removes deleted quizzes/attempts)
+        const hadRemovals = await qqValidateAllItems();
+        // Then check for released scores
         await qqCheckAllPending();
+        // Re-render if anything changed
+        if (hadRemovals) {
+          qqRender();
+        }
       }
     });
 
@@ -543,6 +635,7 @@ const colors = {
     window.qqRemoveByKey = qqRemoveByKey;
     window.qqRender = qqRender;
     window.qqCheckAllPending = qqCheckAllPending;
+    window.qqValidateAllItems = qqValidateAllItems;
     
     let queueInterval: NodeJS.Timeout | undefined; // Track interval to prevent duplicates
 
@@ -554,10 +647,17 @@ const colors = {
       // First clean up any duplicates or invalid entries
       qqRead();
       
-      // Check for released scores on initialization
-      qqCheckAllPending().then(() => {
-        // Then render the initial state
-        qqRender();
+      // Validate all items and check for released scores on initialization
+      qqValidateAllItems().then((hadRemovals) => {
+        return qqCheckAllPending().then(() => {
+          // Re-render if anything changed
+          if (hadRemovals) {
+            qqRender();
+          } else {
+            // Always render to show initial state
+            qqRender();
+          }
+        });
       });
       
       // Set up periodic refresh
@@ -595,13 +695,20 @@ const colors = {
           }
         });
         
-        // Check for released scores periodically (every 30 seconds)
+        // Check for released scores and validate items periodically (every 30 seconds)
         const now = Date.now();
         const lastCheck = window.lastQueueCheck || 0;
         if (now - lastCheck >= 30000) {
           window.lastQueueCheck = now;
-          qqCheckAllPending().then(() => {
-            qqRender();
+          // First validate all items (removes deleted quizzes/attempts)
+          qqValidateAllItems().then((hadRemovals) => {
+            // Then check for released scores
+            return qqCheckAllPending().then(() => {
+              // Re-render if anything changed
+              if (hadRemovals) {
+                qqRender();
+              }
+            });
           });
         } else {
           qqRender();
