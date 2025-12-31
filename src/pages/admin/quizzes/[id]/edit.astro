@@ -563,9 +563,9 @@ const normalizedQuestions = Array.isArray(questions)
       </div>
       <div class="w-80 border-l px-4 py-4 flex items-center justify-between gap-2 min-w-0">
         <div class="flex items-center gap-2 min-w-0 flex-1">
-          <select id="question-type-select" class="px-3 py-2 border border-gray-300 rounded-md text-sm flex-shrink-0">
-            <option value="multiple-choice">Multiple Choice</option>
-            <option value="complex-multiple-choice">Complex Multiple Choice</option>
+          <select id="question-type-select" class="px-3 py-2 border border-gray-300 rounded-md text-sm flex-shrink-0 min-w-0">
+            <option value="multiple-choice">PG</option>
+            <option value="complex-multiple-choice">PG Kompleks</option>
             <option value="essay">Esai</option>
             <option value="fill-in-the-blank">Isian Singkat</option>
           </select>
@@ -599,7 +599,15 @@ const normalizedQuestions = Array.isArray(questions)
         <!-- Question Grid -->
         <div class="p-4 border-b">
           <div class="flex items-center justify-between mb-3">
-            <h3 class="font-semibold text-gray-700 text-sm tracking-wide">DAFTAR SOAL</h3>
+            <div class="flex items-center gap-1.5">
+              <h3 class="font-semibold text-gray-700 text-sm tracking-wide">DAFTAR SOAL</h3>
+              <div class="tooltip-wrapper relative">
+                <svg class="w-4 h-4 text-gray-400 cursor-help hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div class="tooltip">Klik untuk edit. Seret untuk mengatur ulang.</div>
+              </div>
+            </div>
             <div class="flex items-center space-x-2 text-xs">
               <label class="flex items-center space-x-1 cursor-pointer">
                 <input type="radio" name="reorder-mode" value="shift" checked class="reorder-mode-radio">
@@ -619,13 +627,6 @@ const normalizedQuestions = Array.isArray(questions)
             class="hidden mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
             role="alert"
           ></div>
-        </div>
-
-        <!-- Instructions -->
-        <div class="p-4 border-b bg-blue-50">
-          <p class="text-xs text-slate-600">
-            <strong class="text-slate-700">💡 Tips:</strong> Klik untuk edit. Seret untuk mengatur ulang.
-          </p>
         </div>
 
         <!-- Quick Actions -->
@@ -864,6 +865,29 @@ const normalizedQuestions = Array.isArray(questions)
       will-change: transform;
     }
 
+    /* FLIP animation for shifting questions */
+    .question-number.shifting {
+      will-change: transform;
+    }
+
+    /* Smooth number label transition */
+    .question-number {
+      position: relative;
+    }
+
+    .question-number .number-label {
+      display: inline-block;
+      transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .question-number .number-label.fade-out {
+      opacity: 0;
+    }
+
+    .question-number .number-label.fade-in {
+      opacity: 1;
+    }
+
     /* Enhanced form inputs - Use default site font */
     textarea,
     input[type="text"],
@@ -1008,6 +1032,18 @@ const normalizedQuestions = Array.isArray(questions)
       cursor: pointer;
       outline: none;
       transition: all 0.2s;
+      max-width: 100%;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    /* Main question type dropdown */
+    #question-type-select {
+      width: 180px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
     }
 
     /* Blue for MC types */
@@ -2018,6 +2054,176 @@ const normalizedQuestions = Array.isArray(questions)
     const deletedQuestionIds = new Set();   // IDs of questions deleted this session
     let questionsReordered = false;         // Track if reorder happened
     
+    // Helper function to apply FLIP animation to question grid
+    function applyFlipAnimation() {
+      // Wait for DOM to update
+      requestAnimationFrame(() => {
+        const afterButtons = Array.from(questionGrid.children);
+        if (afterButtons.length === 0) return;
+        
+        // Get stored before positions (set by handlers before render)
+        const beforePositions = window._questionGridBeforePositions;
+        const beforeNumbers = window._questionGridBeforeNumbers;
+        
+        // If no before positions, no animation needed
+        if (!beforePositions || !beforeNumbers) return;
+        
+        // Capture current positions
+        const afterPositions = new Map();
+        const afterNumbers = new Map();
+        afterButtons.forEach((child, idx) => {
+          const id = child.dataset.qid || child.dataset.index;
+          if (!id) return;
+          const rect = child.getBoundingClientRect();
+          afterPositions.set(id, { x: rect.left, y: rect.top });
+          afterNumbers.set(id, idx + 1);
+        });
+        
+        // Clear stored positions
+        window._questionGridBeforePositions = null;
+        window._questionGridBeforeNumbers = null;
+        
+        // Apply FLIP animation
+        afterButtons.forEach(child => {
+          const id = child.dataset.qid || child.dataset.index;
+          if (!id) return;
+          
+          const prev = beforePositions.get(id);
+          const oldNum = beforeNumbers.get(id);
+          const newNum = afterNumbers.get(id);
+          
+          if (!prev) {
+            // New question - fade in from opacity 0
+            child.style.transition = 'none';
+            child.style.opacity = '0';
+            child.style.zIndex = '100';
+            
+            requestAnimationFrame(() => {
+              child.style.transition = 'opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)';
+              child.style.opacity = '1';
+              
+              child.addEventListener('transitionend', () => {
+                child.style.transition = '';
+                child.style.removeProperty('opacity');
+                child.style.zIndex = '';
+              }, { once: true });
+            });
+            return;
+          }
+          
+          const rect = child.getBoundingClientRect();
+          const dx = prev.x - rect.x;
+          const dy = prev.y - rect.y;
+          const targetScale = child.classList.contains('current') ? 1.1 : 1;
+          
+          // Get or create number label span
+          let numberLabel = child.querySelector('.number-label');
+          if (!numberLabel) {
+            numberLabel = document.createElement('span');
+            numberLabel.className = 'number-label fade-in';
+            child.appendChild(numberLabel);
+          }
+          
+          // Set old number immediately (before animation starts) if different
+          if (oldNum !== undefined && oldNum !== newNum) {
+            numberLabel.textContent = String(oldNum);
+            numberLabel.classList.remove('fade-out');
+            numberLabel.classList.add('fade-in');
+          }
+          
+          if (Math.abs(dx) < 1 && Math.abs(dy) < 1) {
+            // No movement; just crossfade number if it changed
+            if (oldNum !== undefined && oldNum !== newNum && newNum !== undefined) {
+              // Fade out old number
+              numberLabel.classList.remove('fade-in');
+              numberLabel.classList.add('fade-out');
+              
+              numberLabel.addEventListener('transitionend', () => {
+                if (numberLabel.classList.contains('fade-out')) {
+                  numberLabel.textContent = String(newNum);
+                  numberLabel.classList.remove('fade-out');
+                  numberLabel.classList.add('fade-in');
+                }
+              }, { once: true });
+            }
+            return;
+          }
+          
+          child.style.transition = 'none';
+          child.style.setProperty('transform', `translate(${dx}px, ${dy}px) scale(${targetScale})`, 'important');
+          child.style.zIndex = '100';
+          
+          requestAnimationFrame(() => {
+            child.style.transition = 'transform 240ms cubic-bezier(0.4, 0, 0.2, 1)';
+            child.style.setProperty('transform', `scale(${targetScale})`, 'important');
+          });
+          
+          // Crossfade number during position animation
+          if (oldNum !== undefined && oldNum !== newNum && newNum !== undefined) {
+            // Start crossfade halfway through the position animation
+            setTimeout(() => {
+              numberLabel.classList.remove('fade-in');
+              numberLabel.classList.add('fade-out');
+              
+              numberLabel.addEventListener('transitionend', () => {
+                if (numberLabel.classList.contains('fade-out')) {
+                  numberLabel.textContent = String(newNum);
+                  numberLabel.classList.remove('fade-out');
+                  numberLabel.classList.add('fade-in');
+                }
+              }, { once: true });
+            }, 120); // Halfway through 240ms animation
+          }
+          
+          child.addEventListener('transitionend', () => {
+            child.style.transition = '';
+            child.style.removeProperty('transform');
+            child.style.zIndex = '';
+          }, { once: true });
+        });
+        
+        // Fallback: ensure numbers are correct after animation window
+        setTimeout(() => {
+          Array.from(questionGrid.children).forEach((child, idx) => {
+            const numberLabel = child.querySelector('.number-label');
+            if (numberLabel) {
+              numberLabel.textContent = String(idx + 1);
+              numberLabel.classList.remove('fade-out');
+              numberLabel.classList.add('fade-in');
+            } else {
+              child.textContent = String(idx + 1);
+            }
+          });
+          
+          // Apply pending current index after animation completes
+          if (window._pendingCurrentIndex !== undefined) {
+            currentQuestionIndex = window._pendingCurrentIndex;
+            const pendingIndex = window._pendingCurrentIndex;
+            delete window._pendingCurrentIndex;
+            
+            // Apply current class directly to the button (no re-render to avoid disrupting animation)
+            const newCurrentButton = Array.from(questionGrid.children)[pendingIndex];
+            if (newCurrentButton) {
+              // Remove 'unanswered' class and add 'current' class
+              newCurrentButton.classList.remove('unanswered');
+              newCurrentButton.classList.add('current');
+              
+              // Add a subtle fade-in animation for the newly selected question
+              newCurrentButton.style.opacity = '0.5';
+              newCurrentButton.style.transition = 'opacity 200ms cubic-bezier(0.4, 0, 0.2, 1)';
+              requestAnimationFrame(() => {
+                newCurrentButton.style.opacity = '1';
+                newCurrentButton.addEventListener('transitionend', () => {
+                  newCurrentButton.style.transition = '';
+                  newCurrentButton.style.removeProperty('opacity');
+                }, { once: true });
+              });
+            }
+          }
+        }, 260);
+      });
+    }
+    
     // Initialize original snapshots from server data (not localStorage)
     questions.forEach(q => {
       if (q.id !== undefined) {
@@ -2730,8 +2936,13 @@ const normalizedQuestions = Array.isArray(questions)
         } else {
           classes.push('unanswered');
         }
+        
         btn.className = classes.join(' ');
-        btn.textContent = index + 1;
+        // Wrap number in span for smooth transitions
+        const numberSpan = document.createElement('span');
+        numberSpan.className = 'number-label fade-in';
+        numberSpan.textContent = index + 1;
+        btn.appendChild(numberSpan);
         btn.draggable = true;
         btn.dataset.index = index;
         btn.dataset.qid = q.id ? String(q.id) : String(index);
@@ -2846,14 +3057,38 @@ const normalizedQuestions = Array.isArray(questions)
               const dy = prev.y - rect.y;
               const targetScale = child.classList.contains('current') ? 1.1 : 1;
 
-              // Show old number during animation
+              // Get number label span
+              let numberLabel = child.querySelector('.number-label');
+              if (!numberLabel) {
+                numberLabel = document.createElement('span');
+                numberLabel.className = 'number-label fade-in';
+                child.appendChild(numberLabel);
+              }
+              
               const oldNum = beforeNumbers.get(id);
-              if (oldNum) child.textContent = String(oldNum);
+              const newNum = afterNumbers.get(id);
+              
+              // Set old number if different
+              if (oldNum && oldNum !== newNum) {
+                numberLabel.textContent = String(oldNum);
+                numberLabel.classList.remove('fade-out');
+                numberLabel.classList.add('fade-in');
+              }
 
               if (Math.abs(dx) < 1 && Math.abs(dy) < 1) {
-                // No movement; just ensure number is updated to new after state
-                const newNum = afterNumbers.get(id);
-                if (newNum) child.textContent = String(newNum);
+                // No movement; just crossfade number if it changed
+                if (oldNum !== newNum && newNum) {
+                  numberLabel.classList.remove('fade-in');
+                  numberLabel.classList.add('fade-out');
+                  
+                  numberLabel.addEventListener('transitionend', () => {
+                    if (numberLabel.classList.contains('fade-out')) {
+                      numberLabel.textContent = String(newNum);
+                      numberLabel.classList.remove('fade-out');
+                      numberLabel.classList.add('fade-in');
+                    }
+                  }, { once: true });
+                }
                 return;
               }
 
@@ -2864,19 +3099,41 @@ const normalizedQuestions = Array.isArray(questions)
                 child.style.transition = 'transform 240ms cubic-bezier(0.4, 0, 0.2, 1)';
                 child.style.setProperty('transform', `scale(${targetScale})`, 'important');
               });
+              
+              // Crossfade number during position animation
+              if (oldNum !== newNum && newNum) {
+                setTimeout(() => {
+                  numberLabel.classList.remove('fade-in');
+                  numberLabel.classList.add('fade-out');
+                  
+                  numberLabel.addEventListener('transitionend', () => {
+                    if (numberLabel.classList.contains('fade-out')) {
+                      numberLabel.textContent = String(newNum);
+                      numberLabel.classList.remove('fade-out');
+                      numberLabel.classList.add('fade-in');
+                    }
+                  }, { once: true });
+                }, 120); // Halfway through 240ms animation
+              }
+              
               child.addEventListener('transitionend', () => {
                 child.style.transition = '';
                 child.style.removeProperty('transform');
                 child.style.zIndex = '';
-                const newNum = afterNumbers.get(id);
-                if (newNum) child.textContent = String(newNum);
               }, { once: true });
             });
 
             // Fallback: ensure numbers are correct after animation window
             setTimeout(() => {
               Array.from(questionGrid.children).forEach((child, idx) => {
-                child.textContent = String(idx + 1);
+                const numberLabel = child.querySelector('.number-label');
+                if (numberLabel) {
+                  numberLabel.textContent = String(idx + 1);
+                  numberLabel.classList.remove('fade-out');
+                  numberLabel.classList.add('fade-in');
+                } else {
+                  child.textContent = String(idx + 1);
+                }
               });
             }, 260);
           }
@@ -2884,6 +3141,11 @@ const normalizedQuestions = Array.isArray(questions)
 
         questionGrid.appendChild(btn);
       });
+      
+      // Apply FLIP animation if positions were captured
+      if (window._questionGridBeforePositions) {
+        applyFlipAnimation();
+      }
       
       // Update button states after rendering
       updateButtonStates();
@@ -2980,6 +3242,7 @@ const normalizedQuestions = Array.isArray(questions)
         question.maxWords = parseInt(editor.querySelector('.essay-max-words')?.value) || undefined;
         question.allowFileUpload = editor.querySelector('.essay-allow-upload')?.checked || false;
         question.rubric = editor.querySelector('.essay-rubric')?.value || '';
+        question.metadata.solution = editor.querySelector('.solution-text')?.value || '';
         
         // Save allowed file types
         const allowImages = editor.querySelector('.essay-allow-images')?.checked || false;
@@ -3153,8 +3416,8 @@ const normalizedQuestions = Array.isArray(questions)
       const questionNumber = currentQuestionIndex + 1;
 
       const typeLabels = {
-        'multiple-choice': 'Pilihan Tunggal',
-        'complex-multiple-choice': 'Pilihan Ganda'
+        'multiple-choice': 'PG',
+        'complex-multiple-choice': 'PG Kompleks'
       };
 
       return `
@@ -3172,8 +3435,8 @@ const normalizedQuestions = Array.isArray(questions)
                       class="question-type-change-select inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200 cursor-pointer hover:bg-blue-200 transition-colors"
                       data-current-type="${question.type}"
                     >
-                      <option value="multiple-choice" ${question.type === 'multiple-choice' ? 'selected' : ''}>Pilihan Tunggal</option>
-                      <option value="complex-multiple-choice" ${question.type === 'complex-multiple-choice' ? 'selected' : ''}>Pilihan Ganda</option>
+                      <option value="multiple-choice" ${question.type === 'multiple-choice' ? 'selected' : ''}>PG</option>
+                      <option value="complex-multiple-choice" ${question.type === 'complex-multiple-choice' ? 'selected' : ''}>PG Kompleks</option>
                       <option value="essay" disabled>Esai (akan menghapus pilihan)</option>
                       <option value="fill-in-the-blank" disabled>Isian Singkat (akan menghapus pilihan)</option>
                     </select>
@@ -3297,8 +3560,8 @@ const normalizedQuestions = Array.isArray(questions)
                       class="question-type-change-select inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-green-100 text-green-700 border border-green-200 cursor-pointer hover:bg-green-200 transition-colors"
                       data-current-type="${question.type}"
                     >
-                      <option value="multiple-choice">Pilihan Tunggal</option>
-                      <option value="complex-multiple-choice">Pilihan Ganda</option>
+                      <option value="multiple-choice">PG</option>
+                      <option value="complex-multiple-choice">PG Kompleks</option>
                       <option value="essay" selected>Esai</option>
                       <option value="fill-in-the-blank">Isian Singkat</option>
                     </select>
@@ -3319,53 +3582,66 @@ const normalizedQuestions = Array.isArray(questions)
                   >${escapeHtml(question.question)}</textarea>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                      Maks. Kata (Opsional)
-                    </label>
-                    <input
-                      type="number"
-                      class="essay-max-words w-full px-4 py-2 border border-gray-300 rounded-md text-base"
-                      min="1"
-                      value="${question.maxWords || ''}"
-                      placeholder="e.g., 500"
-                    />
-                  </div>
-                  <div class="flex items-center">
-                    <label class="flex items-center space-x-2">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Maks. Kata (Opsional)
+                  </label>
+                  <input
+                    type="number"
+                    class="essay-max-words w-full px-4 py-2 border border-gray-300 rounded-md text-base"
+                    min="1"
+                    value="${question.maxWords || ''}"
+                    placeholder="e.g., 500"
+                  />
+                </div>
+
+                <!-- File Upload Settings Group -->
+                <div class="border border-gray-200 rounded-lg p-4 bg-gray-50/30">
+                  <div class="flex items-center justify-between mb-3">
+                    <label class="flex items-center space-x-2 cursor-pointer">
                       <input
                         type="checkbox"
                         class="essay-allow-upload w-4 h-4"
                         ${question.allowFileUpload ? 'checked' : ''}
                       />
-                      <span class="text-sm text-gray-700">Izinkan unggah file</span>
+                      <span class="text-sm font-medium text-gray-700">Izinkan unggah file</span>
                     </label>
+                  </div>
+                  
+                  <div class="essay-file-types-container ${question.allowFileUpload ? '' : 'hidden'}">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                      Tipe File yang Diizinkan
+                    </label>
+                    <div class="space-y-2">
+                      <label class="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          class="essay-allow-images w-4 h-4"
+                          ${(question.allowedFileTypes === undefined || question.allowedFileTypes === 'all' || question.allowedFileTypes === 'images') ? 'checked' : ''}
+                        />
+                        <span class="text-sm text-gray-700">Gambar (JPG, PNG, GIF, WebP, SVG)</span>
+                      </label>
+                      <label class="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          class="essay-allow-pdf w-4 h-4"
+                          ${(question.allowedFileTypes === undefined || question.allowedFileTypes === 'all' || question.allowedFileTypes === 'pdf') ? 'checked' : ''}
+                        />
+                        <span class="text-sm text-gray-700">PDF</span>
+                      </label>
+                    </div>
                   </div>
                 </div>
 
-                <div class="essay-file-types-container ${question.allowFileUpload ? '' : 'hidden'}">
+                <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Tipe File yang Diizinkan
+                    Pembahasan (Opsional)
                   </label>
-                  <div class="space-y-2">
-                    <label class="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        class="essay-allow-images w-4 h-4"
-                        ${(question.allowedFileTypes === undefined || question.allowedFileTypes === 'all' || question.allowedFileTypes === 'images') ? 'checked' : ''}
-                      />
-                      <span class="text-sm text-gray-700">Gambar (JPG, PNG, GIF, WebP, SVG)</span>
-                    </label>
-                    <label class="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        class="essay-allow-pdf w-4 h-4"
-                        ${(question.allowedFileTypes === undefined || question.allowedFileTypes === 'all' || question.allowedFileTypes === 'pdf') ? 'checked' : ''}
-                      />
-                      <span class="text-sm text-gray-700">PDF</span>
-                    </label>
-                  </div>
+                  <textarea
+                    class="solution-text w-full px-4 py-3 border border-gray-300 rounded-md text-sm resize-y"
+                    rows="2"
+                    placeholder="Jelaskan jawaban yang benar"
+                  >${escapeHtml(question.metadata?.solution || '')}</textarea>
                 </div>
 
                 <div>
@@ -3376,7 +3652,7 @@ const normalizedQuestions = Array.isArray(questions)
                     class="essay-rubric w-full px-4 py-3 border border-gray-300 rounded-md text-sm resize-y"
                     rows="3"
                     placeholder="Panduan penilaian"
-                  >${escapeHtml(question.rubric || question.metadata?.solution || '')}</textarea>
+                  >${escapeHtml(question.rubric || '')}</textarea>
                 </div>
               </div>
             </div>
@@ -3427,8 +3703,8 @@ const normalizedQuestions = Array.isArray(questions)
                       class="question-type-change-select inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-orange-100 text-orange-700 border border-orange-200 cursor-pointer hover:bg-orange-200 transition-colors"
                       data-current-type="${question.type}"
                     >
-                      <option value="multiple-choice">Pilihan Tunggal</option>
-                      <option value="complex-multiple-choice">Pilihan Ganda</option>
+                      <option value="multiple-choice">PG</option>
+                      <option value="complex-multiple-choice">PG Kompleks</option>
                       <option value="essay">Esai</option>
                       <option value="fill-in-the-blank" selected>Isian Singkat</option>
                     </select>
@@ -3926,7 +4202,7 @@ const normalizedQuestions = Array.isArray(questions)
                    (newType === 'multiple-choice' || newType === 'complex-multiple-choice')) {
             showWarning = true;
             const currentTypeName = currentType === 'essay' ? 'Esai' : 'Isian Singkat';
-            warningMessage = `⚠️ PERINGATAN: Mengubah tipe soal dari "${currentTypeName}" ke "${newType === 'multiple-choice' ? 'Pilihan Tunggal' : 'Pilihan Ganda'}" akan menghapus data ${currentTypeName} yang sudah ada.\n\nApakah Anda yakin ingin melanjutkan?`;
+            warningMessage = `⚠️ PERINGATAN: Mengubah tipe soal dari "${currentTypeName}" ke "${newType === 'multiple-choice' ? 'PG' : 'PG Kompleks'}" akan menghapus data ${currentTypeName} yang sudah ada.\n\nApakah Anda yakin ingin melanjutkan?`;
           }
           // Changing between Essay and Fill-in-the-blank
           else if ((currentType === 'essay' && newType === 'fill-in-the-blank') || 
@@ -4490,6 +4766,8 @@ const normalizedQuestions = Array.isArray(questions)
         const maxWords = editor.querySelector('.essay-max-words')?.value || '';
         const rubricText = editor.querySelector('.essay-rubric')?.value || '';
         const rubricHtml = rubricText ? renderMarkdown(rubricText) : '';
+        const solutionText = editor.querySelector('.solution-text')?.value || '';
+        const solutionHtml = solutionText ? renderMarkdown(solutionText) : '';
 
         previewContent.innerHTML = `
           <div class="preview-section">
@@ -4520,6 +4798,20 @@ const normalizedQuestions = Array.isArray(questions)
               ${maxWords ? `<div class="text-sm text-gray-500">Maksimum ${maxWords} kata</div>` : ''}
             </div>
           </div>
+          
+          ${solutionHtml ? `
+            <div class="preview-section preview-solution">
+              <div class="preview-section-title">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 18h6"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 22h4"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2a7 7 0 017 7c0 2.3-1.2 4.3-3 5.5-.7.5-1 1.2-1 2v1h-6v-1c0-.8-.4-1.5-1-2A6.97 6.97 0 015 9a7 7 0 017-7z"></path>
+                </svg>
+                <span>Pembahasan</span>
+              </div>
+              <div class="preview-solution-content">${solutionHtml}</div>
+            </div>
+          ` : ''}
           
           ${rubricHtml ? `
             <div class="preview-section preview-solution">
@@ -4634,6 +4926,21 @@ const normalizedQuestions = Array.isArray(questions)
         saveCurrentQuestion();
       }
 
+      // Capture positions before adding
+      const beforePositions = new Map();
+      const beforeNumbers = new Map();
+      Array.from(questionGrid.children).forEach((child, idx) => {
+        const id = child.dataset.qid || child.dataset.index;
+        if (!id) return;
+        const rect = child.getBoundingClientRect();
+        beforePositions.set(id, { x: rect.left, y: rect.top });
+        beforeNumbers.set(id, idx + 1);
+      });
+      
+      // Store for FLIP animation
+      window._questionGridBeforePositions = beforePositions;
+      window._questionGridBeforeNumbers = beforeNumbers;
+
       const newQuestion = {
         id: ++questionCounter,
         type: selectedType,
@@ -4675,6 +4982,33 @@ const normalizedQuestions = Array.isArray(questions)
       if (!confirm('Hapus soal ini?')) return;
 
       const deletedQuestion = questionsData[currentQuestionIndex];
+      const deletedId = deletedQuestion?.id;
+      const deletedIndex = currentQuestionIndex;
+      
+      // Find the button to fade out
+      const buttonToDelete = Array.from(questionGrid.children).find(btn => {
+        const qid = btn.dataset.qid;
+        return qid && (parseInt(qid) === deletedId || btn.dataset.index === String(currentQuestionIndex));
+      });
+      
+      // Capture positions before deletion (excluding the deleted item)
+      const beforePositions = new Map();
+      const beforeNumbers = new Map();
+      Array.from(questionGrid.children).forEach((child, idx) => {
+        const id = child.dataset.qid || child.dataset.index;
+        if (!id) return;
+        // Skip the item being deleted
+        if (child === buttonToDelete) return;
+        const rect = child.getBoundingClientRect();
+        beforePositions.set(id, { x: rect.left, y: rect.top });
+        // Use the current displayed number from the button
+        const currentNumber = parseInt(child.textContent) || (idx + 1);
+        beforeNumbers.set(id, currentNumber);
+      });
+      
+      // Store for FLIP animation
+      window._questionGridBeforePositions = beforePositions;
+      window._questionGridBeforeNumbers = beforeNumbers;
       
       // Track deletion for delta save (only if it was an existing question)
       if (deletedQuestion && deletedQuestion.id !== undefined) {
@@ -4687,15 +5021,49 @@ const normalizedQuestions = Array.isArray(questions)
         }
       }
 
+      // Remove from data first
       questionsData.splice(currentQuestionIndex, 1);
       
-      if (currentQuestionIndex >= questionsData.length) {
-        currentQuestionIndex = Math.max(0, questionsData.length - 1);
+      // Calculate new current index but don't apply it yet
+      let newCurrentIndex = currentQuestionIndex;
+      if (newCurrentIndex >= questionsData.length) {
+        newCurrentIndex = Math.max(0, questionsData.length - 1);
       }
       
-      renderQuestionGrid();
-      renderCurrentQuestion();
-      updateButtonStates();
+      // Temporarily set currentQuestionIndex to -1 to prevent "current" class from being applied in grid
+      const oldCurrentIndex = currentQuestionIndex;
+      currentQuestionIndex = -1;
+      
+      // Store the new current index to apply after animation
+      window._pendingCurrentIndex = newCurrentIndex;
+      
+      // Fade out the deleted button
+      if (buttonToDelete) {
+        buttonToDelete.style.transition = 'opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)';
+        buttonToDelete.style.opacity = '0';
+        buttonToDelete.style.pointerEvents = 'none';
+        
+        // After fade completes, re-render and animate shift
+        buttonToDelete.addEventListener('transitionend', () => {
+          buttonToDelete.remove();
+          // Render grid without "current" class (currentQuestionIndex is still -1)
+          renderQuestionGrid();
+          // Temporarily restore currentQuestionIndex for renderCurrentQuestion
+          const tempIndex = currentQuestionIndex;
+          currentQuestionIndex = newCurrentIndex;
+          renderCurrentQuestion(); // Uses newCurrentIndex
+          currentQuestionIndex = tempIndex; // Restore -1 so grid doesn't show current class
+          updateButtonStates();
+        }, { once: true });
+      } else {
+        // Fallback if button not found
+        renderQuestionGrid(); // Renders without "current" class
+        const tempIndex = currentQuestionIndex;
+        currentQuestionIndex = newCurrentIndex;
+        renderCurrentQuestion();
+        currentQuestionIndex = tempIndex; // Restore -1
+        updateButtonStates();
+      }
     });
 
     // Duplicate current question
@@ -4707,6 +5075,21 @@ const normalizedQuestions = Array.isArray(questions)
       
       const currentQuestion = questionsData[currentQuestionIndex];
       if (!currentQuestion) return;
+      
+      // Capture positions before duplicating
+      const beforePositions = new Map();
+      const beforeNumbers = new Map();
+      Array.from(questionGrid.children).forEach((child, idx) => {
+        const id = child.dataset.qid || child.dataset.index;
+        if (!id) return;
+        const rect = child.getBoundingClientRect();
+        beforePositions.set(id, { x: rect.left, y: rect.top });
+        beforeNumbers.set(id, idx + 1);
+      });
+      
+      // Store for FLIP animation
+      window._questionGridBeforePositions = beforePositions;
+      window._questionGridBeforeNumbers = beforeNumbers;
       
       // Deep clone the question
       const duplicatedQuestion = JSON.parse(JSON.stringify(currentQuestion));
@@ -4748,6 +5131,10 @@ const normalizedQuestions = Array.isArray(questions)
       newQuestionIds.clear();
       deletedQuestionIds.clear();
       questionsReordered = false;
+      
+      // Clear animation tracking
+      window._questionGridBeforePositions = null;
+      window._questionGridBeforeNumbers = null;
       
       // Rebuild original snapshots
       originalQuestionsMap.clear();
@@ -5024,6 +5411,12 @@ const normalizedQuestions = Array.isArray(questions)
     // Initialize
     renderQuestionGrid();
     renderCurrentQuestion();
+    
+    // Setup tooltips for sidebar
+    const sidebar = document.querySelector('.w-80.bg-white.border-l');
+    if (sidebar) {
+      setupTooltipPositioning(sidebar);
+    }
     
     // Show unsaved indicator if there are stored changes
     if (stored?.hasUnsavedChanges) {
