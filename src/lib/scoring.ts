@@ -130,8 +130,9 @@ async function evaluateQuestion(question: any, userAnswer?: QuizAnswer): Promise
       break;
     
     case 'essay':
-      // Essays require manual grading - return 0 points for now
-      // Can be manually graded later by instructor
+      // Essays require manual grading
+      // Check if essay has been graded (stored in attempt.essayGrading)
+      // For now, return 0 points - grading will be done via API and score recalculated
       points = 0;
       isCorrect = false;
       break;
@@ -142,10 +143,21 @@ async function evaluateQuestion(question: any, userAnswer?: QuizAnswer): Promise
       break;
   }
 
+  // Handle essay answer structure: can be array or object { answer: string, files: [...] }
+  let normalizedUserAnswer = userAnswer.answer;
+  if (question.type === 'essay' && userAnswer.answer && typeof userAnswer.answer === 'object' && !Array.isArray(userAnswer.answer)) {
+    // For essays, store the full object structure
+    normalizedUserAnswer = userAnswer.answer;
+  } else if (Array.isArray(userAnswer.answer)) {
+    normalizedUserAnswer = userAnswer.answer;
+  } else {
+    normalizedUserAnswer = [userAnswer.answer];
+  }
+
   return {
     questionId: question.id || 0,
     question,
-    userAnswer: userAnswer.answer,
+    userAnswer: normalizedUserAnswer,
     correctAnswer: question.correctAnswer || question.correctAnswers || question.blanks || null,
     isCorrect,
     points,
@@ -294,6 +306,25 @@ export async function saveQuizResult(data: {
   scoreReleasedAt?: Date | null;
   endReason?: 'manual' | 'time_up';
 }) {
+  // Extract essay files from answers
+  const essayFiles: string[] = [];
+  data.answers.forEach((answer) => {
+    if (answer.type === 'essay') {
+      // Handle new structure: answer.answer is an object { answer: string, files: [...] }
+      // or old structure: answer.answer is an array [string]
+      if (answer.answer && typeof answer.answer === 'object' && !Array.isArray(answer.answer)) {
+        // New structure: { answer: string, files: [...] }
+        if (Array.isArray(answer.answer.files)) {
+          answer.answer.files.forEach((file: any) => {
+            if (file && file.url) {
+              essayFiles.push(file.url);
+            }
+          });
+        }
+      }
+    }
+  });
+
   return await prisma.quizAttempt.create({
     data: {
       userId: data.userId,
@@ -306,7 +337,9 @@ export async function saveQuizResult(data: {
       timeSpent: data.timeSpent,
       detailedResults: JSON.stringify(data.result.detailedResults),
       scoreReleasedAt: data.scoreReleasedAt || null,
-      endReason: data.endReason || 'manual'
+      endReason: data.endReason || 'manual',
+      essayFiles: essayFiles.length > 0 ? JSON.stringify(essayFiles) : null,
+      essayGrading: null // Initialize as null, will be populated when graded
     }
   });
 }

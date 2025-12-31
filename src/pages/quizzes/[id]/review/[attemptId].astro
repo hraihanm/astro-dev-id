@@ -68,7 +68,9 @@ try {
         ...foundAttempt,
         answers: JSON.parse(foundAttempt.answers),
         detailedResults: isReleased ? JSON.parse(foundAttempt.detailedResults) : [],
-        scoreReleasedAt: foundAttempt.scoreReleasedAt
+        scoreReleasedAt: foundAttempt.scoreReleasedAt,
+        essayGrading: foundAttempt.essayGrading ? (typeof foundAttempt.essayGrading === 'string' ? JSON.parse(foundAttempt.essayGrading) : foundAttempt.essayGrading) : null,
+        essayFiles: foundAttempt.essayFiles ? (typeof foundAttempt.essayFiles === 'string' ? JSON.parse(foundAttempt.essayFiles) : foundAttempt.essayFiles) : null
       };
     } else {
       error = 'Attempt not found or you do not have permission to view it';
@@ -130,54 +132,106 @@ const userEmail = attemptUser?.email || '';
     ) : (
       <div class="flex flex-col h-screen">
         <!-- Header with Quiz Info and Score -->
-        <div class="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 flex-shrink-0">
-          <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div class="flex items-center gap-4">
-              <a href="/quizzes/history" class="p-2 rounded-lg hover:bg-slate-100 transition-colors">
-                <Icon name="arrow-left" class="w-5 h-5 text-slate-600" />
+        <div class="bg-white shadow-sm px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 flex-shrink-0">
+          <div class="flex items-center justify-between max-w-7xl mx-auto gap-3 sm:gap-4">
+            <div class="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
+              <a href="/quizzes/history" class="p-1.5 sm:p-2 rounded-lg hover:bg-slate-100 transition-colors flex-shrink-0" aria-label="Kembali ke riwayat">
+                <Icon name="arrow-left" class="w-4 h-4 sm:w-5 sm:h-5 text-slate-600" />
               </a>
-              <div class="flex items-center gap-3">
-                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white">
-                  <Icon name="bar-chart" class="w-6 h-6" />
+              <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <Icon name="bar-chart" class="w-5 h-5 text-blue-600" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <h1 class="text-base sm:text-xl font-bold text-slate-900 truncate">{quiz.title}</h1>
+                <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                  <p class="text-xs sm:text-sm text-slate-500">Tinjauan Percobaan</p>
+                  <span class="text-slate-300 hidden sm:inline">•</span>
+                  <p class="text-xs sm:text-sm text-slate-500">{formatDate(attempt.completedAt)}</p>
+                  <span class="text-slate-300 hidden sm:inline">•</span>
+                  <span class="text-xs sm:text-sm text-slate-500">
+                    <span class="font-medium text-slate-600">Alasan selesai:</span>
+                    <span class="ml-1.5 px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-semibold">{endReasonLabel}</span>
+                  </span>
                 </div>
-                <div>
-                  <h1 class="text-xl font-bold text-slate-900">{quiz.title}</h1>
-                  <p class="text-sm text-slate-500">Tinjauan Percobaan • {formatDate(attempt.completedAt)}</p>
-                  {isViewingOtherUser && (
-                    <div class="mt-1 flex items-center gap-2 text-xs text-slate-600">
-                      <Icon name="user" class="w-3.5 h-3.5 text-slate-400" />
-                      <span class="font-medium">{userFullName}</span>
-                      <span class="text-slate-400">•</span>
-                      <span>{userEmail}</span>
-                    </div>
-                  )}
-                </div>
+                {isViewingOtherUser && (
+                  <div class="mt-1 flex items-center gap-1.5 text-xs text-slate-600">
+                    <Icon name="user" class="w-3 h-3 text-slate-400 flex-shrink-0" />
+                    <span class="font-medium truncate">{userFullName}</span>
+                    <span class="text-slate-400 hidden sm:inline">•</span>
+                    <span class="truncate hidden sm:inline">{userEmail}</span>
+                  </div>
+                )}
               </div>
             </div>
             
-            <div class="flex items-center gap-4">
+            <!-- Score Card -->
+            <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               {attempt?.scoreReleasedAt ? (
-                <div class={`px-4 py-2 rounded-xl bg-${scoreColor}-50 border border-${scoreColor}-200`}>
-                  <div class="flex items-center gap-4">
-                    <div class="text-center">
-                      <div class={`text-2xl font-bold text-${scoreColor}-600`}>{attempt.percentage}%</div>
-                      <div class="text-xs text-slate-500 uppercase tracking-wider">Skor</div>
-                    </div>
-                    <div class="w-px h-8 bg-slate-200"></div>
-                    <div class="text-center">
-                      <div class="text-lg font-bold text-slate-900">{attempt.correctAnswers}/{attempt.totalQuestions}</div>
-                      <div class="text-xs text-slate-500 uppercase tracking-wider">Benar</div>
+                scoreColor === 'emerald' ? (
+                  <div class="px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-emerald-50 border border-emerald-200">
+                    <div class="flex items-center gap-3 sm:gap-4">
+                      <div class="text-center">
+                        <div class="text-xl sm:text-2xl font-bold text-emerald-600 leading-none">{attempt.percentage}%</div>
+                        <div class="text-xs text-slate-500 uppercase tracking-wider">Skor</div>
+                      </div>
+                      <div class="w-px h-8 bg-slate-200"></div>
+                      <div class="text-center">
+                        <div class="text-lg sm:text-xl font-bold text-slate-900 leading-none">{attempt.correctAnswers}<span class="text-sm text-slate-500">/{attempt.totalQuestions}</span></div>
+                        <div class="text-xs text-slate-500 uppercase tracking-wider">Benar</div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : scoreColor === 'blue' ? (
+                  <div class="px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-blue-50 border border-blue-200">
+                    <div class="flex items-center gap-3 sm:gap-4">
+                      <div class="text-center">
+                        <div class="text-xl sm:text-2xl font-bold text-blue-600 leading-none">{attempt.percentage}%</div>
+                        <div class="text-xs text-slate-500 uppercase tracking-wider">Skor</div>
+                      </div>
+                      <div class="w-px h-8 bg-slate-200"></div>
+                      <div class="text-center">
+                        <div class="text-lg sm:text-xl font-bold text-slate-900 leading-none">{attempt.correctAnswers}<span class="text-sm text-slate-500">/{attempt.totalQuestions}</span></div>
+                        <div class="text-xs text-slate-500 uppercase tracking-wider">Benar</div>
+                      </div>
+                    </div>
+                  </div>
+                ) : scoreColor === 'amber' ? (
+                  <div class="px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-amber-50 border border-amber-200">
+                    <div class="flex items-center gap-3 sm:gap-4">
+                      <div class="text-center">
+                        <div class="text-xl sm:text-2xl font-bold text-amber-600 leading-none">{attempt.percentage}%</div>
+                        <div class="text-xs text-slate-500 uppercase tracking-wider">Skor</div>
+                      </div>
+                      <div class="w-px h-8 bg-slate-200"></div>
+                      <div class="text-center">
+                        <div class="text-lg sm:text-xl font-bold text-slate-900 leading-none">{attempt.correctAnswers}<span class="text-sm text-slate-500">/{attempt.totalQuestions}</span></div>
+                        <div class="text-xs text-slate-500 uppercase tracking-wider">Benar</div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div class="px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-red-50 border border-red-200">
+                    <div class="flex items-center gap-3 sm:gap-4">
+                      <div class="text-center">
+                        <div class="text-xl sm:text-2xl font-bold text-red-600 leading-none">{attempt.percentage}%</div>
+                        <div class="text-xs text-slate-500 uppercase tracking-wider">Skor</div>
+                      </div>
+                      <div class="w-px h-8 bg-slate-200"></div>
+                      <div class="text-center">
+                        <div class="text-lg sm:text-xl font-bold text-slate-900 leading-none">{attempt.correctAnswers}<span class="text-sm text-slate-500">/{attempt.totalQuestions}</span></div>
+                        <div class="text-xs text-slate-500 uppercase tracking-wider">Benar</div>
+                      </div>
+                    </div>
+                  </div>
+                )
               ) : (
-                <div class="px-4 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold flex items-center gap-2">
-                  <Icon name="clock" class="w-4 h-4" />
-                  Skor belum dirilis oleh admin
+                <div class="px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs sm:text-sm font-semibold flex items-center gap-1.5 sm:gap-2">
+                  <Icon name="clock" class="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                  <span class="whitespace-nowrap hidden sm:inline">Skor belum dirilis</span>
+                  <span class="whitespace-nowrap sm:hidden">Belum dirilis</span>
                 </div>
               )}
             </div>
-            <p class="text-sm text-slate-600 mt-1">Alasan selesai: <span class="font-semibold">{endReasonLabel}</span></p>
           </div>
         </div>
 
@@ -188,8 +242,9 @@ const userEmail = attemptUser?.email || '';
           </div>
           
           <!-- Time column - Fixed width to match sidebar -->
-          <div class="hidden lg:flex w-80 border-l border-slate-200 px-4 py-3 items-center justify-center">
-            <div class="flex items-center gap-3 text-slate-600 text-sm">
+
+          <div class="lg:w-80 lg:border-l border-b lg:border-b-0 border-slate-200 px-4 py-2 sm:py-3 flex items-center justify-center">
+            <div id="timer" class="flex items-center space-x-2 sm:space-x-3 bg-slate-50 border border-slate-200 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl">
               <Icon name="clock" class="w-4 h-4 text-slate-500" />
               <span class="font-medium">Waktu: {formatTime(attempt.timeSpent)}</span>
             </div>
@@ -229,34 +284,42 @@ const userEmail = attemptUser?.email || '';
               <div id="question-grid" class="grid grid-cols-5 gap-2 sm:gap-2.5 overflow-y-auto scroll-smooth p-1 max-h-[360px]">
                 <!-- Question numbers will be rendered here -->
               </div>
-              <div class="status-legend mt-4">
-                <div class="status-legend-item correct-item">
-                  <div class="status-legend-label">
-                    <div class="status-legend-icon bg-emerald-100 border-emerald-400 text-emerald-600">✓</div>
-                    <span id="legend-correct-text" class="status-legend-text">Benar</span>
+              <div class="bg-slate-50 rounded-lg p-3 sm:p-4 space-y-2 mt-4">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 rounded bg-emerald-100 border-2 border-emerald-400 flex items-center justify-center">
+                      <Icon name="check" class="w-2.5 h-2.5 text-emerald-600" strokeWidth={2.5} />
+                    </div>
+                    <span id="legend-correct-text" class="text-slate-600 text-xs font-medium">Benar</span>
                   </div>
-                  <span id="correct-count" class="status-legend-count text-emerald-600">0</span>
+                  <span id="correct-count" class="font-bold text-emerald-600 text-xs">0</span>
                 </div>
-                <div class="status-legend-item incorrect-item">
-                  <div class="status-legend-label">
-                    <div class="status-legend-icon bg-red-100 border-red-400 text-red-600">✗</div>
-                    <span id="legend-incorrect-text" class="status-legend-text">Salah</span>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 rounded bg-red-100 border-2 border-red-400 flex items-center justify-center">
+                      <Icon name="x" class="w-2.5 h-2.5 text-red-600" strokeWidth={2.5} />
+                    </div>
+                    <span id="legend-incorrect-text" class="text-slate-600 text-xs font-medium">Salah</span>
                   </div>
-                  <span id="incorrect-count" class="status-legend-count text-red-600">0</span>
+                  <span id="incorrect-count" class="font-bold text-red-600 text-xs">0</span>
                 </div>
-                <div class="status-legend-item blank-item">
-                  <div class="status-legend-label">
-                    <div class="status-legend-icon bg-slate-100 border-slate-300">−</div>
-                    <span id="legend-blank-text" class="status-legend-text">Tidak Dijawab</span>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 rounded bg-slate-100 border-2 border-slate-300 flex items-center justify-center">
+                      <div class="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
+                    </div>
+                    <span id="legend-blank-text" class="text-slate-600 text-xs font-medium">Tidak Dijawab</span>
                   </div>
-                  <span id="blank-count" class="status-legend-count text-slate-500">0</span>
+                  <span id="blank-count" class="font-bold text-slate-500 text-xs">0</span>
                 </div>
-                <div class="status-legend-item flagged-item">
-                  <div class="status-legend-label">
-                    <div class="status-legend-icon bg-amber-100 border-amber-400 text-amber-700">!</div>
-                    <span id="legend-flagged-text" class="status-legend-text">Ragu-ragu</span>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 rounded bg-amber-100 border-2 border-amber-400 flex items-center justify-center">
+                      <Icon name="flag" class="w-2.5 h-2.5 text-amber-600" strokeWidth={2} />
+                    </div>
+                    <span id="legend-flagged-text" class="text-slate-600 text-xs font-medium">Ragu-ragu</span>
                   </div>
-                  <span id="flagged-count" class="status-legend-count text-amber-700">0</span>
+                  <span id="flagged-count" class="font-bold text-amber-600 text-xs">0</span>
                 </div>
               </div>
             </div>
@@ -367,7 +430,7 @@ const userEmail = attemptUser?.email || '';
   };
 </script>
 
-<script define:vars={{ quiz, attempt }}>
+<script define:vars={{ quiz, attempt, isAdmin }}>
   const questions = quiz.questions;
   const detailedResults = attempt.detailedResults;
   const rawAnswers = attempt.answers;
@@ -385,6 +448,12 @@ const userEmail = attemptUser?.email || '';
       : null;
     if (!entry || entry.answer === undefined || entry.answer === null) return null;
     
+    // For essay questions with new structure, preserve the object structure
+    if (q.type === 'essay' && entry.answer && typeof entry.answer === 'object' && !Array.isArray(entry.answer)) {
+      // New structure: { answer: string, files: [...] }
+      return entry.answer;
+    }
+    
     const ansArr = Array.isArray(entry.answer) ? entry.answer : [entry.answer];
     
     // For fill-in-the-blank, preserve array indices (don't filter out empty strings)
@@ -393,8 +462,13 @@ const userEmail = attemptUser?.email || '';
       return ansArr; // Keep as-is to preserve indices
     }
     
-    // For essay, filter out empty values
+    // For essay, handle both old format (array) and new format (object)
     if (q.type === 'essay') {
+      // If it's already an object (new format), return it as-is
+      if (entry.answer && typeof entry.answer === 'object' && !Array.isArray(entry.answer)) {
+        return entry.answer;
+      }
+      // Otherwise, filter out empty values from array (old format)
       return ansArr.filter(v => v !== null && v !== undefined && v !== '');
     }
     
@@ -433,9 +507,9 @@ const userEmail = attemptUser?.email || '';
   // Adjust legend for unreleased scores
   if (!isReleased) {
     requestAnimationFrame(() => {
-      const correctLabel = document.querySelector('.correct-item .status-legend-text');
-      const incorrectItem = document.querySelector('.incorrect-item');
-      const blankLabel = document.querySelector('.blank-item .status-legend-text');
+      const correctLabel = document.getElementById('legend-correct-text');
+      const incorrectItem = document.getElementById('legend-incorrect-text')?.closest('.flex.items-center.justify-between');
+      const blankLabel = document.getElementById('legend-blank-text');
       if (correctLabel) correctLabel.textContent = 'Dijawab';
       if (incorrectItem) incorrectItem.style.display = 'none';
       if (blankLabel) blankLabel.textContent = 'Belum dijawab';
@@ -685,6 +759,68 @@ const userEmail = attemptUser?.email || '';
     }
   }
   
+  // Save essay grading
+  window.saveEssayGrading = async function(questionIndex, attemptId) {
+    const scoreInput = document.getElementById('essay-score-' + questionIndex);
+    const maxScoreInput = document.getElementById('essay-max-score-' + questionIndex);
+    const feedbackInput = document.getElementById('essay-feedback-' + questionIndex);
+    
+    if (!scoreInput || !maxScoreInput) {
+      alert('Error: Score inputs not found');
+      return;
+    }
+    
+    const score = parseFloat(scoreInput.value);
+    const maxScore = parseFloat(maxScoreInput.value);
+    const feedback = feedbackInput ? feedbackInput.value : '';
+    
+    if (isNaN(score) || isNaN(maxScore) || score < 0 || score > maxScore) {
+      alert('Invalid score. Score must be between 0 and max score.');
+      return;
+    }
+    
+    if (!confirm('Simpan penilaian untuk soal ini?')) {
+      return;
+    }
+    
+    // Disable button and show loading
+    const button = scoreInput.closest('.bg-blue-50')?.querySelector('button');
+    if (button) {
+      const originalText = button.textContent;
+      button.textContent = 'Menyimpan...';
+      button.disabled = true;
+      
+      try {
+        const response = await fetch('/api/admin/quiz/attempt/' + attemptId + '/grade-essay', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            questionIndex: questionIndex,
+            score: score,
+            maxScore: maxScore,
+            feedback: feedback
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+          alert('Penilaian berhasil disimpan!');
+          // Reload page to show updated scores
+          location.reload();
+        } else {
+          alert('Gagal menyimpan penilaian: ' + (result.error || 'Unknown error'));
+          button.textContent = originalText;
+          button.disabled = false;
+        }
+      } catch (error) {
+        alert('Terjadi kesalahan saat menyimpan penilaian');
+        button.textContent = originalText;
+        button.disabled = false;
+      }
+    }
+  };
+  
   function updateMobileNav() {
     const current = document.getElementById('mobile-current');
     if (current) current.textContent = currentQuestionIndex + 1;
@@ -720,16 +856,29 @@ const userEmail = attemptUser?.email || '';
     let statusBadge = '';
     if (isReleased) {
       if (result?.isCorrect) {
-        statusBadge = '<span class="px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-medium rounded-lg">✓ Benar</span>';
+        statusBadge = '<span class="px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-medium rounded-lg w-24 inline-flex justify-center">✓ Benar</span>';
       } else if (hasAnswer) {
-        statusBadge = '<span class="px-3 py-1 bg-red-100 text-red-700 text-sm font-medium rounded-lg">✗ Salah</span>';
+        statusBadge = '<span class="px-3 py-1 bg-red-100 text-red-700 text-sm font-medium rounded-lg w-24 inline-flex justify-center">✗ Salah</span>';
       } else {
-        statusBadge = '<span class="px-3 py-1 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg">− Tidak Dijawab</span>';
+        statusBadge = '<span class="px-3 py-1 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg w-24 inline-flex justify-center">− Tidak Dijawab</span>';
       }
     } else {
       statusBadge = hasAnswer
         ? '<span class="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-lg">Jawaban disimpan</span>'
         : '<span class="px-3 py-1 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg">Belum dijawab</span>';
+    }
+    
+    // Generate question type badge
+    const isComplex = question.type === 'complex-multiple-choice' || question.type === 'complex';
+    let questionTypeBadge = '';
+    if (isComplex) {
+      questionTypeBadge = '<span class="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200 whitespace-nowrap flex-shrink-0"><span class="hidden sm:inline">Pilihan Ganda Kompleks</span><span class="sm:hidden">Kompleks</span></span>';
+    } else if (question.type === 'multiple-choice') {
+      questionTypeBadge = '<span class="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200 whitespace-nowrap flex-shrink-0"><span class="hidden sm:inline">Pilihan Tunggal</span><span class="sm:hidden">Tunggal</span></span>';
+    } else if (question.type === 'fill-in-the-blank') {
+      questionTypeBadge = '<span class="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-orange-100 text-orange-700 border border-orange-200 whitespace-nowrap flex-shrink-0"><span class="hidden sm:inline">Isian Singkat</span><span class="sm:hidden">Isian</span></span>';
+    } else if (question.type === 'essay') {
+      questionTypeBadge = '<span class="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-green-100 text-green-700 border border-green-200 whitespace-nowrap flex-shrink-0"><span class="hidden sm:inline">Esai</span><span class="sm:hidden">Esai</span></span>';
     }
     
     // Handle different question types
@@ -1092,14 +1241,274 @@ const userEmail = attemptUser?.email || '';
       }
     } else if (question.type === 'essay') {
       // Render essay answer
-      const userAnswerText = typeof userAnswer === 'string' ? userAnswer : '';
       questionHtml = processMarkdownAndLatex(question.question);
+      
+      // Handle new answer structure: { answer: string, files: [...] } or old: string
+      let userAnswerText = '';
+      let userFiles = [];
+      
+      console.log('Essay answer data:', {
+        userAnswer,
+        userAnswerType: typeof userAnswer,
+        isArray: Array.isArray(userAnswer),
+        attemptEssayFiles: attempt.essayFiles
+      });
+      
+      if (typeof userAnswer === 'string') {
+        userAnswerText = userAnswer;
+      } else if (userAnswer && typeof userAnswer === 'object') {
+        // Handle new structure: { answer: string, files: [...] }
+        // But also handle if answer.answer is the object itself
+        if (userAnswer.answer !== undefined) {
+          if (typeof userAnswer.answer === 'string') {
+            userAnswerText = userAnswer.answer;
+          } else if (Array.isArray(userAnswer.answer)) {
+            // Old format: answer.answer is an array [string]
+            userAnswerText = userAnswer.answer[0] || '';
+          }
+        } else if (Array.isArray(userAnswer)) {
+          // Old format: answer is an array [string]
+          userAnswerText = userAnswer[0] || '';
+        }
+        
+        // Get files from answer object
+        if (Array.isArray(userAnswer.files)) {
+          userFiles = userAnswer.files.map(file => {
+            // Ensure file has proper structure
+            if (typeof file === 'string') {
+              return { url: file, filename: file.split('/').pop() || 'file' };
+            } else if (file && typeof file === 'object') {
+              return {
+                url: file.url || file.URL || file.path || file.link || '',
+                filename: file.filename || file.name || file.fileName || (file.url ? file.url.split('/').pop() : 'file') || 'file',
+                size: file.size,
+                type: file.type
+              };
+            }
+            return null;
+          }).filter(f => f !== null && f.url); // Filter out invalid files
+        }
+      } else if (Array.isArray(userAnswer)) {
+        // Old format: answer is an array [string]
+        userAnswerText = userAnswer[0] || '';
+      }
+      
+      // Get essay files from attempt if available
+      if (attempt.essayFiles) {
+        let essayFilesArray = [];
+        if (typeof attempt.essayFiles === 'string') {
+          try {
+            essayFilesArray = JSON.parse(attempt.essayFiles);
+          } catch (e) {
+            console.error('Error parsing essayFiles:', e);
+          }
+        } else if (Array.isArray(attempt.essayFiles)) {
+          essayFilesArray = attempt.essayFiles;
+        }
+        
+        if (Array.isArray(essayFilesArray) && essayFilesArray.length > 0) {
+          // Merge with files from answer (answer files take precedence)
+          const answerFileUrls = userFiles.map(f => {
+            if (typeof f === 'string') return f;
+            if (f && typeof f === 'object') return f.url || '';
+            return '';
+          });
+          
+          essayFilesArray.forEach((fileItem) => {
+            // Handle both string URLs and object format
+            let fileUrl = '';
+            if (typeof fileItem === 'string') {
+              fileUrl = fileItem;
+            } else if (fileItem && typeof fileItem === 'object') {
+              fileUrl = fileItem.url || '';
+            }
+            
+            if (fileUrl && typeof fileUrl === 'string' && !answerFileUrls.includes(fileUrl)) {
+              userFiles.push({ 
+                url: fileUrl, 
+                filename: fileUrl.split('/').pop() || 'file',
+                name: fileUrl.split('/').pop() || 'file'
+              });
+            }
+          });
+        }
+      }
+      
+      console.log('Processed essay data:', {
+        userAnswerText: userAnswerText ? userAnswerText.substring(0, 50) + '...' : '(empty)',
+        userFilesCount: userFiles.length,
+        userFiles: userFiles,
+        userFilesDetailed: userFiles.map((f, idx) => ({
+          index: idx,
+          type: typeof f,
+          isString: typeof f === 'string',
+          isObject: typeof f === 'object',
+          value: f,
+          url: typeof f === 'object' ? f.url : undefined,
+          filename: typeof f === 'object' ? f.filename : undefined
+        }))
+      });
+      
+      // Get grading info for this question
+      const grading = attempt.essayGrading && attempt.essayGrading[currentQuestionIndex.toString()];
+      const isGraded = !!grading;
+      const maxScore = grading?.maxScore || 1;
+      const score = grading?.score || 0;
+      const feedback = grading?.feedback || '';
+      
       essayHtml = `
-        <div class="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-          <div class="text-sm font-semibold text-slate-700 mb-2">Jawaban Anda:</div>
-          <div class="prose prose-slate max-w-none text-sm">
-            ${userAnswerText ? processMarkdownAndLatex(userAnswerText) : '<p class="text-gray-400 italic">(Tidak ada jawaban)</p>'}
+        <div class="mt-4 space-y-4">
+          <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+            <div class="text-sm font-semibold text-slate-700 mb-2">Jawaban:</div>
+            <div class="prose prose-slate max-w-none text-sm">
+              ${userAnswerText ? processMarkdownAndLatex(userAnswerText) : '<p class="text-gray-400 italic">(Tidak ada jawaban)</p>'}
+            </div>
           </div>
+          
+          ${userFiles.length > 0 ? `
+            <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+              <div class="text-sm font-semibold text-slate-700 mb-3">File yang Diunggah:</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                ${userFiles.map((file, fileIndex) => {
+                  // Handle different file formats: string URL, or object with url/filename
+                  let fileUrl = '';
+                  let fileName = 'file';
+                  
+                  console.log('Rendering file:', fileIndex, file);
+                  
+                  if (typeof file === 'string') {
+                    fileUrl = file;
+                    fileName = file.split('/').pop() || 'file';
+                  } else if (file && typeof file === 'object') {
+                    // Try multiple possible properties for URL
+                    fileUrl = file.url || file.URL || file.path || file.link || '';
+                    fileName = file.filename || file.name || file.fileName || '';
+                    
+                    // If we still don't have a filename, try to extract from URL
+                    if (!fileName && fileUrl && typeof fileUrl === 'string') {
+                      fileName = fileUrl.split('/').pop() || 'file';
+                    }
+                    
+                    // If we still don't have a filename, use default
+                    if (!fileName) {
+                      fileName = 'file';
+                    }
+                  }
+                  
+                  // Ensure fileUrl is a string
+                  if (typeof fileUrl !== 'string' || !fileUrl) {
+                    console.warn('Invalid or missing file URL:', file, 'fileUrl:', fileUrl);
+                    // Don't render if we don't have a valid URL
+                    return '';
+                  }
+                  
+                  const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileName || fileUrl);
+                  
+                  return `
+                    <div class="border border-slate-200 rounded-lg overflow-hidden bg-white">
+                      ${isImage ? `
+                        <a href="${fileUrl}" target="_blank" class="block">
+                          <img src="${fileUrl}" alt="${fileName}" class="w-full h-48 object-cover hover:opacity-90 transition-opacity" />
+                        </a>
+                      ` : `
+                        <div class="p-4 bg-red-50 border-b border-red-200">
+                          <div class="flex items-center gap-2 text-red-700">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                            </svg>
+                            <span class="text-sm font-medium">PDF</span>
+                          </div>
+                        </div>
+                      `}
+                      <div class="p-3">
+                        <p class="text-xs text-slate-600 truncate">${fileName}</p>
+                        ${fileUrl ? `<a href="${fileUrl}" target="_blank" class="text-xs text-blue-600 hover:text-blue-800 mt-1 inline-block">Buka file</a>` : '<p class="text-xs text-red-600 mt-1">URL file tidak tersedia</p>'}
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          ` : ''}
+          
+          ${isAdmin ? `
+            <div class="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-semibold text-blue-900">Panel Penilaian</h3>
+                ${isGraded ? `
+                  <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">Sudah Dinilai</span>
+                ` : `
+                  <span class="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded">Belum Dinilai</span>
+                `}
+              </div>
+              
+              <div class="space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-medium text-blue-900 mb-1">Skor</label>
+                    <input
+                      type="number"
+                      id="essay-score-${currentQuestionIndex}"
+                      class="w-full px-3 py-2 border border-blue-300 rounded text-sm"
+                      min="0"
+                      step="0.1"
+                      value="${score}"
+                      max="${maxScore}"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-blue-900 mb-1">Skor Maksimum</label>
+                    <input
+                      type="number"
+                      id="essay-max-score-${currentQuestionIndex}"
+                      class="w-full px-3 py-2 border border-blue-300 rounded text-sm"
+                      min="1"
+                      step="0.1"
+                      value="${maxScore}"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label class="block text-xs font-medium text-blue-900 mb-1">Feedback</label>
+                  <textarea
+                    id="essay-feedback-${currentQuestionIndex}"
+                    class="w-full px-3 py-2 border border-blue-300 rounded text-sm resize-y"
+                    rows="3"
+                    placeholder="Masukkan feedback untuk siswa..."
+                  >${feedback}</textarea>
+                </div>
+                
+                ${question.rubric ? `
+                  <div class="p-2 bg-white border border-blue-200 rounded text-xs">
+                    <div class="font-medium text-blue-900 mb-1">Rubrik:</div>
+                    <div class="text-slate-700">${processMarkdownAndLatex(question.rubric)}</div>
+                  </div>
+                ` : ''}
+                
+                <button
+                  type="button"
+                  class="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700 transition-colors"
+                  onclick="saveEssayGrading(${currentQuestionIndex}, ${attempt.id})"
+                >
+                  ${isGraded ? 'Perbarui Penilaian' : 'Simpan Penilaian'}
+                </button>
+              </div>
+            </div>
+          ` : isGraded && isReleased ? `
+            <div class="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-semibold text-green-900">Penilaian:</span>
+                <span class="text-sm font-bold text-green-700">${score} / ${maxScore}</span>
+              </div>
+              ${feedback ? `
+                <div class="mt-2 text-sm text-green-800">
+                  <div class="font-medium mb-1">Feedback:</div>
+                  <div class="prose prose-green max-w-none text-sm">${processMarkdownAndLatex(feedback)}</div>
+                </div>
+              ` : ''}
+            </div>
+          ` : ''}
         </div>
       `;
     } else {
@@ -1143,9 +1552,14 @@ const userEmail = attemptUser?.email || '';
     
     container.innerHTML = `
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-          <span class="text-sm font-semibold text-slate-600 uppercase tracking-wider">Pertanyaan</span>
-          ${statusBadge}
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <span class="text-sm font-semibold text-slate-600 uppercase tracking-wider">Pertanyaan</span>
+            <div class="flex items-center gap-2 flex-wrap">
+              ${questionTypeBadge}
+              ${statusBadge}
+            </div>
+          </div>
         </div>
         <div class="p-6">
           <div class="prose prose-slate max-w-none mb-6 text-lg leading-relaxed">

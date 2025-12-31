@@ -1,0 +1,504 @@
+---
+export const prerender = false;
+
+import Layout from '../../../../../components/Layout.astro';
+import Icon from '../../../../../components/icons/Icon.astro';
+import { getQuiz } from '../../../../../lib/quizzes';
+import { prisma } from '../../../../../lib/db';
+import { requireAdmin } from '../../../../../lib/auth-guard';
+import quizSharedStyles from '../../../../../styles/quiz-shared.css?url';
+
+const user = await requireAdmin(Astro.cookies);
+if (!user) {
+  return Astro.redirect('/');
+}
+
+const { id, attemptId } = Astro.params;
+
+if (!id || !attemptId) {
+  return Astro.redirect('/admin/quizzes');
+}
+
+const quizId = parseInt(id);
+const attemptIdNum = parseInt(attemptId);
+
+// Get quiz
+const rawQuiz = await getQuiz(quizId);
+if (!rawQuiz) {
+  return Astro.redirect('/admin/quizzes');
+}
+
+const quiz = {
+  ...rawQuiz,
+  questions: typeof rawQuiz.questions === 'string' 
+    ? JSON.parse(rawQuiz.questions) 
+    : rawQuiz.questions,
+  settings: typeof rawQuiz.settings === 'string'
+    ? JSON.parse(rawQuiz.settings)
+    : rawQuiz.settings
+};
+
+// Get attempt
+const foundAttempt = await prisma.quizAttempt.findFirst({
+  where: {
+    id: attemptIdNum,
+    quizId
+  },
+  include: {
+    user: {
+      include: {
+        profile: true
+      }
+    }
+  }
+});
+
+if (!foundAttempt) {
+  return Astro.redirect(`/admin/quizzes/${id}/submissions`);
+}
+
+// Parse attempt data
+const attempt = {
+  ...foundAttempt,
+  answers: JSON.parse(foundAttempt.answers),
+  essayGrading: foundAttempt.essayGrading 
+    ? (typeof foundAttempt.essayGrading === 'string' ? JSON.parse(foundAttempt.essayGrading) : foundAttempt.essayGrading)
+    : {},
+  essayFiles: foundAttempt.essayFiles 
+    ? (typeof foundAttempt.essayFiles === 'string' ? JSON.parse(foundAttempt.essayFiles) : foundAttempt.essayFiles)
+    : null,
+  detailedResults: foundAttempt.detailedResults ? JSON.parse(foundAttempt.detailedResults) : []
+};
+
+// Get essay questions
+const essayQuestions = quiz.questions
+  .map(function(q: any, idx: number) { return { ...q, index: idx }; })
+  .filter(function(q: any) { return q.type === 'essay'; });
+
+// Calculate grading progress
+const gradedCount = essayQuestions.filter(function(q: any) {
+  const grading = attempt.essayGrading[q.index];
+  return grading && (grading.score !== undefined && grading.score !== null || grading.points !== undefined && grading.points !== null);
+}).length;
+
+const totalEssays = essayQuestions.length;
+
+// Get student name
+const studentName = foundAttempt.user.profile?.fullName || 
+                   foundAttempt.user.profile?.firstName || 
+                   foundAttempt.user.email || 
+                   'Student';
+
+// Format date
+function formatDate(date: Date): string {
+  return new Date(date).toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+---
+
+<Layout title={`Grading - ${quiz.title}`}>
+  <link rel="stylesheet" href={quizSharedStyles} />
+  
+  <div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <!-- Header -->
+    <div class="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <div class="flex items-center gap-4">
+            <a href={`/admin/quizzes/${id}/submissions`} class="text-slate-500 hover:text-slate-700 transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </a>
+            <div>
+              <h1 class="text-lg font-semibold text-slate-900">{quiz.title}</h1>
+              <p class="text-sm text-slate-500">{studentName}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-4">
+            <div class="text-sm text-slate-600">
+              <span class="font-medium">{gradedCount}</span> / <span>{totalEssays}</span> essays graded
+            </div>
+            <div class="text-sm text-slate-600">
+              Score: <span class="font-medium">{attempt.score}</span> / <span>{attempt.totalQuestions * (quiz.settings?.pointsPerQuestion || 1)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div class="flex gap-6">
+        <!-- Sidebar: Question List -->
+        <div class="w-64 flex-shrink-0">
+          <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+            <h2 class="text-sm font-semibold text-slate-900 mb-3">Questions</h2>
+            <div class="space-y-1" id="question-list">
+              {quiz.questions.map(function(question: any, idx: number) {
+                const isEssay = question.type === 'essay';
+                const grading = attempt.essayGrading[idx];
+                const isGraded = isEssay && grading && grading.points !== undefined && grading.points !== null;
+                const needsGrading = isEssay && !isGraded;
+                
+                return (
+                  <button
+                    type="button"
+                    class={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors question-nav-btn ${
+                      idx === 0 ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'hover:bg-slate-50 text-slate-700'
+                    }`}
+                    data-question-index={idx}
+                  >
+                    <div class="flex items-center justify-between">
+                      <span class="font-medium">Q{idx + 1}</span>
+                      {isEssay && (
+                        <span class={`text-xs px-2 py-0.5 rounded ${
+                          isGraded 
+                            ? 'bg-green-100 text-green-700' 
+                            : needsGrading 
+                            ? 'bg-amber-100 text-amber-700' 
+                            : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {isGraded ? '✓' : needsGrading ? '⏳' : '—'}
+                        </span>
+                      )}
+                    </div>
+                    {isEssay && (
+                      <div class="text-xs text-slate-500 mt-1">
+                        {question.maxPoints || 0} points
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Content: Question & Grading -->
+        <div class="flex-1">
+          <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6" id="grading-container">
+            <div class="text-center text-slate-500 py-12">
+              Select a question to start grading
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script define:vars={{ quiz, attempt, essayQuestions, gradedCount, totalEssays }}>
+    let currentQuestionIndex = 0;
+    let essayGrading = { ...attempt.essayGrading };
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      // Setup question navigation
+      document.querySelectorAll('.question-nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const index = parseInt(btn.dataset.questionIndex);
+          goToQuestion(index);
+        });
+      });
+
+      // Load first question
+      if (quiz.questions.length > 0) {
+        goToQuestion(0);
+      }
+    });
+
+    function goToQuestion(index) {
+      currentQuestionIndex = index;
+      
+      // Update navigation buttons
+      document.querySelectorAll('.question-nav-btn').forEach((btn, idx) => {
+        if (idx === index) {
+          btn.classList.add('bg-blue-50', 'text-blue-700', 'border', 'border-blue-200');
+          btn.classList.remove('hover:bg-slate-50', 'text-slate-700');
+        } else {
+          btn.classList.remove('bg-blue-50', 'text-blue-700', 'border', 'border-blue-200');
+          btn.classList.add('hover:bg-slate-50', 'text-slate-700');
+        }
+      });
+
+      renderQuestion();
+    }
+
+    function renderQuestion() {
+      const container = document.getElementById('grading-container');
+      if (!container) return;
+
+      const question = quiz.questions[currentQuestionIndex];
+      const answer = attempt.answers.find(function(a) { return a.questionId === currentQuestionIndex; });
+      const grading = essayGrading[currentQuestionIndex] || {};
+      
+      if (question.type !== 'essay') {
+        container.innerHTML = `
+          <div class="text-center text-slate-500 py-12">
+            <p class="mb-2">This question type does not require manual grading.</p>
+            <p class="text-sm">Only essay questions can be graded here.</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Get answer text and files
+      let answerText = '';
+      let answerFiles = [];
+      
+      if (answer) {
+        // Handle new structure: { answer: string, files: [...] }
+        if (answer.answer && typeof answer.answer === 'object' && !Array.isArray(answer.answer)) {
+          answerText = answer.answer.answer || '';
+          answerFiles = Array.isArray(answer.answer.files) ? answer.answer.files : [];
+        } 
+        // Handle old structure: answer.answer is array [string]
+        else if (Array.isArray(answer.answer) && answer.answer.length > 0) {
+          answerText = answer.answer[0] || '';
+        }
+        // Handle direct files property
+        if (answer.files && Array.isArray(answer.files)) {
+          answerFiles = answer.files;
+        }
+      }
+      
+      // Get essay files from attempt if available and merge
+      if (attempt.essayFiles && Array.isArray(attempt.essayFiles)) {
+        const existingUrls = answerFiles.map(function(f) { return f.url || f; });
+        attempt.essayFiles.forEach(function(fileUrl) {
+          if (!existingUrls.includes(fileUrl)) {
+            answerFiles.push({ url: fileUrl, filename: fileUrl.split('/').pop() || 'file' });
+          }
+        });
+      }
+
+      const maxPoints = question.maxPoints || 1;
+      const currentPoints = grading.score !== undefined && grading.score !== null ? grading.score : (grading.points !== undefined && grading.points !== null ? grading.points : '');
+      const feedback = grading.feedback || '';
+
+      container.innerHTML = `
+        <div class="space-y-6">
+          <!-- Question -->
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-xl font-semibold text-slate-900">Question ${currentQuestionIndex + 1}</h2>
+              <span class="text-sm text-slate-500">Max points: ${maxPoints}</span>
+            </div>
+            <div class="prose max-w-none bg-slate-50 rounded-lg p-4 border border-slate-200">
+              ${question.question || ''}
+            </div>
+            ${question.rubric ? `
+              <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 class="text-sm font-semibold text-blue-900 mb-2">Rubric</h3>
+                <div class="text-sm text-blue-800">${question.rubric}</div>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Student Answer -->
+          <div>
+            <h3 class="text-lg font-semibold text-slate-900 mb-3">Student Answer</h3>
+            <div class="bg-slate-50 rounded-lg p-4 border border-slate-200 mb-4">
+              ${answerText ? `
+                <div class="prose max-w-none whitespace-pre-wrap">${answerText}</div>
+              ` : '<p class="text-slate-500 italic">No text answer provided.</p>'}
+            </div>
+
+            ${answerFiles.length > 0 ? `
+              <div class="space-y-2">
+                <h4 class="text-sm font-semibold text-slate-700">Uploaded Files</h4>
+                <div class="grid grid-cols-2 gap-4">
+                  ${answerFiles.map(function(file) {
+                    const isImage = file.type?.startsWith('image/') || 
+                                   file.name?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                    const isPDF = file.type === 'application/pdf' || file.name?.endsWith('.pdf');
+                    
+                    return `
+                      <div class="border border-slate-200 rounded-lg p-3 bg-white">
+                        ${isImage ? `
+                          <img src="${file.url}" alt="${file.name}" class="w-full h-48 object-contain rounded mb-2" />
+                        ` : isPDF ? `
+                          <div class="flex items-center justify-center h-48 bg-red-50 rounded mb-2">
+                            <svg class="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                        ` : `
+                          <div class="flex items-center justify-center h-48 bg-slate-50 rounded mb-2">
+                            <svg class="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          </div>
+                        `}
+                        <div class="text-sm font-medium text-slate-700 truncate">${file.name}</div>
+                        ${isPDF || !isImage ? `
+                          <a href="${file.url}" target="_blank" class="text-xs text-blue-600 hover:text-blue-800 mt-1 inline-block">
+                            Download
+                          </a>
+                        ` : ''}
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Grading Panel -->
+          <div class="border-t border-slate-200 pt-6">
+            <h3 class="text-lg font-semibold text-slate-900 mb-4">Grading</h3>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">
+                  Points (0 - ${maxPoints})
+                </label>
+                <input
+                  type="number"
+                  id="points-input"
+                  min="0"
+                  max={maxPoints}
+                  value={currentPoints}
+                  class="w-32 px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">
+                  Feedback
+                </label>
+                <textarea
+                  id="feedback-input"
+                  rows="6"
+                  class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter feedback for the student..."
+                >${feedback}</textarea>
+              </div>
+              <div class="flex items-center gap-3">
+                <button
+                  type="button"
+                  id="save-grading-btn"
+                  class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Save Grading
+                </button>
+                <span id="save-status" class="text-sm text-slate-500"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Setup save button
+      const saveBtn = document.getElementById('save-grading-btn');
+      saveBtn?.addEventListener('click', saveGrading);
+
+      // Auto-save on input change (debounced)
+      let saveTimeout;
+      const pointsInput = document.getElementById('points-input');
+      const feedbackInput = document.getElementById('feedback-input');
+      
+      pointsInput?.addEventListener('input', () => {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => {
+          saveGrading(true); // Auto-save
+        }, 2000);
+      });
+      
+      feedbackInput?.addEventListener('input', () => {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => {
+          saveGrading(true); // Auto-save
+        }, 2000);
+      });
+    }
+
+    async function saveGrading(isAutoSave) {
+      if (isAutoSave === undefined) isAutoSave = false;
+      const pointsInput = document.getElementById('points-input');
+      const feedbackInput = document.getElementById('feedback-input');
+      const statusEl = document.getElementById('save-status');
+
+      if (!pointsInput || !feedbackInput) return;
+
+      const points = pointsInput.value === '' ? null : parseInt(pointsInput.value);
+      const feedback = feedbackInput.value.trim();
+      const maxPoints = quiz.questions[currentQuestionIndex].maxPoints || 0;
+
+      // Validate points
+      if (points !== null && (points < 0 || points > maxPoints)) {
+        if (statusEl) {
+          statusEl.textContent = `Points must be between 0 and ${maxPoints}`;
+          statusEl.className = 'text-sm text-red-600';
+        }
+        return;
+      }
+
+      // Update local state
+      essayGrading[currentQuestionIndex] = {
+        points,
+        maxPoints,
+        feedback,
+        gradedAt: new Date().toISOString(),
+        gradedBy: user.id
+      };
+
+      try {
+        const response = await fetch(`/api/admin/quiz/attempt/${attemptId}/grade`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            questionId: currentQuestionIndex,
+            points,
+            feedback
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to save grading');
+        }
+
+        if (statusEl) {
+          statusEl.textContent = isAutoSave ? 'Auto-saved' : 'Saved';
+          statusEl.className = 'text-sm text-green-600';
+          setTimeout(() => {
+            statusEl.textContent = '';
+          }, 2000);
+        }
+
+        // Update UI to reflect graded status
+        updateQuestionList();
+      } catch (error) {
+        console.error('Error saving grading:', error);
+        if (statusEl) {
+          statusEl.textContent = 'Error saving';
+          statusEl.className = 'text-sm text-red-600';
+        }
+      }
+    }
+
+    function updateQuestionList() {
+      // Update the question list to show graded status
+      document.querySelectorAll('.question-nav-btn').forEach((btn, idx) => {
+        const question = quiz.questions[idx];
+        if (question.type === 'essay') {
+          const grading = essayGrading[idx];
+          const isGraded = grading && grading.points !== undefined && grading.points !== null;
+          
+          const statusBadge = btn.querySelector('span:last-child');
+          if (statusBadge) {
+            statusBadge.className = `text-xs px-2 py-0.5 rounded ${
+              isGraded 
+                ? 'bg-green-100 text-green-700' 
+                : 'bg-amber-100 text-amber-700'
+            }`;
+            statusBadge.textContent = isGraded ? '✓' : '⏳';
+          }
+        }
+      });
+    }
+  </script>
+</Layout>

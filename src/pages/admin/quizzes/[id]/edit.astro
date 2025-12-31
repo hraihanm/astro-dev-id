@@ -2950,6 +2950,23 @@ const normalizedQuestions = Array.isArray(questions)
         question.maxWords = parseInt(editor.querySelector('.essay-max-words')?.value) || undefined;
         question.allowFileUpload = editor.querySelector('.essay-allow-upload')?.checked || false;
         question.rubric = editor.querySelector('.essay-rubric')?.value || '';
+        
+        // Save allowed file types
+        const allowImages = editor.querySelector('.essay-allow-images')?.checked || false;
+        const allowPDF = editor.querySelector('.essay-allow-pdf')?.checked || false;
+        if (question.allowFileUpload) {
+          if (allowImages && allowPDF) {
+            question.allowedFileTypes = 'all';
+          } else if (allowImages) {
+            question.allowedFileTypes = 'images';
+          } else if (allowPDF) {
+            question.allowedFileTypes = 'pdf';
+          } else {
+            question.allowedFileTypes = 'all'; // Default to all if nothing selected
+          }
+        } else {
+          question.allowedFileTypes = undefined;
+        }
       } else if (question.type === 'fill-in-the-blank') {
         question.questionTemplate = editor.querySelector('.question-template')?.value || '';
         question.question = question.questionTemplate;
@@ -3292,7 +3309,31 @@ const normalizedQuestions = Array.isArray(questions)
                         class="essay-allow-upload w-4 h-4"
                         ${question.allowFileUpload ? 'checked' : ''}
                       />
-                      <span class="text-sm text-gray-700">Izinkan unggah file (segera)</span>
+                      <span class="text-sm text-gray-700">Izinkan unggah file</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="essay-file-types-container ${question.allowFileUpload ? '' : 'hidden'}">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Tipe File yang Diizinkan
+                  </label>
+                  <div class="space-y-2">
+                    <label class="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        class="essay-allow-images w-4 h-4"
+                        ${(question.allowedFileTypes === undefined || question.allowedFileTypes === 'all' || question.allowedFileTypes === 'images') ? 'checked' : ''}
+                      />
+                      <span class="text-sm text-gray-700">Gambar (JPG, PNG, GIF, WebP, SVG)</span>
+                    </label>
+                    <label class="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        class="essay-allow-pdf w-4 h-4"
+                        ${(question.allowedFileTypes === undefined || question.allowedFileTypes === 'all' || question.allowedFileTypes === 'pdf') ? 'checked' : ''}
+                      />
+                      <span class="text-sm text-gray-700">PDF</span>
                     </label>
                   </div>
                 </div>
@@ -3311,8 +3352,26 @@ const normalizedQuestions = Array.isArray(questions)
             </div>
           </div>
           
-          <!-- Preview Section (empty for essay) -->
-          <div class="question-preview-section hidden">
+          <!-- Preview Section -->
+          <div class="question-preview-section">
+            <div class="preview-container">
+              <div>
+                <h4>Live Preview</h4>
+                <div class="flex items-center gap-3">
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="auto-update-preview" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" ${autoUpdateEnabled ? 'checked' : ''}>
+                    <span class="text-sm text-gray-700">Auto-update</span>
+                  </label>
+                  <button type="button" class="refresh-preview-btn">
+                    ${getIconSvg('refresh', 'w-4 h-4')}
+                    <span>Refresh</span>
+                  </button>
+                </div>
+              </div>
+              <div class="preview-content">
+                <!-- Preview will be rendered here -->
+              </div>
+            </div>
           </div>
         </div>
       `;
@@ -3534,6 +3593,47 @@ const normalizedQuestions = Array.isArray(questions)
             setTimeout(() => updatePreview(question), 300);
           }
         });
+      }
+      
+      // Essay-specific fields auto-update
+      if (question.type === 'essay') {
+        const maxWordsInput = editor.querySelector('.essay-max-words');
+        if (maxWordsInput) {
+          maxWordsInput.addEventListener('input', () => {
+            if (autoUpdateEnabled) {
+              setTimeout(() => updatePreview(question), 300);
+            }
+          });
+        }
+        
+        const rubricTextarea = editor.querySelector('.essay-rubric');
+        if (rubricTextarea) {
+          rubricTextarea.addEventListener('input', () => {
+            if (autoUpdateEnabled) {
+              setTimeout(() => updatePreview(question), 300);
+            }
+          });
+        }
+
+        // File upload checkbox toggle
+        const allowUploadCheckbox = editor.querySelector('.essay-allow-upload');
+        const fileTypesContainer = editor.querySelector('.essay-file-types-container');
+        if (allowUploadCheckbox && fileTypesContainer) {
+          // Initial state
+          if (allowUploadCheckbox.checked) {
+            fileTypesContainer.classList.remove('hidden');
+          } else {
+            fileTypesContainer.classList.add('hidden');
+          }
+
+          allowUploadCheckbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+              fileTypesContainer.classList.remove('hidden');
+            } else {
+              fileTypesContainer.classList.add('hidden');
+            }
+          });
+        }
       }
       
       // Input mode dropdown handlers (one per field)
@@ -4338,6 +4438,68 @@ const normalizedQuestions = Array.isArray(questions)
                 <span>Pembahasan</span>
               </div>
               <div class="preview-solution-content">${solutionHtml}</div>
+            </div>
+          ` : ''}
+        `;
+        
+        // Wait for KaTeX before rendering
+        (async () => {
+          try {
+            await waitForKaTeX(5000);
+            requestAnimationFrame(() => renderLatex(previewContent));
+          } catch (e) {
+            // KaTeX not available, try rendering anyway (will retry internally)
+            requestAnimationFrame(() => renderLatex(previewContent));
+          }
+        })();
+        return;
+      }
+
+      if (question.type === 'essay') {
+        // Render essay preview
+        const maxWords = editor.querySelector('.essay-max-words')?.value || '';
+        const rubricText = editor.querySelector('.essay-rubric')?.value || '';
+        const rubricHtml = rubricText ? renderMarkdown(rubricText) : '';
+
+        previewContent.innerHTML = `
+          <div class="preview-section">
+            <div class="preview-section-title">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 20h4l10.5-10.5a2.828 2.828 0 10-4-4L4 16v4z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 6.5l4 4"></path>
+              </svg>
+              <span>Pertanyaan</span>
+            </div>
+            <div class="preview-question">${questionHtml}</div>
+          </div>
+          
+          <div class="preview-section">
+            <div class="preview-section-title">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              <span>Input Jawaban</span>
+            </div>
+            <div class="essay-container space-y-4">
+              <textarea
+                class="w-full px-4 py-3 border-2 border-gray-300 rounded-md text-base resize-y bg-gray-50"
+                rows="8"
+                disabled
+                placeholder="Tulis jawaban Anda di sini..."
+              ></textarea>
+              ${maxWords ? `<div class="text-sm text-gray-500">Maksimum ${maxWords} kata</div>` : ''}
+            </div>
+          </div>
+          
+          ${rubricHtml ? `
+            <div class="preview-section preview-solution">
+              <div class="preview-section-title">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
+                <span>Rubrik Penilaian</span>
+              </div>
+              <div class="preview-solution-content">${rubricHtml}</div>
             </div>
           ` : ''}
         `;

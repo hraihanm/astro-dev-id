@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { prisma } from '../../../../../../lib/db';
 import { requireAdminAuth } from '../../../../../../lib/auth';
+import { cleanupAttemptFiles } from '../../../../../../lib/essay-files';
 
 export const prerender = false;
 
@@ -36,6 +37,16 @@ export const DELETE: APIRoute = async ({ params, request, cookies }) => {
         status: 404,
         headers: { 'Content-Type': 'application/json' }
       });
+    }
+
+    // Cleanup essay files before deleting attempt
+    if (existing.essayFiles) {
+      try {
+        await cleanupAttemptFiles({ essayFiles: existing.essayFiles });
+      } catch (error) {
+        // Log error but continue with deletion
+        console.error('Error cleaning up essay files:', error);
+      }
     }
 
     await prisma.quizAttempt.delete({ where: { id: attemptId } });

@@ -92,6 +92,8 @@ model QuizAttempt {
   completedAt     DateTime  @default(now())
   scoreReleasedAt DateTime? // null = not released yet, DateTime = when admin released it
   endReason       String    @default("manual") // "manual" | "time_up"
+  essayGrading    Json?     // Store grading data: { questionIndex: { score, maxScore, feedback, gradedBy, gradedAt } }
+  essayFiles      String?   // JSON array of uploaded file URLs from Vercel Blob
   user            User      @relation(fields: [userId], references: [id])
   quiz            Quiz      @relation(fields: [quizId], references: [id])
 }
