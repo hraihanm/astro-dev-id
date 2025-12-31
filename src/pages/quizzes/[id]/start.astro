@@ -2010,53 +2010,162 @@ try {
       formData.append('quizId', id);
       formData.append('questionIndex', questionIndex.toString());
       
-      try {
-        const response = await fetch('/api/quiz/essay/upload', {
-          method: 'POST',
-          body: formData
-        });
-        
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Upload gagal');
-        }
-        
-        const result = await response.json();
-        
-        // Initialize answer structure if needed
-        if (typeof answers[questionIndex] === 'string') {
-          answers[questionIndex] = {
-            answer: answers[questionIndex],
-            files: []
-          };
-        } else if (!answers[questionIndex] || typeof answers[questionIndex] !== 'object') {
-          answers[questionIndex] = {
-            answer: '',
-            files: []
-          };
-        }
-        
-        // Add file to answers
-        if (!answers[questionIndex].files) {
-          answers[questionIndex].files = [];
-        }
-        
-        answers[questionIndex].files.push({
-          url: result.url,
-          filename: result.filename,
-          size: file.size,
-          type: file.type
-        });
-        
-        // Save progress
-        saveProgress();
-        renderQuestion();
-        renderQuestionGrid();
-        updateStats();
-      } catch (error) {
-        console.error('File upload error:', error);
-        alert('Gagal mengunggah file: ' + error.message);
+      // Create unique ID for this upload
+      const uploadId = `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Show progress bar immediately
+      if (uploadedFilesContainer) {
+        const progressHtml = `
+          <div class="essay-upload-progress" data-upload-id="${uploadId}">
+            <div class="flex items-center gap-3 p-2 bg-blue-50 rounded border border-blue-200">
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-blue-700 truncate">Mengunggah: ${escapeHtml(file.name)}</div>
+                <div class="w-full bg-blue-200 rounded-full h-2 mt-1">
+                  <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%" data-progress-bar="${uploadId}"></div>
+                </div>
+                <div class="text-xs text-blue-600 mt-1" data-progress-text="${uploadId}">0%</div>
+              </div>
+            </div>
+          </div>
+        `;
+        uploadedFilesContainer.insertAdjacentHTML('beforeend', progressHtml);
       }
+      
+      // Use XMLHttpRequest for progress tracking
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        
+        // Track upload progress
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percentComplete = Math.round((e.loaded / e.total) * 100);
+            const progressBar = document.querySelector(`[data-progress-bar="${uploadId}"]`);
+            const progressText = document.querySelector(`[data-progress-text="${uploadId}"]`);
+            
+            if (progressBar) {
+              progressBar.style.width = `${percentComplete}%`;
+            }
+            if (progressText) {
+              progressText.textContent = `${percentComplete}%`;
+            }
+          }
+        });
+        
+        // Handle successful upload
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const result = JSON.parse(xhr.responseText);
+              
+              // Remove progress bar
+              const progressElement = document.querySelector(`[data-upload-id="${uploadId}"]`);
+              if (progressElement) {
+                progressElement.remove();
+              }
+              
+              // Check if API returned files array
+              if (result.files && Array.isArray(result.files) && result.files.length > 0) {
+                const uploadedFile = result.files[0];
+                
+                // Initialize answer structure if needed
+                if (typeof answers[questionIndex] === 'string') {
+                  answers[questionIndex] = {
+                    answer: answers[questionIndex],
+                    files: []
+                  };
+                } else if (!answers[questionIndex] || typeof answers[questionIndex] !== 'object') {
+                  answers[questionIndex] = {
+                    answer: '',
+                    files: []
+                  };
+                }
+                
+                // Add file to answers
+                if (!answers[questionIndex].files) {
+                  answers[questionIndex].files = [];
+                }
+                
+                // Store file with correct filename (use API response or fallback to original file.name)
+                answers[questionIndex].files.push({
+                  url: uploadedFile.url,
+                  filename: uploadedFile.filename || file.name,
+                  name: file.name, // Store original filename as fallback
+                  size: uploadedFile.size || file.size,
+                  type: uploadedFile.type || file.type
+                });
+                
+                // Save progress
+                saveProgress();
+                renderQuestion();
+                renderQuestionGrid();
+                updateStats();
+                
+                resolve(uploadedFile);
+              } else {
+                throw new Error('Invalid response format from server');
+              }
+            } catch (error) {
+              console.error('File upload error:', error);
+              // Show error state
+              const progressElement = document.querySelector(`[data-upload-id="${uploadId}"]`);
+              if (progressElement) {
+                progressElement.innerHTML = `
+                  <div class="flex items-center gap-3 p-2 bg-red-50 rounded border border-red-200">
+                    <svg class="w-5 h-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <div class="text-sm font-medium text-red-700">Gagal: ${escapeHtml(error.message || 'Terjadi kesalahan')}</div>
+                  </div>
+                `;
+              }
+              reject(error);
+            }
+          } else {
+            // Handle HTTP error
+            let errorMessage = 'Upload gagal';
+            try {
+              const error = JSON.parse(xhr.responseText);
+              errorMessage = error.error || errorMessage;
+            } catch (e) {
+              errorMessage = `HTTP ${xhr.status}: ${xhr.statusText}`;
+            }
+            
+            // Show error state
+            const progressElement = document.querySelector(`[data-upload-id="${uploadId}"]`);
+            if (progressElement) {
+              progressElement.innerHTML = `
+                <div class="flex items-center gap-3 p-2 bg-red-50 rounded border border-red-200">
+                  <svg class="w-5 h-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  <div class="text-sm font-medium text-red-700">Gagal: ${escapeHtml(errorMessage)}</div>
+                </div>
+              `;
+            }
+            reject(new Error(errorMessage));
+          }
+        });
+        
+        // Handle network errors
+        xhr.addEventListener('error', () => {
+          const progressElement = document.querySelector(`[data-upload-id="${uploadId}"]`);
+          if (progressElement) {
+            progressElement.innerHTML = `
+              <div class="flex items-center gap-3 p-2 bg-red-50 rounded border border-red-200">
+                <svg class="w-5 h-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <div class="text-sm font-medium text-red-700">Gagal: Koneksi terputus</div>
+              </div>
+            `;
+          }
+          reject(new Error('Network error'));
+        });
+        
+        // Send request
+        xhr.open('POST', '/api/quiz/essay/upload');
+        xhr.send(formData);
+      });
     }
 
     // Render current question
@@ -2262,14 +2371,15 @@ try {
                 </div>
                 <div class="essay-uploaded-files space-y-2" data-question-index="${currentQuestionIndex}">
                   ${answerFiles.map((file, fileIndex) => {
+                    // Prioritize filename, then name, then fallback to 'file'
                     const fileName = file.filename || file.name || 'file';
                     const fileUrl = file.url || '';
                     const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileName);
                     return `
                       <div class="flex items-center gap-3 p-2 bg-gray-50 rounded border border-gray-200" data-file-index="${fileIndex}">
-                        ${isImage && fileUrl ? `<img src="${fileUrl}" alt="${fileName}" class="w-12 h-12 object-cover rounded">` : '<div class="w-12 h-12 bg-gray-200 rounded flex items-center justify-center"><svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></div>'}
+                        ${isImage && fileUrl ? `<img src="${fileUrl}" alt="${escapeHtml(fileName)}" class="w-12 h-12 object-cover rounded">` : '<div class="w-12 h-12 bg-gray-200 rounded flex items-center justify-center"><svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></div>'}
                         <div class="flex-1 min-w-0">
-                          <div class="text-sm font-medium text-gray-700 truncate">${escapeHtml(fileName)}</div>
+                          <div class="text-sm font-medium text-gray-700 truncate" title="${escapeHtml(fileName)}">${escapeHtml(fileName)}</div>
                           ${file.size ? `<div class="text-xs text-gray-500">${(file.size / 1024).toFixed(1)} KB</div>` : ''}
                         </div>
                         <button type="button" class="essay-file-remove text-red-600 hover:text-red-800 p-1" data-file-index="${fileIndex}" data-question-index="${currentQuestionIndex}">

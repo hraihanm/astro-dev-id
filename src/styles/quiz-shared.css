@@ -3,6 +3,13 @@
    Used in: Quiz Page, Quiz Editor, Quiz Results
    ===================================================== */
 
+/* =====================================================
+   LATIN MODERN MATH FONT
+   Latin Modern fonts for problems, options, and solutions
+   ===================================================== */
+@import url('https://fonts.cdnfonts.com/css/latin-modern-math');
+@import url('https://fonts.cdnfonts.com/css/latin-modern-roman');
+
 /* Custom Scrollbar */
 .scroll-smooth::-webkit-scrollbar {
   width: 6px;
@@ -58,6 +65,10 @@
 .math-inline .katex-display {
   margin: 0;
   display: inline;
+}
+
+.prose {
+  font-family: 'Latin Modern Roman', 'Latin Modern Math', 'Computer Modern', 'Times New Roman', serif;
 }
 
 .prose .math-inline,
@@ -293,6 +304,7 @@
   min-height: 1.5rem;
   display: flex;
   align-items: center;
+  font-family: 'Latin Modern Roman', 'Latin Modern Math', 'Computer Modern', 'Times New Roman', serif;
 }
 
 .option-content p,
@@ -412,6 +424,7 @@
   font-size: 1rem;
   line-height: 1.7;
   color: #1e293b;
+  font-family: 'Latin Modern Roman', 'Latin Modern Math', 'Computer Modern', 'Times New Roman', serif;
 }
 
 @media (min-width: 640px) {
@@ -468,6 +481,7 @@
   padding: 1.25rem;
   color: #334155;
   line-height: 1.7;
+  font-family: 'Latin Modern Roman', 'Latin Modern Math', 'Computer Modern', 'Times New Roman', serif;
 }
 
 @media (min-width: 640px) {

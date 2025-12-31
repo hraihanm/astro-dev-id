@@ -83,6 +83,10 @@ const normalizedQuestions = Array.isArray(questions)
 ---
 
 <Layout title={`Edit ${quiz.title}`}>
+  <!-- Load Latin Modern fonts for math-friendly typography (only for preview content) -->
+  <link href="https://fonts.cdnfonts.com/css/latin-modern-math" rel="stylesheet">
+  <link href="https://fonts.cdnfonts.com/css/latin-modern-roman" rel="stylesheet">
+  
   <!-- Load shared styles -->
   <link rel="stylesheet" href={quizSharedStyles}>
   
@@ -860,11 +864,12 @@ const normalizedQuestions = Array.isArray(questions)
       will-change: transform;
     }
 
-    /* Enhanced form inputs */
+    /* Enhanced form inputs - Use default site font */
     textarea,
     input[type="text"],
     input[type="number"] {
       transition: all 0.2s ease;
+      font-family: inherit; /* Use default site font */
     }
     
     textarea:focus,
@@ -885,11 +890,20 @@ const normalizedQuestions = Array.isArray(questions)
       color: #374151;
     }
     
+    /* Editor form fields - use default site font */
+    /* Explicitly override any Latin Modern font that might leak in */
+    .question-editor-form textarea,
+    .question-editor-form input[type="text"],
+    .question-editor-form input[type="number"],
     .question-text,
-    .question-template {
+    .question-template,
+    .solution-text,
+    .option-input,
+    .option-input input,
+    .option-input textarea {
       font-size: 1rem;
       line-height: 1.625;
-      font-family: system-ui, -apple-system, sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; /* Force default site font */
     }
     
     .solution-text {
@@ -955,6 +969,7 @@ const normalizedQuestions = Array.isArray(questions)
     
     .preview-content {
       padding: 1.5rem;
+      /* Font only applies to content, not UI elements */
     }
     
     .preview-section {
@@ -1025,6 +1040,7 @@ const normalizedQuestions = Array.isArray(questions)
       color: #111827;
       line-height: 1.75;
       padding: 0.5rem 0;
+      font-family: 'Latin Modern Roman', 'Latin Modern Math', 'Computer Modern', 'Times New Roman', serif;
     }
     
     .preview-solution {
@@ -1044,9 +1060,22 @@ const normalizedQuestions = Array.isArray(questions)
       color: #334155;
       line-height: 1.75;
       font-size: 0.9375rem;
+      font-family: 'Latin Modern Roman', 'Latin Modern Math', 'Computer Modern', 'Times New Roman', serif;
     }
     
     /* Markdown formatting in preview */
+    .preview-content h1,
+    .preview-content h2,
+    .preview-content h3,
+    .preview-content h4,
+    .preview-content h5,
+    .preview-content h6,
+    .preview-content p,
+    .preview-content li,
+    .preview-content blockquote {
+      font-family: 'Latin Modern Roman', 'Latin Modern Math', 'Computer Modern', 'Times New Roman', serif;
+    }
+    
     .preview-content h1,
     .preview-content h2,
     .preview-content h3,
@@ -1232,6 +1261,7 @@ const normalizedQuestions = Array.isArray(questions)
       color: #374151;
       line-height: 1.625;
       font-size: 0.9375rem;
+      font-family: 'Latin Modern Roman', 'Latin Modern Math', 'Computer Modern', 'Times New Roman', serif;
     }
     
     .preview-option.correct .preview-option-content {
