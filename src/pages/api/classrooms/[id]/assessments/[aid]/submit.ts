@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { prisma } from '../../../../../../../lib/db';
+import { prisma } from '../../../../../../lib/db';
 import { put } from '@vercel/blob';
 
 export const prerender = false;

@@ -1,8 +1,8 @@
 import type { APIRoute } from 'astro';
-import { prisma } from '../../../../../lib/db';
-import { requireAdmin } from '../../../../../lib/auth-guard';
-import { calculateScore } from '../../../../../lib/scoring';
-import { getQuiz } from '../../../../../lib/quizzes';
+import { prisma } from '../../../../../../lib/db';
+import { requireAdmin } from '../../../../../../lib/auth-guard';
+import { calculateScore } from '../../../../../../lib/scoring';
+import { getQuiz } from '../../../../../../lib/quizzes';
 
 export const prerender = false;
 
