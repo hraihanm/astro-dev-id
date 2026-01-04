@@ -84,35 +84,100 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
       });
     }
 
-    const existing = await prisma.classroomMembership.findFirst({
-      where: { classroomId, userId: targetUser.id }
-    });
+    // Use transaction with retry logic to handle race conditions atomically
+    let membership;
+    let retries = 0;
+    const maxRetries = 3;
 
-    if (existing?.status === 'ACTIVE') {
-      return new Response(JSON.stringify({ message: 'User already a member', membership: existing }), {
+    while (retries < maxRetries) {
+      try {
+        membership = await prisma.$transaction(async (tx) => {
+          // Check if user is already an active member
+          const existingActive = await tx.classroomMembership.findFirst({
+            where: { 
+              classroomId, 
+              userId: targetUser.id,
+              status: 'ACTIVE'
+            }
+          });
+
+          if (existingActive) {
+            return { membership: existingActive, alreadyActive: true };
+          }
+
+          // Check for any existing membership (including inactive)
+          const existing = await tx.classroomMembership.findFirst({
+            where: { 
+              classroomId, 
+              userId: targetUser.id
+            }
+          });
+
+          if (existing) {
+            // Update existing membership to active
+            const updated = await tx.classroomMembership.update({
+              where: { id: existing.id },
+              data: { status: 'ACTIVE', role: 'STUDENT' }
+            });
+            return { membership: updated, alreadyActive: false };
+          }
+
+          // Create new membership
+          const created = await tx.classroomMembership.create({
+            data: {
+              classroomId,
+              userId: targetUser.id,
+              role: 'STUDENT',
+              status: 'ACTIVE'
+            }
+          });
+          return { membership: created, alreadyActive: false };
+        });
+        break; // Success, exit retry loop
+      } catch (error: any) {
+        // If unique constraint violation (P2002), another request created it concurrently
+        if (error.code === 'P2002') {
+          retries++;
+          if (retries >= maxRetries) {
+            // Final attempt: just fetch and return/update what exists
+            const existing = await prisma.classroomMembership.findFirst({
+              where: { classroomId, userId: targetUser.id }
+            });
+            if (existing) {
+              if (existing.status === 'ACTIVE') {
+                membership = { membership: existing, alreadyActive: true };
+                break;
+              }
+              const updated = await prisma.classroomMembership.update({
+                where: { id: existing.id },
+                data: { status: 'ACTIVE', role: 'STUDENT' }
+              });
+              membership = { membership: updated, alreadyActive: false };
+              break;
+            }
+          }
+          // Wait a bit before retrying (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, 50 * retries));
+          continue;
+        }
+        // For other errors, throw immediately
+        throw error;
+      }
+    }
+
+    if (!membership) {
+      throw new Error('Failed to create or update membership after retries');
+    }
+
+    // If user was already an active member, return appropriate response
+    if (membership.alreadyActive) {
+      return new Response(JSON.stringify({ message: 'User already a member', membership: membership.membership }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    let membership;
-    if (existing) {
-      membership = await prisma.classroomMembership.update({
-        where: { id: existing.id },
-        data: { status: 'ACTIVE', role: 'STUDENT' }
-      });
-    } else {
-      membership = await prisma.classroomMembership.create({
-        data: {
-          classroomId,
-          userId: targetUser.id,
-          role: 'STUDENT',
-          status: 'ACTIVE'
-        }
-      });
-    }
-
-    return new Response(JSON.stringify({ message: 'Member added', membership }), {
+    return new Response(JSON.stringify({ message: 'Member added', membership: membership.membership }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });

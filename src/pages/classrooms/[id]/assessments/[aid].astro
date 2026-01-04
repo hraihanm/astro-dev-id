@@ -1,0 +1,222 @@
+---
+import Layout from '../../../../components/Layout.astro';
+import { prisma } from '../../../../lib/db';
+import { getSessionUser } from '../../../../lib/auth-guard';
+import AssessmentSubmissionList from '../../../../components/AssessmentSubmissionList.astro';
+
+export const prerender = false;
+
+const classroomId = parseInt(Astro.params.id || '0', 10);
+const assessmentId = parseInt(Astro.params.aid || '0', 10);
+const user = await getSessionUser(Astro.cookies);
+
+if (!user) {
+  return Astro.redirect('/auth/signin');
+}
+
+const membership = await prisma.classroomMembership.findFirst({
+  where: { classroomId, userId: user.id, status: 'ACTIVE' },
+  select: { role: true }
+});
+
+const isAdmin = user.role === 'admin';
+const isTeacher = isAdmin || membership?.role === 'TEACHER';
+const isMember = Boolean(membership);
+
+if (!isAdmin && !isMember) {
+  return Astro.redirect('/classrooms');
+}
+
+const assessment = await prisma.assessment.findFirst({
+  where: { id: assessmentId, classroomId },
+  include: {
+    submissions: isTeacher
+      ? {
+          orderBy: { submittedAt: 'desc' },
+          include: { student: { select: { id: true, email: true, name: true } } }
+        }
+      : {
+          where: { studentId: user.id },
+          include: { student: { select: { id: true, email: true, name: true } } }
+        }
+  }
+});
+
+if (!assessment) {
+  return Astro.redirect(`/classrooms/${classroomId}/assessments`);
+}
+
+if (assessment.status !== 'published' && !isTeacher) {
+  return Astro.redirect(`/classrooms/${classroomId}/assessments`);
+}
+
+const mySubmission = assessment.submissions.find((s) => s.studentId === user.id) || null;
+---
+
+<Layout title={`Assessment • ${assessment.title}`}>
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <header class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 flex items-center justify-between gap-4">
+      <div class="space-y-2">
+        <p class="text-xs uppercase tracking-wide text-slate-500">Assessment</p>
+        <h1 class="text-2xl font-bold text-slate-900">{assessment.title}</h1>
+        {assessment.description && <p class="text-slate-700 max-w-3xl whitespace-pre-wrap text-sm">{assessment.description}</p>}
+        <div class="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+          <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">{assessment.type}</span>
+          <span class={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[11px] font-semibold ${assessment.status === 'published' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>
+            {assessment.status}
+          </span>
+          <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+            Skor maks: {assessment.maxScore}
+          </span>
+          {assessment.dueAt && (
+            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+              Due {new Date(assessment.dueAt).toLocaleString('id-ID')}
+            </span>
+          )}
+        </div>
+      </div>
+      <a href={`/classrooms/${classroomId}/assessments`} class="text-sm text-blue-600 hover:text-blue-700 font-semibold">← Semua assessment</a>
+    </header>
+
+    {!isTeacher && (
+      <section class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 space-y-4">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-900">Submit tugas</h2>
+            <p class="text-sm text-slate-600">Unggah PDF/gambar atau sertakan tautan.</p>
+          </div>
+          {mySubmission && (
+            <div class="flex items-center gap-2">
+              <span class={`text-xs px-2 py-1 rounded-full border ${mySubmission.status === 'graded' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : mySubmission.status === 'handed_in' ? 'bg-blue-50 text-blue-700 border-blue-100' : mySubmission.status === 'rejected' ? 'bg-rose-50 text-rose-700 border-rose-100' : 'bg-slate-100 text-slate-700 border-slate-200'}`}>
+                {mySubmission.status}
+              </span>
+              {mySubmission.score !== null && <span class="text-sm text-slate-700">Skor: {mySubmission.score} / {assessment.maxScore}</span>}
+              {mySubmission.late && <span class="text-xs text-amber-700">Late</span>}
+            </div>
+          )}
+        </div>
+
+        <form id="submit-form" class="space-y-3" enctype="multipart/form-data">
+          <div class="flex flex-col gap-2">
+            <label class="text-sm font-medium text-slate-700">File (PDF/JPG/PNG, maks 20MB)</label>
+            <input
+              type="file"
+              name="files"
+              multiple
+              class="text-sm text-slate-600 file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            />
+          </div>
+          <div class="flex flex-col gap-2">
+            <label class="text-sm font-medium text-slate-700">Tautan (opsional)</label>
+            <input
+              type="text"
+              name="links"
+              placeholder="Pisahkan dengan koma untuk banyak tautan"
+              class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+            />
+          </div>
+          <div class="flex items-center gap-3">
+            <button
+              type="submit"
+              class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
+            >
+              Kirim
+            </button>
+            <span id="submit-status" class="text-sm text-slate-500"></span>
+          </div>
+        </form>
+
+        {mySubmission?.files && Array.isArray(mySubmission.files) && mySubmission.files.length > 0 && (
+          <div class="border border-slate-200 rounded-xl p-3">
+            <h3 class="text-sm font-semibold text-slate-800 mb-2">File terkirim</h3>
+            <ul class="text-sm text-blue-700 space-y-1">
+              {mySubmission.files.map((f: any) => (
+                <li>
+                  <a href={f.url} class="hover:underline" target="_blank" rel="noreferrer">{f.name || f.url}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+    )}
+
+    {isTeacher && (
+      <section class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 space-y-4">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-900">Submissions</h2>
+            <p class="text-sm text-slate-600">Nilai atau reject submission siswa.</p>
+          </div>
+          <div class="text-xs text-slate-500">
+            Total: {assessment.submissions.length}
+          </div>
+        </div>
+
+        <AssessmentSubmissionList
+          submissions={assessment.submissions as any}
+          classroomId={classroomId}
+          assessmentId={assessmentId}
+          maxScore={assessment.maxScore}
+        />
+      </section>
+    )}
+  </main>
+
+  {!isTeacher && (
+    <script type="module">
+      const form = document.querySelector('#submit-form');
+      const statusEl = document.querySelector('#submit-status');
+      if (form) {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const fd = new FormData(form as HTMLFormElement);
+          const linksRaw = (fd.get('links') as string | null) || '';
+          if (linksRaw) {
+            const arr = linksRaw.split(',').map((s) => s.trim()).filter(Boolean);
+            fd.set('links', JSON.stringify(arr));
+          }
+          const btn = (form as HTMLFormElement).querySelector('button[type="submit"]') as HTMLButtonElement | null;
+          if (btn) {
+            btn.textContent = 'Mengirim...';
+            btn.disabled = true;
+          }
+          if (statusEl instanceof HTMLElement) {
+            statusEl.textContent = '';
+            statusEl.className = 'text-sm text-slate-500';
+          }
+          try {
+            const res = await fetch(`/api/classrooms/${classroomId}/assessments/${assessmentId}/submit`, {
+              method: 'POST',
+              body: fd
+            });
+            const body = await res.json().catch(() => ({}));
+            if (res.ok) {
+              if (statusEl instanceof HTMLElement) {
+                statusEl.textContent = 'Terkirim.';
+                statusEl.className = 'text-sm text-emerald-600';
+              }
+              setTimeout(() => window.location.reload(), 400);
+            } else {
+              if (statusEl instanceof HTMLElement) {
+                statusEl.textContent = body.error || 'Gagal mengirim.';
+                statusEl.className = 'text-sm text-red-600';
+              }
+            }
+          } catch (err) {
+            if (statusEl instanceof HTMLElement) {
+              statusEl.textContent = 'Gagal mengirim.';
+              statusEl.className = 'text-sm text-red-600';
+            }
+          } finally {
+            if (btn) {
+              btn.textContent = 'Kirim';
+              btn.disabled = false;
+            }
+          }
+        });
+      }
+    </script>
+  )}
+</Layout>
+

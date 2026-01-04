@@ -1,0 +1,184 @@
+---
+export interface Props {
+  classroomId: number;
+  isTeacher?: boolean;
+}
+
+const { classroomId, isTeacher = false } = Astro.props;
+---
+
+{isTeacher && (
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 space-y-3">
+    <div class="flex items-center justify-between flex-wrap gap-2">
+      <div>
+        <h2 class="text-lg font-semibold text-slate-900">Buat Assessment</h2>
+        <p class="text-sm text-slate-600">Bagikan tugas, PDF, atau tautan kuis dengan tenggat.</p>
+      </div>
+      <button
+        type="button"
+        id="toggle-assessment-form"
+        class="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+      >
+        Tampilkan / Sembunyikan
+      </button>
+    </div>
+
+    <form id="assessment-form" class="grid gap-4 md:grid-cols-2">
+      <div class="md:col-span-2 space-y-2">
+        <label class="text-sm font-medium text-slate-700">Judul *</label>
+        <input
+          required
+          name="title"
+          class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+          placeholder="Misal: Essay Evolusi Bintang"
+        />
+      </div>
+
+      <div class="md:col-span-2 space-y-2">
+        <label class="text-sm font-medium text-slate-700">Instruksi</label>
+        <textarea
+          name="description"
+          rows="3"
+          class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+          placeholder="Tambahkan detail tugas, format file, dsb."
+        ></textarea>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-sm font-medium text-slate-700">Tipe</label>
+        <select
+          name="type"
+          class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+        >
+          <option value="exercise">Exercise</option>
+          <option value="exam">Exam</option>
+          <option value="quiz">Quiz</option>
+          <option value="assignment">Assignment</option>
+        </select>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-sm font-medium text-slate-700">Skor Maksimal *</label>
+        <input
+          required
+          name="maxScore"
+          type="number"
+          min="1"
+          value="100"
+          class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+        />
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-sm font-medium text-slate-700">Tenggat (opsional)</label>
+        <input
+          name="dueAt"
+          type="datetime-local"
+          class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+        />
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-sm font-medium text-slate-700">Resource link (opsional)</label>
+        <input
+          name="resourceLink"
+          type="url"
+          placeholder="https://contoh.com/file.pdf"
+          class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+        />
+      </div>
+
+      <div class="md:col-span-2 flex items-center gap-3">
+        <label class="inline-flex items-center gap-2 text-sm text-slate-700">
+          <input type="checkbox" name="publish" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+          Publikasikan sekarang
+        </label>
+        <span id="assessment-form-status" class="text-sm text-slate-500"></span>
+      </div>
+
+      <div class="md:col-span-2">
+        <button
+          type="submit"
+          class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
+        >
+          Simpan Assessment
+        </button>
+      </div>
+    </form>
+  </div>
+)}
+
+{isTeacher && (
+  <script type="module">
+    const toggleBtn = document.querySelector('#toggle-assessment-form');
+    const form = document.querySelector('#assessment-form');
+    const statusEl = document.querySelector('#assessment-form-status');
+
+    if (toggleBtn && form) {
+      toggleBtn.addEventListener('click', () => {
+        const hidden = form.classList.toggle('hidden');
+        toggleBtn.textContent = hidden ? 'Tampilkan' : 'Sembunyikan';
+      });
+    }
+
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = new FormData(form as HTMLFormElement);
+        const payload: any = {
+          title: data.get('title'),
+          description: data.get('description'),
+          type: data.get('type'),
+          maxScore: Number(data.get('maxScore')),
+          publish: data.get('publish') === 'on'
+        };
+        const dueAt = data.get('dueAt');
+        if (dueAt) payload.dueAt = dueAt;
+        const resourceLink = data.get('resourceLink')?.toString().trim();
+        if (resourceLink) payload.resources = [{ type: 'link', url: resourceLink }];
+
+        const submitBtn = (form as HTMLFormElement).querySelector('button[type="submit"]') as HTMLButtonElement | null;
+        if (submitBtn) {
+          submitBtn.textContent = 'Menyimpan...';
+          submitBtn.disabled = true;
+        }
+        if (statusEl instanceof HTMLElement) {
+          statusEl.textContent = '';
+          statusEl.className = 'text-sm text-slate-500';
+        }
+
+        try {
+          const res = await fetch(`/api/classrooms/${classroomId}/assessments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const body = await res.json().catch(() => ({}));
+          if (res.ok) {
+            if (statusEl instanceof HTMLElement) {
+              statusEl.textContent = 'Assessment dibuat.';
+              statusEl.className = 'text-sm text-emerald-600';
+            }
+            setTimeout(() => window.location.reload(), 500);
+          } else {
+            if (statusEl instanceof HTMLElement) {
+              statusEl.textContent = body.error || 'Gagal membuat assessment.';
+              statusEl.className = 'text-sm text-red-600';
+            }
+          }
+        } catch (err) {
+          if (statusEl instanceof HTMLElement) {
+            statusEl.textContent = 'Gagal membuat assessment.';
+            statusEl.className = 'text-sm text-red-600';
+          }
+        } finally {
+          if (submitBtn) {
+            submitBtn.textContent = 'Simpan Assessment';
+            submitBtn.disabled = false;
+          }
+        }
+      });
+    }
+  </script>
+)}
+

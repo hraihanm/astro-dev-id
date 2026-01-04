@@ -500,67 +500,87 @@ const colors = {
       if (!qqList || !qqCount) return;
       qqCount.classList.toggle('hidden', items.length === 0);
       if (items.length) qqCount.textContent = String(items.length);
+      
+      // Empty state
       if (!items.length) {
-        qqList.innerHTML = `<p class="text-slate-500 text-sm">Tidak ada kuis aktif.</p>`;
-        // If queue is empty and panel is open, keep it open but show empty message
+        qqList.innerHTML = `<p data-qq-placeholder="true" class="text-slate-500 text-sm">Tidak ada kuis aktif.</p>`;
         return;
       }
+      
+      // Remove placeholder without clearing hovered nodes
+      qqList.querySelector('[data-qq-placeholder]')?.remove();
+      
       const limited = items.slice(0, QUEUE_MAX_RECENTS);
-      qqList.innerHTML = limited.map((item) => {
+      const existingNodes = new Map(
+        Array.from(qqList.querySelectorAll('[data-queue-key]')).map((el) => [
+          el.getAttribute('data-queue-key') || '',
+          el as HTMLElement,
+        ]),
+      );
+      const usedKeys = new Set<string>();
+      
+      limited.forEach((item) => {
         const typeLabel = item.quizType === 'exam' ? 'Try Out (Exam)' : 'Latihan';
-        const deadline = item.availableUntil
-          ? `<span class="text-[11px] text-amber-600">Tutup: ${new Date(item.availableUntil).toLocaleString('id-ID')}</span>`
+        const deadlineText = item.availableUntil
+          ? `Tutup: ${new Date(item.availableUntil).toLocaleString('id-ID')}`
           : '';
         const remaining = item.remainingTime || 0;
         const isPending = item.status === 'pending_result';
         const isReleased = item.status === 'released';
         const isActive = remaining > 0 && !item.completedAt && !isReleased && !isPending;
-        
-        let badge = '';
-        if (isActive) {
-          badge = `<span class="px-2 py-1 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-100">${qqFormatTime(remaining)}</span>`;
-        } else if (isPending) {
-          badge = `<span class="px-2 py-1 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-100">Menunggu</span>`;
-        } else if (isReleased) {
-          badge = `<span class="px-2 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">Selesai</span>`;
-        }
         const isSeen = item.seen === true;
-        const footer = isPending
+        
+        const badgeText = isActive
+          ? qqFormatTime(remaining)
+          : isPending
+            ? 'Menunggu'
+            : 'Selesai';
+        const badgeClass = [
+          'qq-badge',
+          'px-2',
+          'py-1',
+          'rounded-md',
+          'text-[11px]',
+          'font-semibold',
+          isActive
+            ? 'bg-blue-50 text-blue-700 border border-blue-100'
+            : isPending
+              ? 'bg-amber-50 text-amber-700 border border-amber-100'
+              : 'bg-emerald-50 text-emerald-700 border border-emerald-100',
+        ].join(' ');
+        
+        const footerText = isPending
           ? 'Menunggu rilis skor'
           : isReleased
             ? (isSeen ? 'Skor sudah dirilis' : 'Skor sudah dirilis • Baru')
             : isActive
               ? 'Sedang berlangsung'
               : 'Belum dimulai';
+        
         const targetUrl = (() => {
-          // Pending/released must go to review when possible
           if (isPending || isReleased) {
             if (item.attemptId) return `/quizzes/${item.quizId}/review/${item.attemptId}`;
             if (item.url && item.url.includes('/review/')) return item.url;
             return '/quizzes/history';
           }
-          // Active or unknown status
           if (item.url) return item.url;
           return `/quizzes/${item.quizId}`;
         })();
         
-        // For released results, remove immediately and navigate
         const itemKey = item._key || `${QUEUE_PREFIX}${item.quizId}`;
         const attemptId = item.attemptId || null;
         const itemStatus = item.status || '';
-        // Add click handler that validates before navigating
-        const onClickHandler = `onclick="(async (e) => { 
+        
+        const onClickHandlerAttr = `(async (e) => { 
           e.preventDefault(); 
           const key = '${itemKey.replace(/'/g, "\\'")}'; 
           const attemptId = ${attemptId ? `'${attemptId}'` : 'null'}; 
           const itemStatus = '${itemStatus.replace(/'/g, "\\'")}'; 
           
-          // Validate item before navigating
           if (attemptId) {
             try {
               const response = await fetch('/api/quiz/attempt-status?attemptId=' + attemptId);
               if (response.status === 404) {
-                // Attempt not found - remove from queue and show message
                 if (window.qqRemoveByKey) { window.qqRemoveByKey(key); }
                 alert('Kuis atau hasil kuis ini sudah tidak tersedia.');
                 return;
@@ -570,37 +590,96 @@ const colors = {
             }
           }
           
-          // For released results, remove immediately
           if (itemStatus === 'released' && window.qqRemoveByKey) { 
             window.qqRemoveByKey(key); 
           }
           
-          // Navigate after a short delay
           setTimeout(() => { window.location.href='${targetUrl.replace(/'/g, "\\'")}'; }, 150); 
-        })(event)"`;
+        })(event)`;
         
-        return `
-          <div class="border border-slate-100 rounded-lg px-3 py-2.5 hover:border-blue-200 hover:shadow-sm transition" data-queue-key="${itemKey}">
-            <div class="flex items-start justify-between gap-2">
-              <div class="space-y-0.5">
-                <p class="text-sm font-semibold text-slate-900 line-clamp-2">${item.title || 'Kuis'}</p>
-                <p class="text-xs text-slate-500">${typeLabel}</p>
-                ${deadline}
-              </div>
-              ${badge}
+        const linkLabel = isReleased ? 'Lihat hasil' : (isPending ? 'Lihat status' : 'Lanjutkan');
+        const linkColorClass = isReleased && !isSeen
+          ? 'text-emerald-600 hover:text-emerald-700'
+          : 'text-blue-600 hover:text-blue-700';
+        
+        usedKeys.add(itemKey);
+        let node = existingNodes.get(itemKey);
+        
+        const template = `
+          <div class="flex items-start justify-between gap-2">
+            <div class="space-y-0.5">
+              <p class="qq-title text-sm font-semibold text-slate-900 line-clamp-2">${item.title || 'Kuis'}</p>
+              <p class="qq-type text-xs text-slate-500">${typeLabel}</p>
+              <span class="qq-deadline text-[11px] text-amber-600 ${deadlineText ? '' : 'hidden'}">${deadlineText}</span>
             </div>
-            <div class="mt-2 flex items-center justify-between text-xs text-slate-500">
-              <span>${footer}</span>
-              <a href="${targetUrl}" ${onClickHandler} class="inline-flex items-center gap-1 text-[11px] font-semibold ${isReleased && !isSeen ? 'text-emerald-600 hover:text-emerald-700' : 'text-blue-600 hover:text-blue-700'}">
-                ${isReleased ? 'Lihat hasil' : (isPending ? 'Lihat status' : 'Lanjutkan')}
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 5l7 7-7 7" />
-                </svg>
-              </a>
-            </div>
+            <span class="${badgeClass}">${badgeText}</span>
+          </div>
+          <div class="mt-2 flex items-center justify-between text-xs text-slate-500">
+            <span class="qq-footer">${footerText}</span>
+            <a href="${targetUrl}" onclick="${onClickHandlerAttr}" class="qq-link inline-flex items-center gap-1 text-[11px] font-semibold ${linkColorClass}">
+              ${linkLabel}
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
           </div>
         `;
-      }).join('');
+        
+        // If node is missing or legacy (no structured children), recreate once
+        if (!node || !node.querySelector('.qq-title')) {
+          node = document.createElement('div');
+          node.setAttribute('data-queue-key', itemKey);
+          node.className = 'border border-slate-100 rounded-lg px-3 py-2.5 hover:border-blue-200 hover:shadow-sm transition';
+          node.innerHTML = template;
+          qqList.appendChild(node);
+          return;
+        }
+        
+        // Update in place to preserve hover state
+        node.className = 'border border-slate-100 rounded-lg px-3 py-2.5 hover:border-blue-200 hover:shadow-sm transition';
+        
+        const titleEl = node.querySelector('.qq-title');
+        if (titleEl) titleEl.textContent = item.title || 'Kuis';
+        
+        const typeEl = node.querySelector('.qq-type');
+        if (typeEl) typeEl.textContent = typeLabel;
+        
+        const deadlineEl = node.querySelector('.qq-deadline') as HTMLElement | null;
+        if (deadlineEl) {
+          if (deadlineText) {
+            deadlineEl.textContent = deadlineText;
+            deadlineEl.classList.remove('hidden');
+          } else {
+            deadlineEl.textContent = '';
+            deadlineEl.classList.add('hidden');
+          }
+        }
+        
+        const badgeEl = node.querySelector('.qq-badge') as HTMLElement | null;
+        if (badgeEl) {
+          badgeEl.textContent = badgeText;
+          badgeEl.className = badgeClass;
+        }
+        
+        const footerEl = node.querySelector('.qq-footer');
+        if (footerEl) footerEl.textContent = footerText;
+        
+        const linkEl = node.querySelector('.qq-link') as HTMLAnchorElement | null;
+        if (linkEl) {
+          linkEl.textContent = linkLabel;
+          linkEl.setAttribute('href', targetUrl);
+          linkEl.setAttribute('onclick', onClickHandlerAttr);
+          linkEl.className = `qq-link inline-flex items-center gap-1 text-[11px] font-semibold ${linkColorClass}`;
+        }
+        
+        // Re-append to maintain ordering without replacing the node
+        qqList.appendChild(node);
+      });
+      
+      // Remove stale nodes not in the latest list
+      existingNodes.forEach((node, key) => {
+        if (!usedKeys.has(key)) node.remove();
+      });
     }
 
     qqBtn?.addEventListener('click', async () => {

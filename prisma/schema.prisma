@@ -29,6 +29,9 @@ model User {
   classroomPosts     ClassroomPost[]        @relation("UserClassroomPosts")
   classroomComments  ClassroomComment[]     @relation("UserClassroomComments")
   classroomResourcesAdded ClassroomResource[] @relation("UserAddedResources")
+  assessmentsCreated      Assessment[]        @relation("AssessmentCreator")
+  assessmentSubmissions AssessmentSubmission[] @relation("AssessmentStudent")
+  gradedSubmissions     AssessmentSubmission[] @relation("AssessmentGrader")
 }
 
 model Course {
@@ -204,6 +207,7 @@ model Classroom {
   memberships ClassroomMembership[]
   posts       ClassroomPost[]
   resources   ClassroomResource[]
+  assessments Assessment[]
 
   @@index([createdBy])
 }
@@ -272,4 +276,49 @@ model ClassroomResource {
   @@index([courseId])
   @@index([quizId])
   @@index([addedBy])
+}
+
+model Assessment {
+  id           Int          @id @default(autoincrement())
+  classroomId  Int
+  title        String
+  description  String?
+  type         String       @default("exercise")
+  maxScore     Int
+  dueAt        DateTime?
+  status       String       @default("draft") // draft | published
+  resources    Json?
+  createdBy    Int
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  classroom    Classroom    @relation(fields: [classroomId], references: [id])
+  creator      User         @relation("AssessmentCreator", fields: [createdBy], references: [id])
+  submissions  AssessmentSubmission[]
+
+  @@index([classroomId])
+  @@index([dueAt])
+}
+
+model AssessmentSubmission {
+  id           Int        @id @default(autoincrement())
+  assessmentId Int
+  studentId    Int
+  status       String     @default("assigned") // assigned | handed_in | graded | rejected
+  submittedAt  DateTime?
+  gradedAt     DateTime?
+  score        Float?
+  comment      String?
+  files        Json?
+  graderId     Int?
+  late         Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  student      User       @relation("AssessmentStudent", fields: [studentId], references: [id])
+  grader       User?      @relation("AssessmentGrader", fields: [graderId], references: [id])
+
+  @@unique([assessmentId, studentId])
+  @@index([studentId])
 }

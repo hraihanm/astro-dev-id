@@ -1,0 +1,169 @@
+---
+export interface Submission {
+  id: number;
+  status: string;
+  late: boolean;
+  score: number | null;
+  comment: string | null;
+  submittedAt: Date | string | null;
+  gradedAt: Date | string | null;
+  student: { id: number; email: string; name?: string | null };
+}
+
+export interface Props {
+  submissions: Submission[];
+  classroomId: number;
+  assessmentId: number;
+  maxScore: number;
+  readonlyMode?: boolean;
+}
+
+const { submissions, classroomId, assessmentId, maxScore, readonlyMode = false } = Astro.props;
+---
+
+<div class="space-y-3">
+  {submissions.length === 0 ? (
+    <p class="text-sm text-slate-600">Belum ada submission.</p>
+  ) : (
+    submissions.map((s) => {
+      const displayName = (s.student.name && s.student.name.trim()) || s.student.email;
+      return (
+        <div class="border border-slate-200 rounded-xl bg-white p-4 shadow-sm flex flex-col gap-3">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <div class="font-semibold text-slate-900">{displayName}</div>
+              <div class="text-xs text-slate-500">{s.student.email}</div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class={`text-xs px-2 py-1 rounded-full border ${s.status === 'graded' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : s.status === 'handed_in' ? 'bg-blue-50 text-blue-700 border-blue-100' : s.status === 'rejected' ? 'bg-rose-50 text-rose-700 border-rose-100' : 'bg-slate-100 text-slate-700 border-slate-200'}`}>
+                {s.status}
+              </span>
+              {s.late && <span class="text-[11px] px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100">Late</span>}
+            </div>
+          </div>
+
+          <div class="text-xs text-slate-500 flex flex-wrap gap-2">
+            {s.submittedAt && <span>Submitted: {new Date(s.submittedAt).toLocaleString('id-ID')}</span>}
+            {s.gradedAt && <span>Graded: {new Date(s.gradedAt).toLocaleString('id-ID')}</span>}
+          </div>
+
+          {readonlyMode ? (
+            <div class="text-sm text-slate-700">
+              Skor: {s.score ?? '-'} / {maxScore}
+              {s.comment && <div class="text-xs text-slate-500 mt-1">Catatan: {s.comment}</div>}
+            </div>
+          ) : (
+            <div class="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+              <input
+                type="number"
+                min="0"
+                max={maxScore}
+                step="0.01"
+                data-grade-score={s.student.id}
+                class="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 w-28"
+                placeholder="Skor"
+                value={s.score ?? ''}
+              />
+              <input
+                type="text"
+                data-grade-comment={s.student.id}
+                class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                placeholder="Komentar (opsional)"
+                value={s.comment ?? ''}
+              />
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors"
+                  data-grade-btn={s.student.id}
+                >
+                  Simpan Nilai
+                </button>
+                <button
+                  type="button"
+                  class="px-3 py-2 rounded-lg bg-rose-50 text-rose-700 text-xs font-semibold hover:bg-rose-100 transition-colors border border-rose-100"
+                  data-reject-btn={s.student.id}
+                >
+                  Reject
+                </button>
+              </div>
+              <span class="text-xs text-slate-500" data-grade-status={s.student.id}></span>
+            </div>
+          )}
+        </div>
+      );
+    })
+  )}
+</div>
+
+{!readonlyMode && (
+  <script type="module">
+    const gradeButtons = document.querySelectorAll('[data-grade-btn]');
+    const rejectButtons = document.querySelectorAll('[data-reject-btn]');
+
+    async function grade(studentId: string, status: 'graded' | 'rejected') {
+      const scoreInput = document.querySelector(`[data-grade-score="${studentId}"]`) as HTMLInputElement | null;
+      const commentInput = document.querySelector(`[data-grade-comment="${studentId}"]`) as HTMLInputElement | null;
+      const statusEl = document.querySelector(`[data-grade-status="${studentId}"]`) as HTMLElement | null;
+      const btn = document.querySelector(`[data-${status === 'rejected' ? 'reject' : 'grade'}-btn="${studentId}"]`) as HTMLButtonElement | null;
+
+      const scoreVal = scoreInput?.value ? Number(scoreInput.value) : null;
+      const commentVal = commentInput?.value || null;
+
+      if (btn) {
+        btn.textContent = status === 'rejected' ? 'Reject...' : 'Menyimpan...';
+        btn.disabled = true;
+      }
+      if (statusEl) {
+        statusEl.textContent = '';
+        statusEl.className = 'text-xs text-slate-500';
+      }
+
+      try {
+        const res = await fetch(`/api/classrooms/${classroomId}/assessments/${assessmentId}/grade`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ studentId, score: scoreVal, comment: commentVal, status })
+        });
+        const body = await res.json().catch(() => ({}));
+        if (res.ok) {
+          if (statusEl) {
+            statusEl.textContent = 'Tersimpan';
+            statusEl.className = 'text-xs text-emerald-600';
+          }
+          setTimeout(() => window.location.reload(), 400);
+        } else {
+          if (statusEl) {
+            statusEl.textContent = body.error || 'Gagal menyimpan';
+            statusEl.className = 'text-xs text-red-600';
+          }
+        }
+      } catch (err) {
+        if (statusEl) {
+          statusEl.textContent = 'Gagal menyimpan';
+          statusEl.className = 'text-xs text-red-600';
+        }
+      } finally {
+        if (btn) {
+          btn.textContent = status === 'rejected' ? 'Reject' : 'Simpan Nilai';
+          btn.disabled = false;
+        }
+      }
+    }
+
+    gradeButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-grade-btn');
+        if (id) grade(id, 'graded');
+      });
+    });
+
+    rejectButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-reject-btn');
+        if (id) grade(id, 'rejected');
+      });
+    });
+  </script>
+)}
+

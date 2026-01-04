@@ -313,6 +313,13 @@ if (classroom?.isPrivate && !(user?.role === 'admin') && !(membership && members
                         </span>
                         <span class="text-xs text-slate-500">Buka</span>
                       </a>
+                      <a href={`/classrooms/${classroom.id}/assessments`} class="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 hover:border-blue-200 hover:text-blue-700 transition">
+                        <span class="inline-flex items-center gap-2">
+                          <Icon name="note" class="w-4 h-4" />
+                          Assessments
+                        </span>
+                        <span class="text-xs text-slate-500">Buka</span>
+                      </a>
                     </div>
                   </div>
 
