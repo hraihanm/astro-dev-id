@@ -29,8 +29,20 @@ const questions = quiz.questions || [];
 const quizTypeRaw = quiz.quizType || settings.quizType || 'exercise';
 const quizType = quizTypeRaw === 'tryout' ? 'exam' : quizTypeRaw === 'latihan' ? 'exercise' : quizTypeRaw;
 const isExam = quizType === 'exam';
-const initialAvailableFrom = quiz.availableFrom ? new Date(quiz.availableFrom).toISOString().slice(0,16) : '';
-const initialAvailableUntil = quiz.availableUntil ? new Date(quiz.availableUntil).toISOString().slice(0,16) : '';
+// Helper function to convert datetime to GMT+7 for input
+function toGMT7DateTimeString(dateString: string): string {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  // Convert to GMT+7 by adding the timezone offset
+  const gmt7Offset = 7 * 60; // GMT+7 in minutes
+  const localOffset = date.getTimezoneOffset(); // Local offset in minutes (will be negative for GMT+7)
+  const totalOffset = gmt7Offset + localOffset;
+  date.setMinutes(date.getMinutes() + totalOffset);
+  return date.toISOString().slice(0, 16);
+}
+
+const initialAvailableFrom = quiz.availableFrom ? toGMT7DateTimeString(quiz.availableFrom) : '';
+const initialAvailableUntil = quiz.availableUntil ? toGMT7DateTimeString(quiz.availableUntil) : '';
 const initialOpenDuration = quiz.openDurationSeconds ? Math.floor(quiz.openDurationSeconds / 60) : '';
 const initialScope = quiz.chapterId ? 'chapter' : quiz.courseId ? 'course' : 'standalone';
 
@@ -5222,6 +5234,22 @@ const normalizedQuestions = Array.isArray(questions)
       // Check if any question changes exist
       const hasQuestionChanges = updated.length > 0 || added.length > 0 || deleted.length > 0 || questionsReordered;
       
+      // Helper function to convert datetime-local input to GMT+7 ISO string
+      function toGMT7ISOString(dateTimeLocal: string): string {
+        if (!dateTimeLocal) return null;
+        const date = new Date(dateTimeLocal);
+        // The datetime-local input is in local time, we need to convert it to GMT+7
+        // Get the local timezone offset
+        const localOffset = date.getTimezoneOffset(); // minutes
+        // GMT+7 offset is -420 minutes (7 hours behind UTC)
+        const gmt7Offset = -420;
+        // Calculate the difference between local and GMT+7
+        const offsetDiff = localOffset - gmt7Offset;
+        // Adjust the date to GMT+7
+        date.setMinutes(date.getMinutes() - offsetDiff);
+        return date.toISOString();
+      }
+
       // Build payload with optional question updates
       const formData = {
         title: document.getElementById('title').value,
@@ -5230,8 +5258,8 @@ const normalizedQuestions = Array.isArray(questions)
         timeLimit: parseInt(document.getElementById('timeLimit').value) || undefined,
         quizType: quizType,
         attemptLimit: attemptLimit,
-        availableFrom: availableFromVal ? new Date(availableFromVal).toISOString() : null,
-        availableUntil: availableUntilVal ? new Date(availableUntilVal).toISOString() : null,
+        availableFrom: availableFromVal ? toGMT7ISOString(availableFromVal) : null,
+        availableUntil: availableUntilVal ? toGMT7ISOString(availableUntilVal) : null,
         openDurationSeconds: openDurationVal ? parseInt(openDurationVal) * 60 : null,
         scoreReleaseMode: scoreReleaseMode,
         visibility: document.getElementById('visibility')?.value || 'PUBLIC',
@@ -5341,6 +5369,22 @@ const normalizedQuestions = Array.isArray(questions)
           chapterId = chapterSelect?.value ? parseInt(chapterSelect.value) : null;
         }
 
+        // Helper function to convert datetime-local input to GMT+7 ISO string
+        function toGMT7ISOString(dateTimeLocal: string): string {
+          if (!dateTimeLocal) return null;
+          const date = new Date(dateTimeLocal);
+          // The datetime-local input is in local time, we need to convert it to GMT+7
+          // Get the local timezone offset
+          const localOffset = date.getTimezoneOffset(); // minutes
+          // GMT+7 offset is -420 minutes (7 hours behind UTC)
+          const gmt7Offset = -420;
+          // Calculate the difference between local and GMT+7
+          const offsetDiff = localOffset - gmt7Offset;
+          // Adjust the date to GMT+7
+          date.setMinutes(date.getMinutes() - offsetDiff);
+          return date.toISOString();
+        }
+
         const duplicateData = {
           newTitle: newTitle.trim(),
           title: document.getElementById('title')?.value,
@@ -5349,8 +5393,8 @@ const normalizedQuestions = Array.isArray(questions)
           timeLimit: parseInt(document.getElementById('timeLimit')?.value) || undefined,
           quizType: quizType,
           attemptLimit: attemptLimit,
-          availableFrom: availableFromVal ? new Date(availableFromVal).toISOString() : null,
-          availableUntil: availableUntilVal ? new Date(availableUntilVal).toISOString() : null,
+          availableFrom: availableFromVal ? toGMT7ISOString(availableFromVal) : null,
+          availableUntil: availableUntilVal ? toGMT7ISOString(availableUntilVal) : null,
           openDurationSeconds: openDurationVal ? parseInt(openDurationVal) * 60 : null,
           scoreReleaseMode: scoreReleaseMode,
           visibility: document.getElementById('visibility')?.value || 'PUBLIC',

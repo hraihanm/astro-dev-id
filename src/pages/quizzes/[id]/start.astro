@@ -1377,7 +1377,7 @@ try {
     let answers = new Array(quiz.questions.length).fill(null);
     let flaggedQuestions = new Set();
     let startTime = Date.now();
-    let openStartedAt = Date.now();
+    let openStartedAt = null;
     let timerInterval = null;
     let animationFrameId = null;
     const totalTimeLimit = quiz.settings?.timeLimit || 0;
@@ -1416,7 +1416,7 @@ try {
           flaggedQuestions = new Set(progress.flaggedQuestions || []);
           currentQuestionIndex = progress.currentQuestionIndex || 0;
           startTime = progress.startTime || startTime;
-          openStartedAt = progress.openStartedAt || openStartedAt;
+          openStartedAt = progress.openStartedAt || null;
           hasStarted = progress.hasStarted || false;
           
           // Load active time tracking
@@ -1653,6 +1653,9 @@ try {
     // Apply open duration window (per-open)
     if (openDurationSeconds > 0) {
       if (!hasProgress) {
+        openStartedAt = Date.now();
+      } else if (!openStartedAt) {
+        // If we have progress but no openStartedAt, set it now
         openStartedAt = Date.now();
       }
       const elapsedSinceOpen = Math.floor((Date.now() - openStartedAt) / 1000);
@@ -3207,7 +3210,10 @@ try {
     if (!hasProgress) {
       hasStarted = true;
       startTime = Date.now();
-      openStartedAt = Date.now();
+      // Only set openStartedAt if there's an open duration limit
+      if (openDurationSeconds > 0) {
+        openStartedAt = Date.now();
+      }
       activeTimeSpent = 0;
       lastActivityTime = Date.now();
       saveProgress();

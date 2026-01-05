@@ -46,8 +46,29 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       const started = new Date(sessionStartedAt);
       const elapsed = Math.floor((now.getTime() - started.getTime()) / 1000);
       if (elapsed > quiz.openDurationSeconds) {
-        return new Response(JSON.stringify({ error: 'Session window has expired' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ 
+          error: 'Session window has expired',
+          details: {
+            sessionStartedAt: started.toISOString(),
+            currentTime: now.toISOString(),
+            elapsedSeconds: elapsed,
+            allowedSeconds: quiz.openDurationSeconds,
+            exceededBySeconds: elapsed - quiz.openDurationSeconds,
+            timeLimitMinutes: Math.floor(quiz.openDurationSeconds / 60),
+            elapsedTimeMinutes: Math.floor(elapsed / 60)
+          }
+        }), { status: 403, headers: { 'Content-Type': 'application/json' } });
       }
+    } else if (quiz.openDurationSeconds && !sessionStartedAt) {
+      // If there's an open duration but no session start time, reject for security
+      return new Response(JSON.stringify({ 
+        error: 'Session start time required',
+        details: {
+          reason: 'Quiz has time limit but no session start time was provided',
+          timeLimitMinutes: Math.floor(quiz.openDurationSeconds / 60),
+          currentTime: now.toISOString()
+        }
+      }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
     // Calculate score
