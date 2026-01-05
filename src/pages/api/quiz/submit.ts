@@ -42,33 +42,48 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     if (quiz.availableUntil && now > new Date(quiz.availableUntil)) {
       return new Response(JSON.stringify({ error: 'Quiz has been closed' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
     }
+    // Check session duration but don't reject - just log for monitoring
     if (quiz.openDurationSeconds && sessionStartedAt) {
       const started = new Date(sessionStartedAt);
       const elapsed = Math.floor((now.getTime() - started.getTime()) / 1000);
+      const timeLimitMinutes = Math.floor(quiz.openDurationSeconds / 60);
+      const elapsedTimeMinutes = Math.floor(elapsed / 60);
+      
       if (elapsed > quiz.openDurationSeconds) {
-        return new Response(JSON.stringify({ 
-          error: 'Session window has expired',
-          details: {
-            sessionStartedAt: started.toISOString(),
-            currentTime: now.toISOString(),
-            elapsedSeconds: elapsed,
-            allowedSeconds: quiz.openDurationSeconds,
-            exceededBySeconds: elapsed - quiz.openDurationSeconds,
-            timeLimitMinutes: Math.floor(quiz.openDurationSeconds / 60),
-            elapsedTimeMinutes: Math.floor(elapsed / 60)
-          }
-        }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+        // Log the overtime submission but accept it anyway
+        console.log(`Overtime submission accepted for quiz ${quizId} by user ${userId}:`, {
+          sessionStartedAt: started.toISOString(),
+          currentTime: now.toISOString(),
+          elapsedSeconds: elapsed,
+          allowedSeconds: quiz.openDurationSeconds,
+          exceededBySeconds: elapsed - quiz.openDurationSeconds,
+          timeLimitMinutes,
+          elapsedTimeMinutes
+        });
       }
     } else if (quiz.openDurationSeconds && !sessionStartedAt) {
-      // If there's an open duration but no session start time, reject for security
-      return new Response(JSON.stringify({ 
-        error: 'Session start time required',
-        details: {
-          reason: 'Quiz has time limit but no session start time was provided',
-          timeLimitMinutes: Math.floor(quiz.openDurationSeconds / 60),
-          currentTime: now.toISOString()
-        }
-      }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      // Log missing session start time but accept the submission
+      console.log(`Submission accepted without session start time for quiz ${quizId} by user ${userId}`, {
+        timeLimitMinutes: Math.floor(quiz.openDurationSeconds / 60),
+        currentTime: now.toISOString()
+      });
+    }
+
+    // Calculate timing information for response
+    let timingInfo = null;
+    if (quiz.openDurationSeconds && sessionStartedAt) {
+      const started = new Date(sessionStartedAt);
+      const elapsed = Math.floor((now.getTime() - started.getTime()) / 1000);
+      timingInfo = {
+        sessionStartedAt: started.toISOString(),
+        currentTime: now.toISOString(),
+        elapsedSeconds: elapsed,
+        allowedSeconds: quiz.openDurationSeconds,
+        isOvertime: elapsed > quiz.openDurationSeconds,
+        exceededBySeconds: Math.max(0, elapsed - quiz.openDurationSeconds),
+        timeLimitMinutes: Math.floor(quiz.openDurationSeconds / 60),
+        elapsedTimeMinutes: Math.floor(elapsed / 60)
+      };
     }
 
     // Calculate score
@@ -104,6 +119,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       score: result.percentage,
       attemptId: createdAttempt.id,
       scoreReleasedAt,
+      timing: timingInfo,
       result: {
         score: result.score,
         percentage: result.percentage,
