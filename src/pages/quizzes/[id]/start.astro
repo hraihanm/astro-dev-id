@@ -1161,6 +1161,265 @@ try {
   <!-- Load marked.js for markdown rendering -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   
+  <!-- Load Hybrid Quiz Storage -->
+  <script is:inline>
+// Hybrid Quiz Storage System
+// Combines localStorage (for speed) with server-side storage (for reliability)
+
+class HybridQuizStorage {
+  constructor(quizId, userId) {
+    this.quizId = quizId;
+    this.userId = userId;
+    this.progressKey = `quiz_progress_${quizId}`;
+    this.serverSyncInterval = null;
+    this.lastServerSync = 0;
+    this.isOnline = navigator.onLine;
+    this.syncInProgress = false;
+    
+    // Listen for online/offline events
+    window.addEventListener('online', () => {
+      this.isOnline = true;
+      this.syncToServer();
+    });
+    
+    window.addEventListener('offline', () => {
+      this.isOnline = false;
+    });
+  }
+
+  // Load progress from localStorage first, then try to sync with server
+  async loadProgress() {
+    try {
+      // Load from localStorage immediately
+      const localProgress = this.loadFromLocalStorage();
+      
+      if (this.isOnline) {
+        try {
+          // Try to get server progress
+          const serverResponse = await fetch(`/api/quiz/progress?quizId=${this.quizId}`);
+          if (serverResponse.ok) {
+            const serverData = await serverResponse.json();
+            
+            if (serverData.exists && !serverData.isExpired) {
+              // Merge server and local data, preferring most recent
+              const mergedProgress = this.mergeProgressData(localProgress, serverData.progress);
+              this.saveToLocalStorage(mergedProgress);
+              
+              console.log('Progress loaded from server and merged with local');
+              return mergedProgress;
+            } else if (serverData.isExpired) {
+              console.log('Quiz expired, clearing local progress');
+              this.clearProgress();
+              return null;
+            }
+          }
+        } catch (error) {
+          console.warn('Failed to sync from server, using local data:', error);
+        }
+      }
+      
+      console.log('Using local progress data');
+      return localProgress;
+      
+    } catch (error) {
+      console.error('Error loading progress:', error);
+      return null;
+    }
+  }
+
+  // Save progress to both localStorage and server
+  async saveProgress(progressData) {
+    try {
+      // Always save to localStorage first (fast)
+      this.saveToLocalStorage(progressData);
+      
+      // Save to server if online
+      if (this.isOnline && !this.syncInProgress) {
+        this.syncInProgress = true;
+        
+        try {
+          const response = await fetch('/api/quiz/progress', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              quizId: this.quizId,
+              answers: progressData.answers,
+              currentQuestionIndex: progressData.currentQuestionIndex,
+              timeSpent: progressData.timeSpent,
+              flaggedQuestions: progressData.flaggedQuestions
+            })
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            this.lastServerSync = Date.now();
+            console.log('Progress saved to server:', result);
+          } else {
+            console.warn('Failed to save to server, keeping local only');
+          }
+        } catch (error) {
+          console.warn('Error saving to server, keeping local only:', error);
+        } finally {
+          this.syncInProgress = false;
+        }
+      }
+    } catch (error) {
+      console.error('Error saving progress:', error);
+    }
+  }
+
+  // Start periodic server sync
+  startPeriodicSync(intervalMs = 30000) { // Default: 30 seconds
+    if (this.serverSyncInterval) {
+      clearInterval(this.serverSyncInterval);
+    }
+    
+    this.serverSyncInterval = setInterval(async () => {
+      if (this.isOnline) {
+        const currentProgress = this.loadFromLocalStorage();
+        if (currentProgress && currentProgress.answers.length > 0) {
+          await this.saveProgress(currentProgress);
+        }
+      }
+    }, intervalMs);
+  }
+
+  // Stop periodic sync
+  stopPeriodicSync() {
+    if (this.serverSyncInterval) {
+      clearInterval(this.serverSyncInterval);
+      this.serverSyncInterval = null;
+    }
+  }
+
+  // Force immediate sync to server
+  async syncToServer() {
+    const currentProgress = this.loadFromLocalStorage();
+    if (currentProgress) {
+      await this.saveProgress(currentProgress);
+    }
+  }
+
+  // Clear progress from both localStorage and server
+  async clearProgress() {
+    try {
+      // Clear localStorage
+      localStorage.removeItem(this.progressKey);
+      
+      // Clear from server
+      if (this.isOnline) {
+        try {
+          await fetch(`/api/quiz/progress/delete?quizId=${this.quizId}`, {
+            method: 'DELETE'
+          });
+          console.log('Progress cleared from server');
+        } catch (error) {
+          console.warn('Failed to clear server progress:', error);
+        }
+      }
+      
+      this.stopPeriodicSync();
+      console.log('Progress cleared from all storage');
+    } catch (error) {
+      console.error('Error clearing progress:', error);
+    }
+  }
+
+  // Local storage helpers
+  loadFromLocalStorage() {
+    try {
+      const saved = localStorage.getItem(this.progressKey);
+      return saved ? JSON.parse(saved) : null;
+    } catch (error) {
+      console.error('Error loading from localStorage:', error);
+      return null;
+    }
+  }
+
+  saveToLocalStorage(progressData) {
+    try {
+      localStorage.setItem(this.progressKey, JSON.stringify({
+        ...progressData,
+        lastSavedAt: Date.now()
+      }));
+    } catch (error) {
+      console.error('Error saving to localStorage:', error);
+    }
+  }
+
+  // Merge local and server progress data
+  mergeProgressData(localData, serverData) {
+    if (!localData) return serverData;
+    if (!serverData) return localData;
+    
+    // Prefer the most recently saved data
+    const localTime = new Date(localData.lastSavedAt || 0).getTime();
+    const serverTime = new Date(serverData.lastSavedAt || 0).getTime();
+    
+    if (serverTime > localTime) {
+      // Server data is newer, but preserve any newer local answers
+      const merged = { ...serverData };
+      
+      // Merge answers, preserving local answers for questions answered after server save
+      if (localData.answers && Array.isArray(localData.answers)) {
+        merged.answers = serverData.answers || [];
+        
+        localData.answers.forEach(localAnswer => {
+          const existingIndex = merged.answers.findIndex(a => a.questionId === localAnswer.questionId);
+          if (existingIndex >= 0) {
+            // Keep local answer if it's more recent or server answer is empty
+            const localAns = Array.isArray(localAnswer.answer) ? localAnswer.answer : [localAnswer.answer];
+            const serverAns = Array.isArray(merged.answers[existingIndex].answer) 
+              ? merged.answers[existingIndex].answer 
+              : [merged.answers[existingIndex].answer];
+            
+            if (localAns.length > 0 && (serverAns.length === 0 || localTime > serverTime)) {
+              merged.answers[existingIndex] = localAnswer;
+            }
+          } else {
+            // Add new answer from local
+            merged.answers.push(localAnswer);
+          }
+        });
+      }
+      
+      // Preserve other local data that might be newer
+      if (localTime > serverTime) {
+        merged.currentQuestionIndex = localData.currentQuestionIndex;
+        merged.timeSpent = localData.timeSpent;
+        if (localData.flaggedQuestions) {
+          merged.flaggedQuestions = localData.flaggedQuestions;
+        }
+      }
+      
+      return merged;
+    }
+    
+    // Local data is newer or same age
+    return localData;
+  }
+
+  // Get storage status for debugging
+  getStorageStatus() {
+    const localData = this.loadFromLocalStorage();
+    return {
+      hasLocalStorage: !!localData,
+      isOnline: this.isOnline,
+      lastServerSync: this.lastServerSync,
+      syncInProgress: this.syncInProgress,
+      periodicSyncActive: !!this.serverSyncInterval
+    };
+  }
+}
+
+// Export for use in quiz components
+if (typeof window !== 'undefined') {
+  window.HybridQuizStorage = HybridQuizStorage;
+}
+  </script>
+  
   <script define:vars={{ quiz: clientQuiz, id }}>
     console.log('=== QUIZ SCRIPT STARTED ===');
     console.log('Quiz data:', quiz);
@@ -1174,7 +1433,29 @@ try {
     }
     // #endregion
     
-    // Guard: Check if quiz data is available
+    // Quiz state
+    let hybridStorage = null;
+    const QUEUE_KEY = `quiz_queue_${id}`;
+    const arrowLeftSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>';
+    const arrowRightSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>';
+    const availableFromTs = quiz.availableFrom ? new Date(quiz.availableFrom).getTime() : null;
+    const availableUntilTs = quiz.availableUntil ? new Date(quiz.availableUntil).getTime() : null;
+    const openDurationSeconds = quiz.openDurationSeconds || 0;
+    let currentQuestionIndex = 0;
+    let answers = new Array(quiz.questions.length).fill(null);
+    let flaggedQuestions = new Set();
+    let startTime = Date.now();
+    let openStartedAt = null;
+    let timerInterval = null;
+    let animationFrameId = null;
+    const totalTimeLimit = quiz.settings?.timeLimit || 0;
+    let quizSubmitted = false;
+    let hasStarted = false;
+    
+    // Track active time spent (not total elapsed time)
+    let activeTimeSpent = 0;
+    let lastActivityTime = Date.now();
+    
     if (!quiz) {
       console.error('ERROR: Quiz data is not available!');
       document.getElementById('question-container')?.insertAdjacentHTML('beforeend', '<div class="p-4 bg-red-50 border border-red-200 rounded-lg"><p class="text-red-700 font-semibold">Error: Quiz data tidak tersedia. Silakan refresh halaman.</p></div>');
@@ -1365,35 +1646,17 @@ try {
       return renderMarkdown(text);
     }
 
-    // Quiz state
-    const PROGRESS_KEY = `quiz_progress_${id}`;
-    const QUEUE_KEY = `quiz_queue_${id}`;
-    const arrowLeftSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>';
-    const arrowRightSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>';
-    const availableFromTs = quiz.availableFrom ? new Date(quiz.availableFrom).getTime() : null;
-    const availableUntilTs = quiz.availableUntil ? new Date(quiz.availableUntil).getTime() : null;
-    const openDurationSeconds = quiz.openDurationSeconds || 0;
-    let currentQuestionIndex = 0;
-    let answers = new Array(quiz.questions.length).fill(null);
-    let flaggedQuestions = new Set();
-    let startTime = Date.now();
-    let openStartedAt = null;
-    let timerInterval = null;
-    let animationFrameId = null;
-    const totalTimeLimit = quiz.settings?.timeLimit || 0;
-    let quizSubmitted = false;
-    let hasStarted = false;
-    
-    // Track active time spent (not total elapsed time)
-    let activeTimeSpent = 0;
-    let lastActivityTime = Date.now();
-
-    // Load saved progress
-    function loadProgress() {
+    // Load saved progress using hybrid storage
+    async function loadProgress() {
       try {
-        const saved = localStorage.getItem(PROGRESS_KEY);
-        if (saved) {
-          const progress = JSON.parse(saved);
+        if (!hybridStorage) {
+          console.log('Initializing hybrid storage...');
+          hybridStorage = new HybridQuizStorage(id, null); // userId will be set by server
+          return await hybridStorage.loadProgress();
+        }
+        
+        const progress = await hybridStorage.loadProgress();
+        if (progress) {
           // Ensure answers array is properly initialized
           const loadedAnswers = progress.answers || answers;
           // For fill-in-the-blank questions, ensure arrays are properly sized
@@ -1404,8 +1667,8 @@ try {
                 // Ensure the array is large enough for all blank indices
                 const blanks = question.blanks || [];
                 if (blanks.length > 0) {
-                  const maxBlankIndex = Math.max(...blanks.map(b => b.index !== undefined ? b.index : 0));
-                  while (answer.length <= maxBlankIndex) {
+                  // Pad array to match blanks count
+                  while (answer.length < blanks.length) {
                     answer.push('');
                   }
                 }
@@ -1443,7 +1706,7 @@ try {
             }
           }
           
-          console.log('Progress loaded:', progress);
+          console.log('Progress loaded from hybrid storage:', progress);
           return true;
         }
       } catch (error) {
@@ -1452,19 +1715,21 @@ try {
       return false;
     }
 
-    // Save progress
-    function saveProgress() {
+    // Save progress using hybrid storage
+    async function saveProgress() {
       try {
-        const existingRaw = localStorage.getItem(QUEUE_KEY);
-        const existing = existingRaw ? JSON.parse(existingRaw) : null;
-        
+        if (!hybridStorage) {
+          console.warn('Hybrid storage not initialized');
+          return;
+        }
+
         // Recalculate remainingTime from timerEndAt if available
         let currentRemaining = remainingTime;
         if (timerEndAt) {
           currentRemaining = Math.max(0, Math.floor((timerEndAt - Date.now()) / 1000));
         }
         
-        const progress = {
+        const progressData = {
           answers,
           flaggedQuestions: Array.from(flaggedQuestions),
           currentQuestionIndex,
@@ -1474,12 +1739,13 @@ try {
           openStartedAt,
           hasStarted,
           activeTimeSpent,
-          lastActivityTime,
-          savedAt: Date.now()
+          lastActivityTime
         };
-        localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+
+        // Save using hybrid storage (handles both localStorage and server)
+        await hybridStorage.saveProgress(progressData);
         
-        // Queue entry with timestamp-based timer (Drift Fix)
+        // Keep queue entry for header compatibility (legacy)
         const queueEntry = {
           quizId: parseInt(id),
           title: quiz.title,
@@ -1491,11 +1757,13 @@ try {
           url: `/quizzes/${id}`,
           savedAt: Date.now(),
           status: 'active',
-          attemptId: existing?.attemptId || null
+          attemptId: null
         };
         
-        // Always save active quizzes to queue
+        // Always save active quizzes to queue for header compatibility
         localStorage.setItem(QUEUE_KEY, JSON.stringify(queueEntry));
+        
+        console.log('Progress saved via hybrid storage');
       } catch (error) {
         console.error('Error saving progress:', error);
       }
@@ -1516,10 +1784,14 @@ try {
       return activeTimeSpent;
     }
 
-    // Clear progress
-    function clearProgress() {
+    // Clear progress using hybrid storage
+    async function clearProgress() {
       try {
-        localStorage.removeItem(PROGRESS_KEY);
+        if (hybridStorage) {
+          await hybridStorage.clearProgress();
+        }
+        // Also clear legacy keys for compatibility
+        localStorage.removeItem(QUEUE_KEY);
       } catch (error) {
         console.error('Error clearing progress:', error);
       }
@@ -1641,13 +1913,8 @@ try {
       remainingTime = quiz.settings.timeLimit;
       timerEndAt = Date.now() + (remainingTime * 1000);
     } else if (hasProgress && quiz.settings?.timeLimit) {
-      // Restore timerEndAt from saved progress or calculate from remainingTime
-      const saved = JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}');
-      if (saved.timerEndAt) {
-        timerEndAt = saved.timerEndAt;
-      } else if (remainingTime > 0) {
-        timerEndAt = Date.now() + (remainingTime * 1000);
-      }
+      // Timer is already restored by loadProgress function
+      // No need to access localStorage directly anymore
     }
 
     // Apply open duration window (per-open)
@@ -3086,7 +3353,11 @@ try {
             localStorage.setItem(QUEUE_KEY, JSON.stringify(releasedEntry));
           }
           // Clear saved progress (keep queue for pending/released)
-          clearProgress();
+          await clearProgress();
+          // Stop periodic sync
+          if (hybridStorage) {
+            hybridStorage.stopPeriodicSync();
+          }
           window.location.href = `/quizzes/${id}/results?score=${result.percentage || 0}`;
         } else {
           alert('Error submitting quiz: ' + result.error);
@@ -3185,6 +3456,12 @@ try {
       // LaTeX will be rendered by renderQuestion() via requestAnimationFrame
       console.log('Quiz initialized successfully');
       enableLeaveConfirm();
+      
+      // Start periodic server sync for hybrid storage
+      if (hybridStorage) {
+        hybridStorage.startPeriodicSync(30000); // Sync every 30 seconds
+        console.log('Hybrid storage periodic sync started');
+      }
     }
 
     // Wait for DOM to be fully ready

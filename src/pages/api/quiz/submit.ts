@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getQuiz } from '../../../lib/quizzes';
 import { calculateScore, saveQuizResult } from '../../../lib/scoring';
+import { prisma } from '../../../lib/db';
 
 export const prerender = false;
 
@@ -113,6 +114,21 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       scoreReleasedAt,
       endReason: endReason === 'time_up' ? 'time_up' : 'manual'
     });
+
+    // Clear progress after successful submission
+    try {
+      await prisma.quizProgress.delete({
+        where: {
+          userId_quizId: {
+            userId: parseInt(userId),
+            quizId: quizId
+          }
+        }
+      });
+    } catch (error) {
+      // Progress might not exist, log but don't fail the submission
+      console.warn('Could not clear quiz progress:', error);
+    }
 
     return new Response(JSON.stringify({
       message: 'Quiz submitted successfully',

@@ -5235,7 +5235,7 @@ const normalizedQuestions = Array.isArray(questions)
       const hasQuestionChanges = updated.length > 0 || added.length > 0 || deleted.length > 0 || questionsReordered;
       
       // Helper function to convert datetime-local input to GMT+7 ISO string
-      function toGMT7ISOString(dateTimeLocal: string): string {
+      function toGMT7ISOString(dateTimeLocal) {
         if (!dateTimeLocal) return null;
         const date = new Date(dateTimeLocal);
         // The datetime-local input is in local time, we need to convert it to GMT+7
@@ -5370,7 +5370,7 @@ const normalizedQuestions = Array.isArray(questions)
         }
 
         // Helper function to convert datetime-local input to GMT+7 ISO string
-        function toGMT7ISOString(dateTimeLocal: string): string {
+        function toGMT7ISOString(dateTimeLocal) {
           if (!dateTimeLocal) return null;
           const date = new Date(dateTimeLocal);
           // The datetime-local input is in local time, we need to convert it to GMT+7

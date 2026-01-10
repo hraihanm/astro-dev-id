@@ -21,6 +21,7 @@ model User {
   attempts      QuizAttempt[]
   profile       Profile?
   blockProgress BlockProgress[]
+  progress      QuizProgress[]
   accounts      Account[]
   sessions      Session[]
   passwordResetTokens PasswordResetToken[]
@@ -78,6 +79,7 @@ model Quiz {
   course       Course?       @relation(fields: [courseId], references: [id])
   chapter      Chapter?      @relation(fields: [chapterId], references: [id])
   attempts     QuizAttempt[]
+  progress     QuizProgress[]
   classroomResources ClassroomResource[] @relation("QuizClassroomResources")
 }
 
@@ -99,6 +101,23 @@ model QuizAttempt {
   essayFiles      String?   // JSON array of uploaded file URLs from Vercel Blob
   user            User      @relation(fields: [userId], references: [id])
   quiz            Quiz      @relation(fields: [quizId], references: [id])
+}
+
+model QuizProgress {
+  id                  Int       @id @default(autoincrement())
+  userId              Int
+  quizId              Int
+  currentAnswers      String    // JSON array of current answers
+  currentQuestionIndex Int       @default(0)
+  timeSpent           Int       @default(0)
+  flaggedQuestions     String?   // JSON array of flagged question indices
+  lastSavedAt         DateTime  @default(now())
+  isCompleted         Boolean   @default(false)
+  sessionStartedAt    DateTime? // When the current session started
+  user                User      @relation(fields: [userId], references: [id])
+  quiz                Quiz      @relation(fields: [quizId], references: [id])
+
+  @@unique([userId, quizId])
 }
 
 model Profile {
